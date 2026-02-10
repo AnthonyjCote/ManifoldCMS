@@ -15,7 +15,9 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "format:check": "prettier --check .",
-    "format:write": "prettier --write ."
+    "format:write": "prettier --write .",
+    "studio": "npm run tauri:dev",
+    "studio:build": "npm run tauri:build"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.0",

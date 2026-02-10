@@ -3,7 +3,7 @@ import path from "node:path";
 
 import AdmZip from "adm-zip";
 
-const PACKAGE_EXTENSION = ".cmsproj";
+const PACKAGE_EXTENSION = ".manifold";
 
 export function ensurePackageFileName(filePath: string): string {
   return filePath.endsWith(PACKAGE_EXTENSION) ? filePath : `${filePath}${PACKAGE_EXTENSION}`;

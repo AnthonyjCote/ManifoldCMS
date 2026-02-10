@@ -1,12 +1,12 @@
-# PDR: AI-Native Manifest CMS Studio
+# PDR: Manifold
 
-Runtime Builder + Live Preview + Export to Clean Astro + Portable Projects + Codex Agent Panel
+AI-Native Runtime Builder + Live Preview + Export to Clean Astro + Portable Projects + Codex Agent Panel
 
 Tauri + React + TypeScript
 
 ## 1. Purpose
 
-Build a desktop Studio app for agencies and freelancers to create static websites visually with a manifest-driven block system, preview changes live, and export a clean Astro codebase for deployment and handoff. The Studio is optimized for deterministic AI-assisted editing.
+Build **Manifold**, a desktop Studio app for agencies and freelancers to create static websites visually with a manifest-driven block system, preview changes live, and export a clean Astro codebase for deployment and handoff. Manifold is optimized for deterministic AI-assisted editing.
 
 ## 2. V1 Goals
 
@@ -43,7 +43,7 @@ The Studio project (manifests + content + theme + assets + block definitions) is
 
 V1 explicitly produces two separate artifacts:
 
-1. Studio Project Package (`.cmsproj` zip): portable authoring data.
+1. Studio Project Package (`.manifold` package): portable authoring data.
 2. Production Export (Astro repo): deployable deliverable.
 
 ### 5.3 Canonical Render Model
@@ -133,7 +133,7 @@ Rules:
 - Open existing project folder.
 - Recent projects list.
 - Auto-save + manual save.
-- Package/unpackage `.cmsproj`.
+- Package/unpackage `.manifold`.
 
 ## 7.2 Runtime Visual Builder
 
@@ -512,7 +512,7 @@ Built-in block minimum (first-party):
 - [x] Build deterministic JSON serializer (stable key ordering).
 - [x] Implement create/open/save project flows.
 - [x] Implement autosave with debounce and conflict-safe writes.
-- [x] Implement `.cmsproj` packaging/unpackaging.
+- [x] Implement `.manifold` packaging/unpackaging.
 - [x] Implement migration runner (forward-only).
 - [x] Implement backup creation at `backups/<timestamp>-pre-migration/`.
 - [x] Log migrations to `exports/migrations.log`.
