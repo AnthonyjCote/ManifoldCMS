@@ -1,0 +1,10 @@
+{
+  "pageId": "page-home",
+  "route": "/",
+  "title": "Home",
+  "seo": {
+    "title": "Home",
+    "description": ""
+  },
+  "blocks": []
+}

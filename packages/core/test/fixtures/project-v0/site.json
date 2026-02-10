@@ -1,0 +1,13 @@
+{
+  "title": "Fixture",
+  "description": "",
+  "baseUrl": "",
+  "navigation": [],
+  "footer": {
+    "text": ""
+  },
+  "seoDefaults": {
+    "titleTemplate": "%s",
+    "description": ""
+  }
+}

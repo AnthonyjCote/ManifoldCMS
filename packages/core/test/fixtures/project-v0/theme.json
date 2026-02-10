@@ -1,0 +1,11 @@
+{
+  "tokens": {
+    "colorPrimary": "#1d4ed8",
+    "colorText": "#111827",
+    "colorBackground": "#ffffff",
+    "spacingBase": 8,
+    "radiusBase": 8,
+    "fontBody": "Inter, system-ui, sans-serif",
+    "fontHeading": "Inter, system-ui, sans-serif"
+  }
+}

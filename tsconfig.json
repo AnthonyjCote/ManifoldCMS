@@ -1,0 +1,9 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./src-ui" },
+    { "path": "./packages/core" },
+    { "path": "./packages/exporter-astro" },
+    { "path": "./packages/lint-rules" }
+  ]
+}

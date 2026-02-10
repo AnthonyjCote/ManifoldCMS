@@ -1,0 +1,24 @@
+{
+  "name": "manifold-cms",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-native manifest CMS Studio",
+  "workspaces": [
+    "src-ui",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm --prefix src-ui run dev",
+    "build": "npm --prefix src-ui run build && cargo check --manifest-path src-tauri/Cargo.toml",
+    "lint": "npm --prefix src-ui run lint",
+    "test": "npm --workspace @manifold/core run test",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write ."
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.0",
+    "prettier": "^3.6.2"
+  }
+}
