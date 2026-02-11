@@ -30,10 +30,10 @@ type PrimitiveRendererProps = {
   editable?: boolean;
   onInlineCommit?: (fieldKey: string, value: string) => void;
   primitivePath?: string;
-  selectedPrimitivePath?: string | null;
+  selectedPrimitivePaths?: string[];
   hoveredPrimitivePath?: string | null;
   onHoverPrimitive?: (path: string | null) => void;
-  onSelectPrimitive?: (path: string, type: PrimitiveType) => void;
+  onSelectPrimitive?: (path: string, type: PrimitiveType, multi: boolean) => void;
   onPrimitiveStyleSet?: (path: string, key: PrimitiveStyleSetKey, value: string) => void;
   onStyleDragSessionStart?: () => void;
   onStyleDragSessionEnd?: () => void;
@@ -174,6 +174,8 @@ function toPrimitiveStyle(
   if (!style) {
     return undefined;
   }
+  const hasBackgroundOverride =
+    typeof style.backgroundColor === "string" && style.backgroundColor.trim().length > 0;
   return {
     marginTop: style.marginTop,
     marginRight: style.marginRight,
@@ -188,6 +190,8 @@ function toPrimitiveStyle(
     borderColor: style.borderColor,
     borderRadius: style.borderRadius,
     backgroundColor: style.backgroundColor,
+    background: hasBackgroundOverride ? style.backgroundColor : undefined,
+    backgroundImage: hasBackgroundOverride ? "none" : undefined,
     color: style.textColor,
     fontSize: style.fontSize,
     fontWeight: style.fontWeight,
@@ -281,7 +285,7 @@ export function PrimitiveRenderer({
   editable = false,
   onInlineCommit,
   primitivePath = "0",
-  selectedPrimitivePath = null,
+  selectedPrimitivePaths = [],
   hoveredPrimitivePath = null,
   onHoverPrimitive,
   onSelectPrimitive,
@@ -291,10 +295,10 @@ export function PrimitiveRenderer({
   primitiveStyles,
 }: PrimitiveRendererProps) {
   const style = toPrimitiveStyle(primitiveStyles?.[primitivePath]);
-  const isSelected = selectedPrimitivePath === primitivePath;
+  const isSelected = selectedPrimitivePaths.includes(primitivePath);
   const isHovered = hoveredPrimitivePath === primitivePath;
   const primitiveClass = `preview-primitive-node${isSelected ? " selected" : ""}${isHovered ? " hovered" : ""}`;
-  const selectPrimitive = () => onSelectPrimitive?.(primitivePath, node.type);
+  const selectPrimitive = (multi = false) => onSelectPrimitive?.(primitivePath, node.type, multi);
   const primitiveRef = useRef<HTMLElement | null>(null);
   const [overlayHost, setOverlayHost] = useState<HTMLElement | null>(null);
   const [overlayModel, setOverlayModel] = useState<{
@@ -437,7 +441,6 @@ export function PrimitiveRenderer({
     }
     event.preventDefault();
     event.stopPropagation();
-    selectPrimitive();
     onStyleDragSessionStart?.();
 
     const startCoord = handle.axis === "y" ? event.clientY : event.clientX;
@@ -496,7 +499,6 @@ export function PrimitiveRenderer({
     }
     event.preventDefault();
     event.stopPropagation();
-    selectPrimitive();
     onStyleDragSessionStart?.();
 
     const startX = event.clientX;
@@ -632,7 +634,7 @@ export function PrimitiveRenderer({
     if (active instanceof HTMLElement && active.isContentEditable && !isSelected) {
       active.blur();
     }
-    selectPrimitive();
+    selectPrimitive(event.shiftKey);
   };
 
   const onPrimitiveMove = (event: MouseEvent<HTMLElement>) => {
@@ -667,7 +669,7 @@ export function PrimitiveRenderer({
             editable={editable}
             onInlineCommit={onInlineCommit}
             primitivePath={`${primitivePath}.${index}`}
-            selectedPrimitivePath={selectedPrimitivePath}
+            selectedPrimitivePaths={selectedPrimitivePaths}
             hoveredPrimitivePath={hoveredPrimitivePath}
             onHoverPrimitive={onHoverPrimitive}
             onSelectPrimitive={onSelectPrimitive}
@@ -700,7 +702,7 @@ export function PrimitiveRenderer({
             editable={editable}
             onInlineCommit={onInlineCommit}
             primitivePath={`${primitivePath}.${index}`}
-            selectedPrimitivePath={selectedPrimitivePath}
+            selectedPrimitivePaths={selectedPrimitivePaths}
             hoveredPrimitivePath={hoveredPrimitivePath}
             onHoverPrimitive={onHoverPrimitive}
             onSelectPrimitive={onSelectPrimitive}
@@ -732,7 +734,7 @@ export function PrimitiveRenderer({
             editable={editable}
             onInlineCommit={onInlineCommit}
             primitivePath={`${primitivePath}.${index}`}
-            selectedPrimitivePath={selectedPrimitivePath}
+            selectedPrimitivePaths={selectedPrimitivePaths}
             hoveredPrimitivePath={hoveredPrimitivePath}
             onHoverPrimitive={onHoverPrimitive}
             onSelectPrimitive={onSelectPrimitive}
@@ -929,7 +931,7 @@ export function PrimitiveRenderer({
         onMouseMove={onPrimitiveMove}
         onClick={(event) => {
           event.stopPropagation();
-          selectPrimitive();
+          selectPrimitive(event.shiftKey);
           event.preventDefault();
         }}
       >

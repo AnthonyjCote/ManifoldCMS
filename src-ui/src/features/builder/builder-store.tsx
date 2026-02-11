@@ -18,7 +18,7 @@ type BuilderContextValue = {
   renameRoute: (nextRoute: string) => void;
   deletePage: () => void;
   selectBlock: (blockId: string | null) => void;
-  selectPrimitivePath: (path: string | null) => void;
+  selectPrimitivePath: (path: string | null, options?: { multi?: boolean }) => void;
   addBlock: (type: BlockType) => void;
   insertBlock: (type: BlockType, index: number) => void;
   moveBlock: (direction: "up" | "down") => void;
@@ -43,6 +43,7 @@ type BuilderContextValue = {
       | "borderColor"
       | "borderRadius"
       | "backgroundColor"
+      | "backgroundImage"
       | "textColor"
       | "fontSize"
       | "translateX"
@@ -51,6 +52,33 @@ type BuilderContextValue = {
   ) => void;
   setPrimitiveStyle: (
     primitivePath: string,
+    key:
+      | "marginTop"
+      | "marginRight"
+      | "marginBottom"
+      | "marginLeft"
+      | "paddingTop"
+      | "paddingRight"
+      | "paddingBottom"
+      | "paddingLeft"
+      | "borderWidth"
+      | "borderStyle"
+      | "borderColor"
+      | "borderRadius"
+      | "backgroundColor"
+      | "textColor"
+      | "fontSize"
+      | "fontWeight"
+      | "lineHeight"
+      | "textAlign"
+      | "width"
+      | "height"
+      | "translateX"
+      | "translateY",
+    value: string
+  ) => void;
+  setPrimitiveStyleForPaths: (
+    primitivePaths: string[],
     key:
       | "marginTop"
       | "marginRight"
@@ -99,7 +127,7 @@ function buildDefaultState(): BuilderState {
     ],
     selectedPageId: "page-home",
     selectedBlockId: null,
-    selectedPrimitivePath: null,
+    selectedPrimitivePaths: [],
     dirty: false,
     lastSavedAt: new Date().toISOString(),
     routeValidationError: null,
@@ -115,7 +143,7 @@ function stateFromDocument(document: BuilderProjectDoc): BuilderState {
     pages,
     selectedPageId,
     selectedBlockId: null,
-    selectedPrimitivePath: null,
+    selectedPrimitivePaths: [],
     dirty: false,
     lastSavedAt: new Date().toISOString(),
     routeValidationError: null,
@@ -443,7 +471,7 @@ export function BuilderProvider({
         ...prev,
         selectedPageId: pageId,
         selectedBlockId: null,
-        selectedPrimitivePath: null,
+        selectedPrimitivePaths: [],
       }));
     },
     createPage: (route, title) => {
@@ -469,7 +497,7 @@ export function BuilderProvider({
           pages: [...prev.pages, nextPage],
           selectedPageId: nextPage.id,
           selectedBlockId: null,
-          selectedPrimitivePath: null,
+          selectedPrimitivePaths: [],
           routeValidationError: null,
         };
       });
@@ -492,7 +520,7 @@ export function BuilderProvider({
           pages: [...prev.pages, duplicated],
           selectedPageId: duplicated.id,
           selectedBlockId: null,
-          selectedPrimitivePath: null,
+          selectedPrimitivePaths: [],
         };
       });
     },
@@ -531,7 +559,7 @@ export function BuilderProvider({
           pages: remaining,
           selectedPageId: remaining[0]?.id ?? prev.selectedPageId,
           selectedBlockId: null,
-          selectedPrimitivePath: null,
+          selectedPrimitivePaths: [],
         };
       });
     },
@@ -539,15 +567,29 @@ export function BuilderProvider({
       setState((prev) => ({
         ...prev,
         selectedBlockId: blockId,
-        selectedPrimitivePath:
-          !blockId || prev.selectedBlockId !== blockId ? null : prev.selectedPrimitivePath,
+        selectedPrimitivePaths:
+          !blockId || prev.selectedBlockId !== blockId ? [] : prev.selectedPrimitivePaths,
       }));
       if (blockId) {
         window.dispatchEvent(new CustomEvent(FOCUS_INSPECTOR_EVENT));
       }
     },
-    selectPrimitivePath: (path) => {
-      setState((prev) => ({ ...prev, selectedPrimitivePath: path }));
+    selectPrimitivePath: (path, options) => {
+      setState((prev) => {
+        if (!path) {
+          return { ...prev, selectedPrimitivePaths: [] };
+        }
+        if (options?.multi) {
+          const exists = prev.selectedPrimitivePaths.includes(path);
+          return {
+            ...prev,
+            selectedPrimitivePaths: exists
+              ? prev.selectedPrimitivePaths.filter((entry) => entry !== path)
+              : [...prev.selectedPrimitivePaths, path],
+          };
+        }
+        return { ...prev, selectedPrimitivePaths: [path] };
+      });
     },
     addBlock: (type) => {
       const newBlock = createBlock(type);
@@ -561,7 +603,7 @@ export function BuilderProvider({
             page.id === prev.selectedPageId ? { ...page, blocks: [...page.blocks, newBlock] } : page
           ),
           selectedBlockId: newBlock.id,
-          selectedPrimitivePath: null,
+          selectedPrimitivePaths: [],
         };
       });
     },
@@ -582,7 +624,7 @@ export function BuilderProvider({
           return { ...page, blocks };
         }),
         selectedBlockId: newBlock.id,
-        selectedPrimitivePath: null,
+        selectedPrimitivePaths: [],
       }));
     },
     moveBlock: (direction) => {
@@ -629,7 +671,7 @@ export function BuilderProvider({
           return { ...page, blocks };
         }),
         selectedBlockId: blockId,
-        selectedPrimitivePath: null,
+        selectedPrimitivePaths: [],
       }));
     },
     removeBlock: () => {
@@ -647,7 +689,7 @@ export function BuilderProvider({
             : page
         ),
         selectedBlockId: null,
-        selectedPrimitivePath: null,
+        selectedPrimitivePaths: [],
       }));
     },
     setBlockField: (key, value) => {
@@ -784,6 +826,53 @@ export function BuilderProvider({
                   } else {
                     primitiveStyles[primitivePath] = current;
                   }
+                  return {
+                    ...block,
+                    styleOverrides: {
+                      ...block.styleOverrides,
+                      primitiveStyles:
+                        Object.keys(primitiveStyles).length > 0 ? primitiveStyles : undefined,
+                    },
+                  };
+                }),
+              }
+            : page
+        ),
+      });
+      if (styleDragSessionRef.current) {
+        commitWithoutHistory(applyStyle);
+      } else {
+        commit(applyStyle);
+      }
+    },
+    setPrimitiveStyleForPaths: (primitivePaths, key, value) => {
+      if (!state.selectedBlockId || primitivePaths.length === 0) {
+        return;
+      }
+      const applyStyle = (prev: BuilderState) => ({
+        ...prev,
+        pages: prev.pages.map((page) =>
+          page.id === prev.selectedPageId
+            ? {
+                ...page,
+                blocks: page.blocks.map((block) => {
+                  if (block.id !== prev.selectedBlockId) {
+                    return block;
+                  }
+                  const primitiveStyles = { ...(block.styleOverrides.primitiveStyles ?? {}) };
+                  primitivePaths.forEach((primitivePath) => {
+                    const current = { ...(primitiveStyles[primitivePath] ?? {}) };
+                    if (!value.trim()) {
+                      delete current[key];
+                    } else {
+                      current[key] = value;
+                    }
+                    if (Object.keys(current).length === 0) {
+                      delete primitiveStyles[primitivePath];
+                    } else {
+                      primitiveStyles[primitivePath] = current;
+                    }
+                  });
                   return {
                     ...block,
                     styleOverrides: {

@@ -78,6 +78,7 @@ export type BlockInstance = {
     borderColor?: string;
     borderRadius?: string;
     backgroundColor?: string;
+    backgroundImage?: string;
     textColor?: string;
     fontSize?: string;
     translateX?: string;
@@ -127,7 +128,7 @@ export type BuilderState = {
   pages: BuilderPage[];
   selectedPageId: string;
   selectedBlockId: string | null;
-  selectedPrimitivePath: string | null;
+  selectedPrimitivePaths: string[];
   dirty: boolean;
   lastSavedAt: string;
   routeValidationError: string | null;

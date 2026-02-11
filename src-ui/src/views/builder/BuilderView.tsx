@@ -1001,7 +1001,7 @@ export function BuilderView() {
                                 <path d="M8 6h8M8 12h8M8 18h8" />
                               </svg>
                             </button>
-                            {builder.state.selectedPrimitivePath === null ? (
+                            {builder.state.selectedPrimitivePaths.length === 0 ? (
                               <div
                                 className="site-block-spacing-controls"
                                 style={{
@@ -1083,18 +1083,18 @@ export function BuilderView() {
                             onInlineCommit={(fieldKey, value) =>
                               builder.setBlockFieldForBlock(block.id, fieldKey, value)
                             }
-                            selectedPrimitivePath={
+                            selectedPrimitivePaths={
                               builder.state.selectedBlockId === block.id
-                                ? builder.state.selectedPrimitivePath
-                                : null
+                                ? builder.state.selectedPrimitivePaths
+                                : []
                             }
                             hoveredPrimitivePath={
                               hoveredBlockId === block.id ? hoveredPrimitivePath : null
                             }
                             onHoverPrimitive={(path) => setHoveredPrimitivePath(path)}
-                            onSelectPrimitive={(path) => {
+                            onSelectPrimitive={(path, _type, multi) => {
                               builder.selectBlock(block.id);
-                              builder.selectPrimitivePath(path);
+                              builder.selectPrimitivePath(path, { multi });
                             }}
                             onPrimitiveStyleSet={(path, key, value) =>
                               builder.setPrimitiveStyle(path, key, value)

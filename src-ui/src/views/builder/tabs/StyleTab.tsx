@@ -2,7 +2,7 @@ import { buildPreviewTreeForBlock } from "../../../features/builder/catalog";
 import { useBuilderStore } from "../../../features/builder/builder-store";
 import type { PrimitiveNode, PrimitiveType } from "../../../features/builder/types";
 
-type SectionStyleKey =
+type BaseSectionStyleKey =
   | "marginTop"
   | "marginRight"
   | "marginBottom"
@@ -21,8 +21,10 @@ type SectionStyleKey =
   | "translateX"
   | "translateY";
 
+type SectionStyleKey = BaseSectionStyleKey | "backgroundImage";
+
 type PrimitiveStyleKey =
-  | SectionStyleKey
+  | BaseSectionStyleKey
   | "fontWeight"
   | "lineHeight"
   | "textAlign"
@@ -99,6 +101,7 @@ const SECTION_STYLE_FIELDS: Array<{ heading: string; fields: StyleField<SectionS
     heading: "Typography & Surface",
     fields: [
       { key: "backgroundColor", label: "Background", type: "color", placeholder: "#ffffff" },
+      { key: "backgroundImage", label: "Background Image URL", placeholder: "https://..." },
       { key: "textColor", label: "Text Color", type: "color", placeholder: "#11161f" },
       { key: "fontSize", label: "Base Font Size", placeholder: "16px" },
     ],
@@ -363,7 +366,8 @@ export function StyleTab() {
   }
 
   const primitiveList = walkPrimitives(buildPreviewTreeForBlock(block));
-  const selectedPath = builder.state.selectedPrimitivePath;
+  const selectedPaths = builder.state.selectedPrimitivePaths;
+  const selectedPath = selectedPaths[selectedPaths.length - 1] ?? null;
   const selectedPrimitive = selectedPath
     ? primitiveList.find((entry) => entry.path === selectedPath)
     : null;
@@ -403,10 +407,13 @@ export function StyleTab() {
               <h4>{group.heading}</h4>
               <div className="inspector-card-grid">
                 {group.fields.map((field) => {
-                  const value = String(
-                    block.styleOverrides.primitiveStyles?.[selectedPrimitive.path]?.[field.key] ??
-                      ""
+                  const valuesForSelection = selectedPaths.map((path) =>
+                    String(block.styleOverrides.primitiveStyles?.[path]?.[field.key] ?? "")
                   );
+                  const firstValue = valuesForSelection[0] ?? "";
+                  const value = valuesForSelection.every((entry) => entry === firstValue)
+                    ? firstValue
+                    : "";
                   return (
                     <label key={field.key} className="inspector-field compact">
                       <span>{field.label}</span>
@@ -414,7 +421,7 @@ export function StyleTab() {
                         field,
                         value,
                         setValue: (next) =>
-                          builder.setPrimitiveStyle(selectedPrimitive.path, field.key, next),
+                          builder.setPrimitiveStyleForPaths(selectedPaths, field.key, next),
                       })}
                     </label>
                   );

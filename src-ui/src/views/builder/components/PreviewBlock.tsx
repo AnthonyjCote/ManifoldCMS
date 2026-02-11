@@ -8,10 +8,10 @@ type PreviewBlockProps = {
   block: BlockInstance;
   editable: boolean;
   onInlineCommit: (fieldKey: string, value: string) => void;
-  selectedPrimitivePath: string | null;
+  selectedPrimitivePaths: string[];
   hoveredPrimitivePath: string | null;
   onHoverPrimitive: (path: string | null) => void;
-  onSelectPrimitive: (path: string, type: PrimitiveType) => void;
+  onSelectPrimitive: (path: string, type: PrimitiveType, multi: boolean) => void;
   onPrimitiveStyleSet: (
     path: string,
     key:
@@ -31,11 +31,51 @@ type PreviewBlockProps = {
   onStyleDragSessionEnd?: () => void;
 };
 
+function normalizeBackgroundImage(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  if (trimmed === "none") {
+    return "none";
+  }
+  if (
+    trimmed.startsWith("url(") ||
+    trimmed.startsWith("linear-gradient(") ||
+    trimmed.startsWith("radial-gradient(") ||
+    trimmed.startsWith("conic-gradient(")
+  ) {
+    return trimmed;
+  }
+  return `url("${trimmed}")`;
+}
+
+function composeBackgroundOverride(
+  backgroundColor: string | undefined,
+  backgroundImage: string | undefined
+): string | undefined {
+  const color = typeof backgroundColor === "string" ? backgroundColor.trim() : "";
+  const image = backgroundImage?.trim() ?? "";
+  if (!color && !image) {
+    return undefined;
+  }
+  if (image && image !== "none") {
+    return color ? `${color} ${image}` : image;
+  }
+  if (image === "none") {
+    return color || "none";
+  }
+  return color;
+}
+
 export function PreviewBlock({
   block,
   editable,
   onInlineCommit,
-  selectedPrimitivePath,
+  selectedPrimitivePaths,
   hoveredPrimitivePath,
   onHoverPrimitive,
   onSelectPrimitive,
@@ -44,6 +84,11 @@ export function PreviewBlock({
   onStyleDragSessionEnd,
 }: PreviewBlockProps) {
   const tree = buildPreviewTreeForBlock(block);
+  const backgroundImage = normalizeBackgroundImage(block.styleOverrides.backgroundImage);
+  const background = composeBackgroundOverride(
+    block.styleOverrides.backgroundColor,
+    backgroundImage
+  );
   const style: CSSProperties = {
     marginTop: block.styleOverrides.marginTop,
     marginRight: block.styleOverrides.marginRight,
@@ -57,7 +102,7 @@ export function PreviewBlock({
     borderStyle: block.styleOverrides.borderStyle,
     borderColor: block.styleOverrides.borderColor,
     borderRadius: block.styleOverrides.borderRadius,
-    backgroundColor: block.styleOverrides.backgroundColor,
+    background,
     color: block.styleOverrides.textColor,
     fontSize: block.styleOverrides.fontSize,
     transform:
@@ -74,7 +119,7 @@ export function PreviewBlock({
           editable={editable}
           onInlineCommit={onInlineCommit}
           primitivePath={String(index)}
-          selectedPrimitivePath={selectedPrimitivePath}
+          selectedPrimitivePaths={selectedPrimitivePaths}
           hoveredPrimitivePath={hoveredPrimitivePath}
           onHoverPrimitive={onHoverPrimitive}
           onSelectPrimitive={onSelectPrimitive}
