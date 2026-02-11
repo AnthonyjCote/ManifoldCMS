@@ -44,7 +44,9 @@ type BuilderContextValue = {
       | "borderRadius"
       | "backgroundColor"
       | "textColor"
-      | "fontSize",
+      | "fontSize"
+      | "translateX"
+      | "translateY",
     value: string
   ) => void;
   setPrimitiveStyle: (
@@ -69,7 +71,9 @@ type BuilderContextValue = {
       | "lineHeight"
       | "textAlign"
       | "width"
-      | "height",
+      | "height"
+      | "translateX"
+      | "translateY",
     value: string
   ) => void;
   setPageSeo: (key: "title" | "description", value: string) => void;

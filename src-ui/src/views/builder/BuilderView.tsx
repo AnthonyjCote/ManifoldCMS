@@ -77,7 +77,9 @@ type SectionStyleKey =
   | "paddingTop"
   | "paddingRight"
   | "paddingBottom"
-  | "paddingLeft";
+  | "paddingLeft"
+  | "translateX"
+  | "translateY";
 
 type SectionSpacingHandle = {
   id: string;
@@ -176,6 +178,31 @@ function clampPx(value: number): number {
   return Math.max(0, Math.round(value));
 }
 
+function roundPx(value: number): number {
+  return Math.round(value);
+}
+
+function parseTranslateFromComputed(transform: string): { x: number; y: number } {
+  if (!transform || transform === "none") {
+    return { x: 0, y: 0 };
+  }
+  const matrixMatch = transform.match(/matrix\(([^)]+)\)/);
+  if (matrixMatch) {
+    const parts = matrixMatch[1].split(",").map((part) => Number.parseFloat(part.trim()));
+    if (parts.length === 6 && Number.isFinite(parts[4]) && Number.isFinite(parts[5])) {
+      return { x: parts[4], y: parts[5] };
+    }
+  }
+  const matrix3dMatch = transform.match(/matrix3d\(([^)]+)\)/);
+  if (matrix3dMatch) {
+    const parts = matrix3dMatch[1].split(",").map((part) => Number.parseFloat(part.trim()));
+    if (parts.length === 16 && Number.isFinite(parts[12]) && Number.isFinite(parts[13])) {
+      return { x: parts[12], y: parts[13] };
+    }
+  }
+  return { x: 0, y: 0 };
+}
+
 type BuilderBlock = ReturnType<typeof useBuilderStore>["selectedPage"]["blocks"][number];
 
 function sectionSpacingFromOverrides(block: BuilderBlock) {
@@ -188,6 +215,8 @@ function sectionSpacingFromOverrides(block: BuilderBlock) {
     paddingRight: parsePxValue(block.styleOverrides.paddingRight),
     paddingBottom: parsePxValue(block.styleOverrides.paddingBottom),
     paddingLeft: parsePxValue(block.styleOverrides.paddingLeft),
+    translateX: parsePxValue(block.styleOverrides.translateX),
+    translateY: parsePxValue(block.styleOverrides.translateY),
   };
 }
 
@@ -216,6 +245,11 @@ export function BuilderView() {
     blockId: string;
     label: string;
     value: number;
+  } | null>(null);
+  const [activeSectionTransformDrag, setActiveSectionTransformDrag] = useState<{
+    blockId: string;
+    x: number;
+    y: number;
   } | null>(null);
 
   useEffect(() => {
@@ -356,6 +390,25 @@ export function BuilderView() {
     return parsePxValue(computed.paddingLeft);
   };
 
+  const readSectionTransform = (
+    block: (typeof builder.selectedPage.blocks)[number],
+    shell: HTMLElement
+  ) => {
+    const xOverride = block.styleOverrides.translateX;
+    const yOverride = block.styleOverrides.translateY;
+    if (xOverride || yOverride) {
+      return {
+        x: parsePxValue(xOverride),
+        y: parsePxValue(yOverride),
+      };
+    }
+    const section = shell.querySelector<HTMLElement>(".site-block");
+    if (!section) {
+      return { x: 0, y: 0 };
+    }
+    return parseTranslateFromComputed(window.getComputedStyle(section).transform);
+  };
+
   const startSectionSpacingDrag = (
     event: ReactPointerEvent<HTMLButtonElement>,
     block: (typeof builder.selectedPage.blocks)[number],
@@ -398,6 +451,54 @@ export function BuilderView() {
       window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
       sectionSpacingDragRef.current = null;
       setActiveSectionSpacingDrag(null);
+    };
+
+    if (sectionSpacingDragRef.current) {
+      window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
+      window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+    }
+
+    sectionSpacingDragRef.current = { onPointerMove, onPointerUp };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
+
+  const startSectionTransformDrag = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    block: (typeof builder.selectedPage.blocks)[number]
+  ) => {
+    const shell = event.currentTarget.closest(".site-block-shell");
+    if (!(shell instanceof HTMLElement)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    builder.selectBlock(block.id);
+    builder.selectPrimitivePath(null);
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const initial = readSectionTransform(block, shell);
+    setActiveSectionTransformDrag({ blockId: block.id, x: initial.x, y: initial.y });
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+      const nextX = roundPx(initial.x + deltaX);
+      const nextY = roundPx(initial.y + deltaY);
+      builder.setBlockStyle("translateX", `${nextX}px`);
+      builder.setBlockStyle("translateY", `${nextY}px`);
+      setActiveSectionTransformDrag({ blockId: block.id, x: nextX, y: nextY });
+    };
+
+    const onPointerUp = () => {
+      if (!sectionSpacingDragRef.current) {
+        return;
+      }
+      window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
+      window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+      sectionSpacingDragRef.current = null;
+      setActiveSectionTransformDrag(null);
     };
 
     if (sectionSpacingDragRef.current) {
@@ -839,8 +940,22 @@ export function BuilderView() {
                               </svg>
                             </button>
                             {builder.state.selectedPrimitivePath === null ? (
-                              <div className="site-block-spacing-controls">
+                              <div
+                                className="site-block-spacing-controls"
+                                style={{
+                                  transform:
+                                    sectionGuide.translateX !== 0 || sectionGuide.translateY !== 0
+                                      ? `translate(${sectionGuide.translateX}px, ${sectionGuide.translateY}px)`
+                                      : undefined,
+                                }}
+                              >
                                 <div className="site-block-spacing-guide baseline" />
+                                <div
+                                  className="site-block-spacing-guide transform-origin"
+                                  style={{
+                                    transform: `translate(${-sectionGuide.translateX}px, ${-sectionGuide.translateY}px)`,
+                                  }}
+                                />
                                 <div
                                   className="site-block-spacing-guide margin"
                                   style={{
@@ -871,11 +986,28 @@ export function BuilderView() {
                                     type="button"
                                   />
                                 ))}
+                                <button
+                                  className="site-block-transform-handle"
+                                  onPointerDown={(event) => startSectionTransformDrag(event, block)}
+                                  title="Drag to offset section X and Y"
+                                  aria-label="Drag to offset section X and Y"
+                                  type="button"
+                                >
+                                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 4v16M4 12h16M7 7l-3 5 3 5M17 7l3 5-3 5" />
+                                  </svg>
+                                </button>
                                 {activeSectionSpacingDrag?.blockId === block.id ? (
                                   <div className="site-block-spacing-readout">
                                     {activeSectionSpacingDrag.label}:{" "}
                                     {activeSectionSpacingDrag.value}
                                     px
+                                  </div>
+                                ) : null}
+                                {activeSectionTransformDrag?.blockId === block.id ? (
+                                  <div className="site-block-transform-readout">
+                                    X: {activeSectionTransformDrag.x}px Y:{" "}
+                                    {activeSectionTransformDrag.y}px
                                   </div>
                                 ) : null}
                               </div>

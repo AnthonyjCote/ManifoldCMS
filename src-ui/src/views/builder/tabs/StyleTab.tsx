@@ -17,7 +17,9 @@ type SectionStyleKey =
   | "borderRadius"
   | "backgroundColor"
   | "textColor"
-  | "fontSize";
+  | "fontSize"
+  | "translateX"
+  | "translateY";
 
 type PrimitiveStyleKey =
   | SectionStyleKey
@@ -41,6 +43,17 @@ type PrimitiveEntry = {
   label: string;
 };
 
+const UNIVERSAL_PRIMITIVE_OFFSET_GROUP: {
+  heading: string;
+  fields: StyleField<PrimitiveStyleKey>[];
+} = {
+  heading: "Offset",
+  fields: [
+    { key: "translateX", label: "Offset X", placeholder: "0px" },
+    { key: "translateY", label: "Offset Y", placeholder: "0px" },
+  ],
+};
+
 const SECTION_STYLE_FIELDS: Array<{ heading: string; fields: StyleField<SectionStyleKey>[] }> = [
   {
     heading: "Spacing",
@@ -53,6 +66,8 @@ const SECTION_STYLE_FIELDS: Array<{ heading: string; fields: StyleField<SectionS
       { key: "paddingRight", label: "Padding Right", placeholder: "48px" },
       { key: "paddingBottom", label: "Padding Bottom", placeholder: "64px" },
       { key: "paddingLeft", label: "Padding Left", placeholder: "48px" },
+      { key: "translateX", label: "Offset X", placeholder: "0px" },
+      { key: "translateY", label: "Offset Y", placeholder: "0px" },
     ],
   },
   {
@@ -318,7 +333,7 @@ export function StyleTab() {
     : null;
 
   const primitiveFieldGroups = selectedPrimitive
-    ? (PRIMITIVE_FIELD_GROUPS[selectedPrimitive.type] ?? [])
+    ? [...(PRIMITIVE_FIELD_GROUPS[selectedPrimitive.type] ?? []), UNIVERSAL_PRIMITIVE_OFFSET_GROUP]
     : [];
 
   return (

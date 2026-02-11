@@ -22,7 +22,9 @@ type PreviewBlockProps = {
       | "paddingTop"
       | "paddingRight"
       | "paddingBottom"
-      | "paddingLeft",
+      | "paddingLeft"
+      | "translateX"
+      | "translateY",
     value: string
   ) => void;
 };
@@ -54,6 +56,10 @@ export function PreviewBlock({
     backgroundColor: block.styleOverrides.backgroundColor,
     color: block.styleOverrides.textColor,
     fontSize: block.styleOverrides.fontSize,
+    transform:
+      block.styleOverrides.translateX || block.styleOverrides.translateY
+        ? `translate(${block.styleOverrides.translateX ?? "0px"}, ${block.styleOverrides.translateY ?? "0px"})`
+        : undefined,
   };
   return (
     <section className={`site-block site-block-${block.type.replace(/_/g, "-")}`} style={style}>

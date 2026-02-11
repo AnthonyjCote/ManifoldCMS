@@ -9,6 +9,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
 } from "react";
+import { createPortal } from "react-dom";
 
 import type { BlockInstance, PrimitiveNode, PrimitiveType } from "../../../features/builder/types";
 
@@ -20,7 +21,9 @@ type PrimitiveStyleSetKey =
   | "paddingTop"
   | "paddingRight"
   | "paddingBottom"
-  | "paddingLeft";
+  | "paddingLeft"
+  | "translateX"
+  | "translateY";
 
 type PrimitiveRendererProps = {
   node: PrimitiveNode;
@@ -190,6 +193,10 @@ function toPrimitiveStyle(
     textAlign: style.textAlign as "left" | "center" | "right" | "justify" | undefined,
     width: style.width,
     height: style.height,
+    transform:
+      style.translateX || style.translateY
+        ? `translate(${style.translateX ?? "0px"}, ${style.translateY ?? "0px"})`
+        : undefined,
   };
 }
 
@@ -226,8 +233,33 @@ function parsePxValue(value: string | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function parseTranslateFromComputed(transform: string): { x: number; y: number } {
+  if (!transform || transform === "none") {
+    return { x: 0, y: 0 };
+  }
+  const matrixMatch = transform.match(/matrix\(([^)]+)\)/);
+  if (matrixMatch) {
+    const parts = matrixMatch[1].split(",").map((part) => Number.parseFloat(part.trim()));
+    if (parts.length === 6 && Number.isFinite(parts[4]) && Number.isFinite(parts[5])) {
+      return { x: parts[4], y: parts[5] };
+    }
+  }
+  const matrix3dMatch = transform.match(/matrix3d\(([^)]+)\)/);
+  if (matrix3dMatch) {
+    const parts = matrix3dMatch[1].split(",").map((part) => Number.parseFloat(part.trim()));
+    if (parts.length === 16 && Number.isFinite(parts[12]) && Number.isFinite(parts[13])) {
+      return { x: parts[12], y: parts[13] };
+    }
+  }
+  return { x: 0, y: 0 };
+}
+
 function clampPx(value: number): number {
   return Math.max(0, Math.round(value));
+}
+
+function roundPx(value: number): number {
+  return Math.round(value);
 }
 
 export function PrimitiveRenderer({
@@ -248,6 +280,7 @@ export function PrimitiveRenderer({
   const primitiveClass = `preview-primitive-node${isSelected ? " selected" : ""}${isHovered ? " hovered" : ""}`;
   const selectPrimitive = () => onSelectPrimitive?.(primitivePath, node.type);
   const primitiveRef = useRef<HTMLElement | null>(null);
+  const [overlayHost, setOverlayHost] = useState<HTMLElement | null>(null);
   const [overlayModel, setOverlayModel] = useState<{
     top: number;
     left: number;
@@ -261,6 +294,8 @@ export function PrimitiveRenderer({
     paddingRight: number;
     paddingBottom: number;
     paddingLeft: number;
+    translateX: number;
+    translateY: number;
   } | null>(null);
   const dragRef = useRef<{
     handle: SpacingHandle;
@@ -270,27 +305,64 @@ export function PrimitiveRenderer({
     onPointerUp: () => void;
   } | null>(null);
   const [activeDrag, setActiveDrag] = useState<{ label: string; value: number } | null>(null);
+  const [activeTransformDrag, setActiveTransformDrag] = useState<{ x: number; y: number } | null>(
+    null
+  );
 
   const updateOverlayRect = useCallback(() => {
     if (!isSelected || !primitiveRef.current) {
+      setOverlayHost(null);
       setOverlayModel(null);
       return;
     }
+    const host = primitiveRef.current.closest(".site-preview-page");
+    if (!(host instanceof HTMLElement)) {
+      setOverlayHost(null);
+      setOverlayModel(null);
+      return;
+    }
+    setOverlayHost(host);
     const computedStyle = window.getComputedStyle(primitiveRef.current);
+    const computedTranslate = parseTranslateFromComputed(computedStyle.transform);
     const rect = primitiveRef.current.getBoundingClientRect();
-    setOverlayModel({
-      top: rect.top,
-      left: rect.left,
-      width: rect.width,
-      height: rect.height,
-      marginTop: parsePxValue(computedStyle.marginTop),
-      marginRight: parsePxValue(computedStyle.marginRight),
-      marginBottom: parsePxValue(computedStyle.marginBottom),
-      marginLeft: parsePxValue(computedStyle.marginLeft),
-      paddingTop: parsePxValue(computedStyle.paddingTop),
-      paddingRight: parsePxValue(computedStyle.paddingRight),
-      paddingBottom: parsePxValue(computedStyle.paddingBottom),
-      paddingLeft: parsePxValue(computedStyle.paddingLeft),
+    const hostRect = host.getBoundingClientRect();
+    setOverlayModel((prev) => {
+      const next = {
+        top: rect.top - hostRect.top + host.scrollTop,
+        left: rect.left - hostRect.left + host.scrollLeft,
+        width: rect.width,
+        height: rect.height,
+        marginTop: parsePxValue(computedStyle.marginTop),
+        marginRight: parsePxValue(computedStyle.marginRight),
+        marginBottom: parsePxValue(computedStyle.marginBottom),
+        marginLeft: parsePxValue(computedStyle.marginLeft),
+        paddingTop: parsePxValue(computedStyle.paddingTop),
+        paddingRight: parsePxValue(computedStyle.paddingRight),
+        paddingBottom: parsePxValue(computedStyle.paddingBottom),
+        paddingLeft: parsePxValue(computedStyle.paddingLeft),
+        translateX: computedTranslate.x,
+        translateY: computedTranslate.y,
+      };
+      if (
+        prev &&
+        prev.top === next.top &&
+        prev.left === next.left &&
+        prev.width === next.width &&
+        prev.height === next.height &&
+        prev.marginTop === next.marginTop &&
+        prev.marginRight === next.marginRight &&
+        prev.marginBottom === next.marginBottom &&
+        prev.marginLeft === next.marginLeft &&
+        prev.paddingTop === next.paddingTop &&
+        prev.paddingRight === next.paddingRight &&
+        prev.paddingBottom === next.paddingBottom &&
+        prev.paddingLeft === next.paddingLeft &&
+        prev.translateX === next.translateX &&
+        prev.translateY === next.translateY
+      ) {
+        return prev;
+      }
+      return next;
     });
   }, [isSelected]);
 
@@ -298,18 +370,24 @@ export function PrimitiveRenderer({
     if (!isSelected) {
       return;
     }
+    const onChange = () => updateOverlayRect();
+    const frameId = window.requestAnimationFrame(onChange);
+    window.addEventListener("resize", onChange);
+    window.addEventListener("scroll", onChange, true);
 
-    const frame = window.requestAnimationFrame(() => {
-      updateOverlayRect();
-    });
-
-    const onWindowChange = () => updateOverlayRect();
-    window.addEventListener("resize", onWindowChange);
-    window.addEventListener("scroll", onWindowChange, true);
+    const host = primitiveRef.current?.closest(".site-preview-page");
+    const resizeObserver = new ResizeObserver(onChange);
+    if (primitiveRef.current) {
+      resizeObserver.observe(primitiveRef.current);
+    }
+    if (host instanceof HTMLElement) {
+      resizeObserver.observe(host);
+    }
     return () => {
-      window.cancelAnimationFrame(frame);
-      window.removeEventListener("resize", onWindowChange);
-      window.removeEventListener("scroll", onWindowChange, true);
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", onChange);
+      window.removeEventListener("scroll", onChange, true);
+      resizeObserver.disconnect();
     };
   }, [isSelected, primitivePath, updateOverlayRect]);
 
@@ -378,12 +456,77 @@ export function PrimitiveRenderer({
     window.addEventListener("pointerup", onPointerUp);
   };
 
+  const readCurrentTransform = (): { x: number; y: number } => {
+    const xOverride = primitiveStyles?.[primitivePath]?.translateX;
+    const yOverride = primitiveStyles?.[primitivePath]?.translateY;
+    if (xOverride || yOverride) {
+      return {
+        x: parsePxValue(xOverride),
+        y: parsePxValue(yOverride),
+      };
+    }
+    if (!primitiveRef.current) {
+      return { x: 0, y: 0 };
+    }
+    return parseTranslateFromComputed(window.getComputedStyle(primitiveRef.current).transform);
+  };
+
+  const startTransformDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!onPrimitiveStyleSet) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    selectPrimitive();
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const initial = readCurrentTransform();
+    setActiveTransformDrag(initial);
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaY = moveEvent.clientY - startY;
+      const nextX = roundPx(initial.x + deltaX);
+      const nextY = roundPx(initial.y + deltaY);
+      onPrimitiveStyleSet(primitivePath, "translateX", `${nextX}px`);
+      onPrimitiveStyleSet(primitivePath, "translateY", `${nextY}px`);
+      setActiveTransformDrag({ x: nextX, y: nextY });
+      updateOverlayRect();
+    };
+
+    const onPointerUp = () => {
+      if (!dragRef.current) {
+        return;
+      }
+      window.removeEventListener("pointermove", dragRef.current.onPointerMove);
+      window.removeEventListener("pointerup", dragRef.current.onPointerUp);
+      dragRef.current = null;
+      setActiveTransformDrag(null);
+    };
+
+    if (dragRef.current) {
+      window.removeEventListener("pointermove", dragRef.current.onPointerMove);
+      window.removeEventListener("pointerup", dragRef.current.onPointerUp);
+    }
+
+    dragRef.current = {
+      handle: SPACING_HANDLES[0],
+      startCoord: startX,
+      startValue: initial.x,
+      onPointerMove,
+      onPointerUp,
+    };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
+
   const renderSpacingOverlay = () => {
     if (!isSelected || !overlayModel || !onPrimitiveStyleSet) {
       return null;
     }
 
-    return (
+    const overlay = (
       <div
         className="primitive-spacing-overlay"
         style={{
@@ -394,6 +537,12 @@ export function PrimitiveRenderer({
         }}
       >
         <div className="primitive-spacing-guide baseline" />
+        <div
+          className="primitive-spacing-guide transform-origin"
+          style={{
+            transform: `translate(${-overlayModel.translateX}px, ${-overlayModel.translateY}px)`,
+          }}
+        />
         <div
           className="primitive-spacing-guide margin"
           style={{
@@ -424,13 +573,35 @@ export function PrimitiveRenderer({
           />
         ))}
 
+        <button
+          className="primitive-transform-handle"
+          onPointerDown={startTransformDrag}
+          title="Drag to offset X and Y"
+          aria-label="Drag to offset X and Y"
+          type="button"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 4v16M4 12h16M7 7l-3 5 3 5M17 7l3 5-3 5" />
+          </svg>
+        </button>
+
         {activeDrag ? (
           <div className="primitive-spacing-readout">
             {activeDrag.label}: {activeDrag.value}px
           </div>
         ) : null}
+        {activeTransformDrag ? (
+          <div className="primitive-transform-readout">
+            X: {activeTransformDrag.x}px Y: {activeTransformDrag.y}px
+          </div>
+        ) : null}
       </div>
     );
+
+    if (!overlayHost) {
+      return null;
+    }
+    return createPortal(overlay, overlayHost);
   };
 
   const onPrimitiveClick = (event: MouseEvent<HTMLElement>) => {

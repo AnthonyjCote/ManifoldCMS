@@ -80,6 +80,8 @@ export type BlockInstance = {
     backgroundColor?: string;
     textColor?: string;
     fontSize?: string;
+    translateX?: string;
+    translateY?: string;
     primitiveStyles?: Record<
       string,
       {
@@ -103,6 +105,8 @@ export type BlockInstance = {
         textAlign?: string;
         width?: string;
         height?: string;
+        translateX?: string;
+        translateY?: string;
       }
     >;
   };
