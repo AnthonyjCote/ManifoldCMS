@@ -254,12 +254,24 @@ function parseTranslateFromComputed(transform: string): { x: number; y: number }
   return { x: 0, y: 0 };
 }
 
-function clampPx(value: number): number {
+function clampNonNegativePx(value: number): number {
   return Math.max(0, Math.round(value));
 }
 
 function roundPx(value: number): number {
   return Math.round(value);
+}
+
+function normalizeSpacingByKey(key: PrimitiveStyleSetKey, value: number): number {
+  if (
+    key === "marginTop" ||
+    key === "marginRight" ||
+    key === "marginBottom" ||
+    key === "marginLeft"
+  ) {
+    return roundPx(value);
+  }
+  return clampNonNegativePx(value);
 }
 
 export function PrimitiveRenderer({
@@ -430,7 +442,7 @@ export function PrimitiveRenderer({
     const onPointerMove = (moveEvent: PointerEvent) => {
       const currentCoord = handle.axis === "y" ? moveEvent.clientY : moveEvent.clientX;
       const delta = (currentCoord - startCoord) * handle.deltaSign;
-      const nextValue = clampPx(startValue + delta);
+      const nextValue = normalizeSpacingByKey(handle.key, startValue + delta);
       onPrimitiveStyleSet(primitivePath, handle.key, `${nextValue}px`);
       setActiveDrag({ label: handle.label, value: nextValue });
       updateOverlayRect();

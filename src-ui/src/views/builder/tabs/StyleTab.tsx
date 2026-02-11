@@ -54,6 +54,17 @@ const UNIVERSAL_PRIMITIVE_OFFSET_GROUP: {
   ],
 };
 
+const UNIVERSAL_PRIMITIVE_SPACING_FIELDS: StyleField<PrimitiveStyleKey>[] = [
+  { key: "marginTop", label: "Margin Top", placeholder: "0px" },
+  { key: "marginRight", label: "Margin Right", placeholder: "0px" },
+  { key: "marginBottom", label: "Margin Bottom", placeholder: "0px" },
+  { key: "marginLeft", label: "Margin Left", placeholder: "0px" },
+  { key: "paddingTop", label: "Padding Top", placeholder: "0px" },
+  { key: "paddingRight", label: "Padding Right", placeholder: "0px" },
+  { key: "paddingBottom", label: "Padding Bottom", placeholder: "0px" },
+  { key: "paddingLeft", label: "Padding Left", placeholder: "0px" },
+];
+
 const SECTION_STYLE_FIELDS: Array<{ heading: string; fields: StyleField<SectionStyleKey>[] }> = [
   {
     heading: "Spacing",
@@ -271,6 +282,31 @@ function walkPrimitives(nodes: PrimitiveNode[], pathPrefix = ""): PrimitiveEntry
   return out;
 }
 
+function withUniversalPrimitiveSpacing(
+  groups: Array<{ heading: string; fields: StyleField<PrimitiveStyleKey>[] }>
+) {
+  const spacingIndex = groups.findIndex((group) => group.heading === "Spacing");
+  if (spacingIndex === -1) {
+    return [...groups, { heading: "Spacing", fields: UNIVERSAL_PRIMITIVE_SPACING_FIELDS }];
+  }
+
+  const spacingGroup = groups[spacingIndex];
+  const existingKeys = new Set(spacingGroup.fields.map((field) => field.key));
+  const missingFields = UNIVERSAL_PRIMITIVE_SPACING_FIELDS.filter(
+    (field) => !existingKeys.has(field.key)
+  );
+  if (missingFields.length === 0) {
+    return groups;
+  }
+
+  const nextGroups = [...groups];
+  nextGroups[spacingIndex] = {
+    ...spacingGroup,
+    fields: [...spacingGroup.fields, ...missingFields],
+  };
+  return nextGroups;
+}
+
 function renderStyleField<K extends string>(opts: {
   field: StyleField<K>;
   value: string;
@@ -333,7 +369,10 @@ export function StyleTab() {
     : null;
 
   const primitiveFieldGroups = selectedPrimitive
-    ? [...(PRIMITIVE_FIELD_GROUPS[selectedPrimitive.type] ?? []), UNIVERSAL_PRIMITIVE_OFFSET_GROUP]
+    ? [
+        ...withUniversalPrimitiveSpacing(PRIMITIVE_FIELD_GROUPS[selectedPrimitive.type] ?? []),
+        UNIVERSAL_PRIMITIVE_OFFSET_GROUP,
+      ]
     : [];
 
   return (
