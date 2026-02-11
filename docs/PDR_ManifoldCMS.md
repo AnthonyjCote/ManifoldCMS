@@ -63,7 +63,8 @@ Edit in Studio -> Live Preview -> Validate/Lint -> Export Astro -> Build Check -
 - Structure: pages with ordered block instances.
 - Content: JSON records referenced by pages/blocks.
 - Theme: design tokens + typography + spacing with allowed overrides.
-- Blocks: manifest-defined units with schemas, runtime render contract, and Astro export contract.
+- Primitives: reusable element contracts (`heading`, `text`, `image`, `video`, `embed`, `code`, `button`, `spacer`) with shared schema/render/export behavior.
+- Blocks: manifest-defined section units composed from primitive trees, with schemas, runtime render contract, and Astro export contract.
 
 ### 6.2 Studio Project Format (Portable)
 
@@ -378,6 +379,36 @@ Hot-load behavior:
 - Dependency conflicts fail validation before export.
 - V1 default policy: prefer zero external dependencies for built-in blocks.
 
+## 8.6 Primitive System (Locked for V1)
+
+- Primitive manifests are first-class and versioned similarly to blocks.
+- Each primitive defines:
+  - `primitiveId` (immutable + versioned)
+  - `propsSchema`
+  - runtime render contract
+  - Astro export contract
+- Built-in blocks should reuse shared primitives rather than duplicate element logic.
+- V1 primitive registry is internal-first; workspace primitive authoring is allowed only through controlled manifests.
+
+## 8.7 Custom Section Block (V1)
+
+`Custom Section` is the flexible section composer block for advanced layout control.
+
+- Container-level controls:
+  - background/token style
+  - spacing/padding
+  - max width
+- Layout controls:
+  - column count (1-4 in V1)
+  - preset column ratios only in V1 (for example `1-1`, `2-1`, `1-2`, `1-1-1`)
+- Column content:
+  - each column holds an ordered primitive stack
+  - drag/reorder primitives visually
+- Guardrails:
+  - no arbitrary HTML/CSS in V1
+  - token-constrained styling only
+  - no nested `Custom Section` inside `Custom Section` in V1
+
 ---
 
 ## 9. Technical Requirements
@@ -413,6 +444,15 @@ Hot-load behavior:
   - image max size: 10 MB per file
   - supported formats: `jpg`, `jpeg`, `png`, `webp`, `svg`
 - V1 does not auto-convert formats; optimization/compression is deferred to V1.5.
+
+## 9.6 Code Organization and Anti-Monolith Rule (Locked for V1)
+
+- No monolithic files for core app flows; split by feature/view/shell responsibility.
+- Target <= 300 lines per UI component/module where practical; split when concerns diverge.
+- Keep shell framework code separated from view-specific code.
+- Keep business logic in focused hooks/services, not large JSX files.
+- Enforce descriptive folder hierarchy and file naming so ownership is obvious.
+- View-specific UI must live in view-local folders; shared primitives only in shared component folders.
 
 ---
 
@@ -459,6 +499,7 @@ Built-in block minimum (first-party):
 8. Logo Cloud
 9. Contact Section
 10. Footer
+11. Custom Section
 
 ---
 
@@ -476,6 +517,17 @@ Built-in block minimum (first-party):
 ---
 
 ## 14. Granular V1 Dev/Build/Deploy Checklist
+
+### 14.0 Execution Order Override (Primitive-First for Builder/Preview)
+
+Before continuing normal checklist execution, complete this sequence first:
+
+1. Build and validate the full V1 primitive set.
+2. Build/refactor V1 blocks so they are composed from primitives.
+3. Enable live preview testing on primitive-composed blocks.
+4. Build editor-flow UI (Inspector/composer interactions) against these real primitive/block contracts.
+
+This ordering is mandatory for Builder + Preview work in V1 to avoid rework.
 
 ### 14.1 Repo and Delivery Setup
 
@@ -540,17 +592,43 @@ Built-in block minimum (first-party):
 - [x] Add dependency allowlist parser from `project.json`.
 - [x] Enforce exact version pin policy and conflict detection.
 - [x] Add tests for add/update/delete hot-load events.
+- [ ] Add primitive registry and primitive manifest parser.
+- [ ] Add primitive render/export contract validators.
+- [ ] Refactor built-in blocks to primitive-tree composition.
+- [ ] Add primitive hot-load/error diagnostics for workspace library.
+
+### 14.5A Primitive and Primitive-Composed Block Foundation (Execute First)
+
+- [ ] Implement V1 primitive library:
+- [ ] Primitive: `heading`
+- [ ] Primitive: `text`
+- [ ] Primitive: `image`
+- [ ] Primitive: `video`
+- [ ] Primitive: `embed`
+- [ ] Primitive: `code`
+- [ ] Primitive: `button`
+- [ ] Primitive: `spacer`
+- [ ] Define and validate schema + runtime render contract + Astro export contract for each primitive.
+- [ ] Add primitive-level test fixtures and snapshot coverage.
+- [ ] Refactor/implement first-party V1 blocks using primitive trees only (no duplicated element logic).
+- [ ] Verify block catalog entries use primitive-composed implementations.
+- [ ] Gate continuation: do not proceed to broader Builder editor-flow tasks until primitive-composed blocks render correctly in preview.
 
 ### 14.6 Visual Builder UI
 
-- [ ] Build app shell layout (left tree, center editor, right preview, bottom console).
-- [ ] Implement pages CRUD UI with route collision validation.
-- [ ] Implement block composer UI (add/reorder/remove).
-- [ ] Implement schema-driven editor renderer from `editorSchema`.
-- [ ] Add controls for links, images, repeaters, and constraints display.
-- [ ] Add visibility toggle and style overrides per block instance.
-- [ ] Add undo/redo stack for builder actions.
-- [ ] Add optimistic UI + save status indicators.
+- [x] Build app shell layout (left tree, center editor, right preview, bottom console).
+- [ ] Execute UI shell and view layout implementation using `docs/PDR_Manifold_UI.md` section `21. Granular UI Checklist (Subtasks for 14.6)` as the controlling checklist.
+- [x] Implement pages CRUD UI with route collision validation.
+- [x] Implement block composer UI (add/reorder/remove).
+- [x] Implement schema-driven editor renderer from `editorSchema`.
+- [x] Add controls for links, images, repeaters, and constraints display.
+- [x] Add visibility toggle and style overrides per block instance.
+- [x] Add undo/redo stack for builder actions.
+- [x] Add optimistic UI + save status indicators.
+- [ ] Add `Custom Section` block UI with column/ratio controls.
+- [ ] Add primitive composer UI inside `Custom Section` columns.
+- [ ] Add drag/drop reorder for primitives within each `Custom Section` column.
+- [ ] Build editor-flow interactions against real primitive-composed blocks (not stubs).
 
 ### 14.7 Live Preview
 
@@ -559,6 +637,7 @@ Built-in block minimum (first-party):
 - [ ] Add responsive viewport presets: `390`, `768`, `1280`.
 - [ ] Implement hot refresh on model changes.
 - [ ] Stream preview logs to bottom console.
+- [ ] Run live preview testing using primitive-composed V1 blocks as the baseline test matrix.
 - [ ] Measure refresh latency on 5-page fixture project.
 - [ ] Optimize until median refresh <= 500 ms.
 
