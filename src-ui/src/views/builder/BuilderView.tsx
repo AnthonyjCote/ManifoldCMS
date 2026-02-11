@@ -223,6 +223,17 @@ function parseTranslateFromComputed(transform: string): { x: number; y: number }
   return { x: 0, y: 0 };
 }
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+  if (target.isContentEditable) {
+    return true;
+  }
+  const tagName = target.tagName.toLowerCase();
+  return tagName === "input" || tagName === "textarea" || tagName === "select";
+}
+
 type BuilderBlock = ReturnType<typeof useBuilderStore>["selectedPage"]["blocks"][number];
 
 function sectionSpacingFromOverrides(block: BuilderBlock) {
@@ -295,6 +306,30 @@ export function BuilderView() {
       if (event.key === "Escape") {
         setActivePopover(null);
         setNewPageModalOpen(false);
+        return;
+      }
+
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+      if (event.altKey) {
+        return;
+      }
+      const hasCommandModifier = event.metaKey || event.ctrlKey;
+      if (!hasCommandModifier) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      const isUndo = key === "z" && !event.shiftKey;
+      const isRedo = (key === "z" && event.shiftKey) || key === "y";
+      if (!isUndo && !isRedo) {
+        return;
+      }
+      event.preventDefault();
+      if (isUndo) {
+        builder.undo();
+      } else {
+        builder.redo();
       }
     };
 
@@ -304,7 +339,7 @@ export function BuilderView() {
       window.removeEventListener("mousedown", onWindowPointerDown);
       window.removeEventListener("keydown", onWindowKeyDown);
     };
-  }, [activePopover]);
+  }, [activePopover, builder]);
 
   useEffect(() => {
     return () => {
@@ -314,8 +349,9 @@ export function BuilderView() {
       window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
       window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
       sectionSpacingDragRef.current = null;
+      builder.endStyleDragSession();
     };
-  }, []);
+  }, [builder]);
 
   const applyRouteDraft = () => {
     const trimmed = routeDraft.trim();
@@ -442,6 +478,7 @@ export function BuilderView() {
     event.stopPropagation();
     builder.selectBlock(block.id);
     builder.selectPrimitivePath(null);
+    builder.beginStyleDragSession();
 
     const startCoord = handle.axis === "y" ? event.clientY : event.clientX;
     const startValue = readSectionSpacing(block, handle.key, shell);
@@ -471,11 +508,13 @@ export function BuilderView() {
       window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
       sectionSpacingDragRef.current = null;
       setActiveSectionSpacingDrag(null);
+      builder.endStyleDragSession();
     };
 
     if (sectionSpacingDragRef.current) {
       window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
       window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+      builder.endStyleDragSession();
     }
 
     sectionSpacingDragRef.current = { onPointerMove, onPointerUp };
@@ -495,6 +534,7 @@ export function BuilderView() {
     event.stopPropagation();
     builder.selectBlock(block.id);
     builder.selectPrimitivePath(null);
+    builder.beginStyleDragSession();
 
     const startX = event.clientX;
     const startY = event.clientY;
@@ -519,11 +559,13 @@ export function BuilderView() {
       window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
       sectionSpacingDragRef.current = null;
       setActiveSectionTransformDrag(null);
+      builder.endStyleDragSession();
     };
 
     if (sectionSpacingDragRef.current) {
       window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
       window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+      builder.endStyleDragSession();
     }
 
     sectionSpacingDragRef.current = { onPointerMove, onPointerUp };
@@ -1057,6 +1099,8 @@ export function BuilderView() {
                             onPrimitiveStyleSet={(path, key, value) =>
                               builder.setPrimitiveStyle(path, key, value)
                             }
+                            onStyleDragSessionStart={() => builder.beginStyleDragSession()}
+                            onStyleDragSessionEnd={() => builder.endStyleDragSession()}
                           />
                         </div>
                       </div>

@@ -27,6 +27,8 @@ type PreviewBlockProps = {
       | "translateY",
     value: string
   ) => void;
+  onStyleDragSessionStart?: () => void;
+  onStyleDragSessionEnd?: () => void;
 };
 
 export function PreviewBlock({
@@ -38,6 +40,8 @@ export function PreviewBlock({
   onHoverPrimitive,
   onSelectPrimitive,
   onPrimitiveStyleSet,
+  onStyleDragSessionStart,
+  onStyleDragSessionEnd,
 }: PreviewBlockProps) {
   const tree = buildPreviewTreeForBlock(block);
   const style: CSSProperties = {
@@ -75,6 +79,8 @@ export function PreviewBlock({
           onHoverPrimitive={onHoverPrimitive}
           onSelectPrimitive={onSelectPrimitive}
           onPrimitiveStyleSet={onPrimitiveStyleSet}
+          onStyleDragSessionStart={onStyleDragSessionStart}
+          onStyleDragSessionEnd={onStyleDragSessionEnd}
           primitiveStyles={block.styleOverrides.primitiveStyles}
         />
       ))}

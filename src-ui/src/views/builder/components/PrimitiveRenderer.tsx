@@ -35,6 +35,8 @@ type PrimitiveRendererProps = {
   onHoverPrimitive?: (path: string | null) => void;
   onSelectPrimitive?: (path: string, type: PrimitiveType) => void;
   onPrimitiveStyleSet?: (path: string, key: PrimitiveStyleSetKey, value: string) => void;
+  onStyleDragSessionStart?: () => void;
+  onStyleDragSessionEnd?: () => void;
   primitiveStyles?: BlockInstance["styleOverrides"]["primitiveStyles"];
 };
 
@@ -284,6 +286,8 @@ export function PrimitiveRenderer({
   onHoverPrimitive,
   onSelectPrimitive,
   onPrimitiveStyleSet,
+  onStyleDragSessionStart,
+  onStyleDragSessionEnd,
   primitiveStyles,
 }: PrimitiveRendererProps) {
   const style = toPrimitiveStyle(primitiveStyles?.[primitivePath]);
@@ -434,6 +438,7 @@ export function PrimitiveRenderer({
     event.preventDefault();
     event.stopPropagation();
     selectPrimitive();
+    onStyleDragSessionStart?.();
 
     const startCoord = handle.axis === "y" ? event.clientY : event.clientX;
     const startValue = readCurrentSpacing(handle.key);
@@ -456,11 +461,13 @@ export function PrimitiveRenderer({
       window.removeEventListener("pointerup", dragRef.current.onPointerUp);
       dragRef.current = null;
       setActiveDrag(null);
+      onStyleDragSessionEnd?.();
     };
 
     if (dragRef.current) {
       window.removeEventListener("pointermove", dragRef.current.onPointerMove);
       window.removeEventListener("pointerup", dragRef.current.onPointerUp);
+      onStyleDragSessionEnd?.();
     }
 
     dragRef.current = { handle, startCoord, startValue, onPointerMove, onPointerUp };
@@ -490,6 +497,7 @@ export function PrimitiveRenderer({
     event.preventDefault();
     event.stopPropagation();
     selectPrimitive();
+    onStyleDragSessionStart?.();
 
     const startX = event.clientX;
     const startY = event.clientY;
@@ -515,11 +523,13 @@ export function PrimitiveRenderer({
       window.removeEventListener("pointerup", dragRef.current.onPointerUp);
       dragRef.current = null;
       setActiveTransformDrag(null);
+      onStyleDragSessionEnd?.();
     };
 
     if (dragRef.current) {
       window.removeEventListener("pointermove", dragRef.current.onPointerMove);
       window.removeEventListener("pointerup", dragRef.current.onPointerUp);
+      onStyleDragSessionEnd?.();
     }
 
     dragRef.current = {
@@ -662,6 +672,8 @@ export function PrimitiveRenderer({
             onHoverPrimitive={onHoverPrimitive}
             onSelectPrimitive={onSelectPrimitive}
             onPrimitiveStyleSet={onPrimitiveStyleSet}
+            onStyleDragSessionStart={onStyleDragSessionStart}
+            onStyleDragSessionEnd={onStyleDragSessionEnd}
             primitiveStyles={primitiveStyles}
           />
         ))}
@@ -693,6 +705,8 @@ export function PrimitiveRenderer({
             onHoverPrimitive={onHoverPrimitive}
             onSelectPrimitive={onSelectPrimitive}
             onPrimitiveStyleSet={onPrimitiveStyleSet}
+            onStyleDragSessionStart={onStyleDragSessionStart}
+            onStyleDragSessionEnd={onStyleDragSessionEnd}
             primitiveStyles={primitiveStyles}
           />
         ))}
@@ -723,6 +737,8 @@ export function PrimitiveRenderer({
             onHoverPrimitive={onHoverPrimitive}
             onSelectPrimitive={onSelectPrimitive}
             onPrimitiveStyleSet={onPrimitiveStyleSet}
+            onStyleDragSessionStart={onStyleDragSessionStart}
+            onStyleDragSessionEnd={onStyleDragSessionEnd}
             primitiveStyles={primitiveStyles}
           />
         ))}

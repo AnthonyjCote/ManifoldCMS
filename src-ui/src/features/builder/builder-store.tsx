@@ -77,6 +77,8 @@ type BuilderContextValue = {
     value: string
   ) => void;
   setPageSeo: (key: "title" | "description", value: string) => void;
+  beginStyleDragSession: () => void;
+  endStyleDragSession: () => void;
   markSaved: () => void;
   undo: () => void;
   redo: () => void;
@@ -297,6 +299,7 @@ export function BuilderProvider({
   const pendingSaveRef = useRef<number | null>(null);
   const lastStructurePersistRef = useRef<string>("");
   const hydratedProjectPathRef = useRef<string | null>(null);
+  const styleDragSessionRef = useRef(false);
 
   useEffect(() => {
     stateRef.current = state;
@@ -325,6 +328,14 @@ export function BuilderProvider({
       futureRef.current = [];
       setHistory(nextHistory);
       setFuture([]);
+      stateRef.current = nextState;
+      return nextState;
+    });
+  };
+
+  const commitWithoutHistory = (mutate: (draft: BuilderState) => BuilderState) => {
+    setState((prev) => {
+      const nextState = applyMutation(prev, mutate);
       stateRef.current = nextState;
       return nextState;
     });
@@ -719,7 +730,7 @@ export function BuilderProvider({
       if (!state.selectedBlockId) {
         return;
       }
-      commit((prev) => ({
+      const applyStyle = (prev: BuilderState) => ({
         ...prev,
         pages: prev.pages.map((page) =>
           page.id === prev.selectedPageId
@@ -740,13 +751,18 @@ export function BuilderProvider({
               }
             : page
         ),
-      }));
+      });
+      if (styleDragSessionRef.current) {
+        commitWithoutHistory(applyStyle);
+      } else {
+        commit(applyStyle);
+      }
     },
     setPrimitiveStyle: (primitivePath, key, value) => {
       if (!state.selectedBlockId) {
         return;
       }
-      commit((prev) => ({
+      const applyStyle = (prev: BuilderState) => ({
         ...prev,
         pages: prev.pages.map((page) =>
           page.id === prev.selectedPageId
@@ -780,7 +796,12 @@ export function BuilderProvider({
               }
             : page
         ),
-      }));
+      });
+      if (styleDragSessionRef.current) {
+        commitWithoutHistory(applyStyle);
+      } else {
+        commit(applyStyle);
+      }
     },
     setPageSeo: (key, value) => {
       commit((prev) => ({
@@ -789,6 +810,21 @@ export function BuilderProvider({
           page.id === prev.selectedPageId ? { ...page, seo: { ...page.seo, [key]: value } } : page
         ),
       }));
+    },
+    beginStyleDragSession: () => {
+      if (styleDragSessionRef.current) {
+        return;
+      }
+      const snapshot = stateRef.current;
+      const nextHistory = [...historyRef.current, snapshot];
+      historyRef.current = nextHistory;
+      futureRef.current = [];
+      setHistory(nextHistory);
+      setFuture([]);
+      styleDragSessionRef.current = true;
+    },
+    endStyleDragSession: () => {
+      styleDragSessionRef.current = false;
     },
     markSaved: () => {
       if (!projectPath) {
