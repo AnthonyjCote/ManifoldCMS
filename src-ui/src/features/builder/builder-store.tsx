@@ -31,7 +31,9 @@ type BuilderContextValue = {
   setBlockStyle: (
     key:
       | "marginTop"
+      | "marginRight"
       | "marginBottom"
+      | "marginLeft"
       | "paddingTop"
       | "paddingRight"
       | "paddingBottom"
@@ -49,7 +51,9 @@ type BuilderContextValue = {
     primitivePath: string,
     key:
       | "marginTop"
+      | "marginRight"
       | "marginBottom"
+      | "marginLeft"
       | "paddingTop"
       | "paddingRight"
       | "paddingBottom"
@@ -283,9 +287,24 @@ export function BuilderProvider({
   const [history, setHistory] = useState<BuilderState[]>([]);
   const [future, setFuture] = useState<BuilderState[]>([]);
   const [state, setState] = useState<BuilderState>(buildDefaultState());
+  const stateRef = useRef<BuilderState>(state);
+  const historyRef = useRef<BuilderState[]>(history);
+  const futureRef = useRef<BuilderState[]>(future);
   const pendingSaveRef = useRef<number | null>(null);
   const lastStructurePersistRef = useRef<string>("");
   const hydratedProjectPathRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
+
+  useEffect(() => {
+    futureRef.current = future;
+  }, [future]);
 
   const selectedPage =
     state.pages.find((page) => page.id === state.selectedPageId) ??
@@ -296,9 +315,14 @@ export function BuilderProvider({
 
   const commit = (mutate: (draft: BuilderState) => BuilderState) => {
     setState((prev) => {
-      setHistory((historyPrev) => [...historyPrev, prev]);
+      const nextHistory = [...historyRef.current, prev];
+      const nextState = applyMutation(prev, mutate);
+      historyRef.current = nextHistory;
+      futureRef.current = [];
+      setHistory(nextHistory);
       setFuture([]);
-      return applyMutation(prev, mutate);
+      stateRef.current = nextState;
+      return nextState;
     });
   };
 
@@ -315,9 +339,13 @@ export function BuilderProvider({
         if (cancelled) {
           return;
         }
+        const hydratedState = stateFromDocument(document);
         setHistory([]);
         setFuture([]);
-        setState(stateFromDocument(document));
+        setState(hydratedState);
+        historyRef.current = [];
+        futureRef.current = [];
+        stateRef.current = hydratedState;
         hydratedProjectPathRef.current = projectPath;
       })
       .catch((error) => {
@@ -325,9 +353,13 @@ export function BuilderProvider({
         if (cancelled) {
           return;
         }
+        const fallbackState = buildDefaultState();
         setHistory([]);
         setFuture([]);
-        setState(buildDefaultState());
+        setState(fallbackState);
+        historyRef.current = [];
+        futureRef.current = [];
+        stateRef.current = fallbackState;
         hydratedProjectPathRef.current = projectPath;
       });
 
@@ -773,20 +805,31 @@ export function BuilderProvider({
         });
     },
     undo: () => {
-      if (history.length === 0) {
+      const historyItems = historyRef.current;
+      if (historyItems.length === 0) {
         return;
       }
-      const previous = history[history.length - 1];
-      setHistory((items) => items.slice(0, -1));
-      setFuture((items) => [state, ...items]);
+      const previous = historyItems[historyItems.length - 1];
+      const nextHistory = historyItems.slice(0, -1);
+      const nextFuture = [stateRef.current, ...futureRef.current];
+      historyRef.current = nextHistory;
+      futureRef.current = nextFuture;
+      stateRef.current = previous;
+      setHistory(nextHistory);
+      setFuture(nextFuture);
       setState(previous);
     },
     redo: () => {
-      if (future.length === 0) {
+      const futureItems = futureRef.current;
+      if (futureItems.length === 0) {
         return;
       }
-      const [next, ...rest] = future;
-      setHistory((items) => [...items, state]);
+      const [next, ...rest] = futureItems;
+      const nextHistory = [...historyRef.current, stateRef.current];
+      historyRef.current = nextHistory;
+      futureRef.current = rest;
+      stateRef.current = next;
+      setHistory(nextHistory);
       setFuture(rest);
       setState(next);
     },

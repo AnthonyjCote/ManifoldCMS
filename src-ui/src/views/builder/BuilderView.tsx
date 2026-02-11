@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
   type DragEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
@@ -68,6 +69,128 @@ function previewModeIcon(mode: "mobile" | "tablet" | "desktop") {
   );
 }
 
+type SectionStyleKey =
+  | "marginTop"
+  | "marginRight"
+  | "marginBottom"
+  | "marginLeft"
+  | "paddingTop"
+  | "paddingRight"
+  | "paddingBottom"
+  | "paddingLeft";
+
+type SectionSpacingHandle = {
+  id: string;
+  key: SectionStyleKey;
+  label: string;
+  kind: "margin" | "padding";
+  side: "top" | "right" | "bottom" | "left";
+  axis: "x" | "y";
+  deltaSign: 1 | -1;
+};
+
+const SECTION_SPACING_HANDLES: SectionSpacingHandle[] = [
+  {
+    id: "section-margin-top",
+    key: "marginTop",
+    label: "Section margin top",
+    kind: "margin",
+    side: "top",
+    axis: "y",
+    deltaSign: 1,
+  },
+  {
+    id: "section-margin-right",
+    key: "marginRight",
+    label: "Section margin right",
+    kind: "margin",
+    side: "right",
+    axis: "x",
+    deltaSign: -1,
+  },
+  {
+    id: "section-margin-bottom",
+    key: "marginBottom",
+    label: "Section margin bottom",
+    kind: "margin",
+    side: "bottom",
+    axis: "y",
+    deltaSign: 1,
+  },
+  {
+    id: "section-margin-left",
+    key: "marginLeft",
+    label: "Section margin left",
+    kind: "margin",
+    side: "left",
+    axis: "x",
+    deltaSign: 1,
+  },
+  {
+    id: "section-padding-top",
+    key: "paddingTop",
+    label: "Section padding top",
+    kind: "padding",
+    side: "top",
+    axis: "y",
+    deltaSign: 1,
+  },
+  {
+    id: "section-padding-right",
+    key: "paddingRight",
+    label: "Section padding right",
+    kind: "padding",
+    side: "right",
+    axis: "x",
+    deltaSign: -1,
+  },
+  {
+    id: "section-padding-bottom",
+    key: "paddingBottom",
+    label: "Section padding bottom",
+    kind: "padding",
+    side: "bottom",
+    axis: "y",
+    deltaSign: 1,
+  },
+  {
+    id: "section-padding-left",
+    key: "paddingLeft",
+    label: "Section padding left",
+    kind: "padding",
+    side: "left",
+    axis: "x",
+    deltaSign: 1,
+  },
+];
+
+function parsePxValue(value: string | undefined): number {
+  if (!value) {
+    return 0;
+  }
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function clampPx(value: number): number {
+  return Math.max(0, Math.round(value));
+}
+
+type BuilderBlock = ReturnType<typeof useBuilderStore>["selectedPage"]["blocks"][number];
+
+function sectionSpacingFromOverrides(block: BuilderBlock) {
+  return {
+    marginTop: parsePxValue(block.styleOverrides.marginTop),
+    marginRight: parsePxValue(block.styleOverrides.marginRight),
+    marginBottom: parsePxValue(block.styleOverrides.marginBottom),
+    marginLeft: parsePxValue(block.styleOverrides.marginLeft),
+    paddingTop: parsePxValue(block.styleOverrides.paddingTop),
+    paddingRight: parsePxValue(block.styleOverrides.paddingRight),
+    paddingBottom: parsePxValue(block.styleOverrides.paddingBottom),
+    paddingLeft: parsePxValue(block.styleOverrides.paddingLeft),
+  };
+}
+
 export function BuilderView() {
   const builder = useBuilderStore();
   const projectSession = useActiveProjectSession();
@@ -85,6 +208,15 @@ export function BuilderView() {
   const pagePopoverRef = useRef<HTMLDivElement | null>(null);
   const devicePopoverRef = useRef<HTMLDivElement | null>(null);
   const routePopoverRef = useRef<HTMLDivElement | null>(null);
+  const sectionSpacingDragRef = useRef<{
+    onPointerMove: (event: PointerEvent) => void;
+    onPointerUp: () => void;
+  } | null>(null);
+  const [activeSectionSpacingDrag, setActiveSectionSpacingDrag] = useState<{
+    blockId: string;
+    label: string;
+    value: number;
+  } | null>(null);
 
   useEffect(() => {
     const onWindowPointerDown = (event: MouseEvent) => {
@@ -119,6 +251,17 @@ export function BuilderView() {
       window.removeEventListener("keydown", onWindowKeyDown);
     };
   }, [activePopover]);
+
+  useEffect(() => {
+    return () => {
+      if (!sectionSpacingDragRef.current) {
+        return;
+      }
+      window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
+      window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+      sectionSpacingDragRef.current = null;
+    };
+  }, []);
 
   const applyRouteDraft = () => {
     const trimmed = routeDraft.trim();
@@ -174,6 +317,98 @@ export function BuilderView() {
     }
     return `${normalizedBase}${route}`;
   })();
+
+  const readSectionSpacing = (
+    block: (typeof builder.selectedPage.blocks)[number],
+    key: SectionStyleKey,
+    shell: HTMLElement
+  ): number => {
+    const override = block.styleOverrides[key];
+    if (override) {
+      return parsePxValue(override);
+    }
+    const section = shell.querySelector<HTMLElement>(".site-block");
+    if (!section) {
+      return 0;
+    }
+    const computed = window.getComputedStyle(section);
+    if (key === "marginTop") {
+      return parsePxValue(computed.marginTop);
+    }
+    if (key === "marginRight") {
+      return parsePxValue(computed.marginRight);
+    }
+    if (key === "marginBottom") {
+      return parsePxValue(computed.marginBottom);
+    }
+    if (key === "marginLeft") {
+      return parsePxValue(computed.marginLeft);
+    }
+    if (key === "paddingTop") {
+      return parsePxValue(computed.paddingTop);
+    }
+    if (key === "paddingRight") {
+      return parsePxValue(computed.paddingRight);
+    }
+    if (key === "paddingBottom") {
+      return parsePxValue(computed.paddingBottom);
+    }
+    return parsePxValue(computed.paddingLeft);
+  };
+
+  const startSectionSpacingDrag = (
+    event: ReactPointerEvent<HTMLButtonElement>,
+    block: (typeof builder.selectedPage.blocks)[number],
+    handle: SectionSpacingHandle
+  ) => {
+    const shell = event.currentTarget.closest(".site-block-shell");
+    if (!(shell instanceof HTMLElement)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    builder.selectBlock(block.id);
+    builder.selectPrimitivePath(null);
+
+    const startCoord = handle.axis === "y" ? event.clientY : event.clientX;
+    const startValue = readSectionSpacing(block, handle.key, shell);
+    setActiveSectionSpacingDrag({
+      blockId: block.id,
+      label: handle.label,
+      value: startValue,
+    });
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const currentCoord = handle.axis === "y" ? moveEvent.clientY : moveEvent.clientX;
+      const delta = (currentCoord - startCoord) * handle.deltaSign;
+      const nextValue = clampPx(startValue + delta);
+      builder.setBlockStyle(handle.key, `${nextValue}px`);
+      setActiveSectionSpacingDrag({
+        blockId: block.id,
+        label: handle.label,
+        value: nextValue,
+      });
+    };
+
+    const onPointerUp = () => {
+      if (!sectionSpacingDragRef.current) {
+        return;
+      }
+      window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
+      window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+      sectionSpacingDragRef.current = null;
+      setActiveSectionSpacingDrag(null);
+    };
+
+    if (sectionSpacingDragRef.current) {
+      window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
+      window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+    }
+
+    sectionSpacingDragRef.current = { onPointerMove, onPointerUp };
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
 
   const resolveDropIndex = (event: DragEvent<HTMLDivElement>): number => {
     const shells = Array.from(
@@ -564,68 +799,118 @@ export function BuilderView() {
                 }}
                 onDropCapture={handlePreviewDrop}
               >
-                {builder.selectedPage.blocks.map((block, index) => (
-                  <div key={block.id} className="canvas-block-shell">
-                    <div
-                      className={`canvas-insert-indicator${dropIndex === index ? " active" : ""}`}
-                    />
+                {builder.selectedPage.blocks.map((block, index) => {
+                  const sectionGuide = sectionSpacingFromOverrides(block);
+                  return (
+                    <div key={block.id} className="canvas-block-shell">
+                      <div
+                        className={`canvas-insert-indicator${dropIndex === index ? " active" : ""}`}
+                      />
 
-                    <div
-                      className={`site-block-shell${builder.state.selectedBlockId === block.id ? " selected" : ""}${hoveredBlockId === block.id ? " hovered" : ""}${block.visibility === "hidden" ? " hidden" : ""}`}
-                      onMouseEnter={() => setHoveredBlockId(block.id)}
-                      onMouseLeave={() => {
-                        setHoveredBlockId((prev) => (prev === block.id ? null : prev));
-                        setHoveredPrimitivePath(null);
-                      }}
-                      onClick={() => {
-                        builder.selectBlock(block.id);
-                        builder.selectPrimitivePath(null);
-                      }}
-                    >
-                      {builder.state.selectedBlockId === block.id ? (
-                        <button
-                          className="site-block-drag-handle"
-                          onPointerDown={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            beginPointerCanvasDrag(block.id, {
-                              clientX: event.clientX,
-                              clientY: event.clientY,
-                            });
-                          }}
-                          aria-label="Reorder section"
-                          title="Drag to reorder section"
-                        >
-                          <svg viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M8 6h8M8 12h8M8 18h8" />
-                          </svg>
-                        </button>
-                      ) : null}
-                      <div className="site-block-render">
-                        <PreviewBlock
-                          block={block}
-                          editable={builder.state.selectedBlockId === block.id}
-                          onInlineCommit={(fieldKey, value) =>
-                            builder.setBlockFieldForBlock(block.id, fieldKey, value)
-                          }
-                          selectedPrimitivePath={
-                            builder.state.selectedBlockId === block.id
-                              ? builder.state.selectedPrimitivePath
-                              : null
-                          }
-                          hoveredPrimitivePath={
-                            hoveredBlockId === block.id ? hoveredPrimitivePath : null
-                          }
-                          onHoverPrimitive={(path) => setHoveredPrimitivePath(path)}
-                          onSelectPrimitive={(path) => {
-                            builder.selectBlock(block.id);
-                            builder.selectPrimitivePath(path);
-                          }}
-                        />
+                      <div
+                        className={`site-block-shell${builder.state.selectedBlockId === block.id ? " selected" : ""}${hoveredBlockId === block.id ? " hovered" : ""}${block.visibility === "hidden" ? " hidden" : ""}`}
+                        onMouseEnter={() => setHoveredBlockId(block.id)}
+                        onMouseLeave={() => {
+                          setHoveredBlockId((prev) => (prev === block.id ? null : prev));
+                          setHoveredPrimitivePath(null);
+                        }}
+                        onClick={() => {
+                          builder.selectBlock(block.id);
+                          builder.selectPrimitivePath(null);
+                        }}
+                      >
+                        {builder.state.selectedBlockId === block.id ? (
+                          <>
+                            <button
+                              className="site-block-drag-handle"
+                              onPointerDown={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                beginPointerCanvasDrag(block.id, {
+                                  clientX: event.clientX,
+                                  clientY: event.clientY,
+                                });
+                              }}
+                              aria-label="Reorder section"
+                              title="Drag to reorder section"
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M8 6h8M8 12h8M8 18h8" />
+                              </svg>
+                            </button>
+                            {builder.state.selectedPrimitivePath === null ? (
+                              <div className="site-block-spacing-controls">
+                                <div className="site-block-spacing-guide baseline" />
+                                <div
+                                  className="site-block-spacing-guide margin"
+                                  style={{
+                                    top: `${-sectionGuide.marginTop}px`,
+                                    right: `${-sectionGuide.marginRight}px`,
+                                    bottom: `${-sectionGuide.marginBottom}px`,
+                                    left: `${-sectionGuide.marginLeft}px`,
+                                  }}
+                                />
+                                <div
+                                  className="site-block-spacing-guide padding"
+                                  style={{
+                                    top: `${sectionGuide.paddingTop}px`,
+                                    right: `${sectionGuide.paddingRight}px`,
+                                    bottom: `${sectionGuide.paddingBottom}px`,
+                                    left: `${sectionGuide.paddingLeft}px`,
+                                  }}
+                                />
+                                {SECTION_SPACING_HANDLES.map((handle) => (
+                                  <button
+                                    key={`${block.id}-${handle.id}`}
+                                    className={`site-block-spacing-handle ${handle.kind} ${handle.side}`}
+                                    onPointerDown={(event) =>
+                                      startSectionSpacingDrag(event, block, handle)
+                                    }
+                                    title={handle.label}
+                                    aria-label={handle.label}
+                                    type="button"
+                                  />
+                                ))}
+                                {activeSectionSpacingDrag?.blockId === block.id ? (
+                                  <div className="site-block-spacing-readout">
+                                    {activeSectionSpacingDrag.label}:{" "}
+                                    {activeSectionSpacingDrag.value}
+                                    px
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </>
+                        ) : null}
+                        <div className="site-block-render">
+                          <PreviewBlock
+                            block={block}
+                            editable={builder.state.selectedBlockId === block.id}
+                            onInlineCommit={(fieldKey, value) =>
+                              builder.setBlockFieldForBlock(block.id, fieldKey, value)
+                            }
+                            selectedPrimitivePath={
+                              builder.state.selectedBlockId === block.id
+                                ? builder.state.selectedPrimitivePath
+                                : null
+                            }
+                            hoveredPrimitivePath={
+                              hoveredBlockId === block.id ? hoveredPrimitivePath : null
+                            }
+                            onHoverPrimitive={(path) => setHoveredPrimitivePath(path)}
+                            onSelectPrimitive={(path) => {
+                              builder.selectBlock(block.id);
+                              builder.selectPrimitivePath(path);
+                            }}
+                            onPrimitiveStyleSet={(path, key, value) =>
+                              builder.setPrimitiveStyle(path, key, value)
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 <div
                   className={`canvas-insert-indicator final${dropIndex === builder.selectedPage.blocks.length ? " active" : ""}`}

@@ -12,6 +12,19 @@ type PreviewBlockProps = {
   hoveredPrimitivePath: string | null;
   onHoverPrimitive: (path: string | null) => void;
   onSelectPrimitive: (path: string, type: PrimitiveType) => void;
+  onPrimitiveStyleSet: (
+    path: string,
+    key:
+      | "marginTop"
+      | "marginRight"
+      | "marginBottom"
+      | "marginLeft"
+      | "paddingTop"
+      | "paddingRight"
+      | "paddingBottom"
+      | "paddingLeft",
+    value: string
+  ) => void;
 };
 
 export function PreviewBlock({
@@ -22,11 +35,14 @@ export function PreviewBlock({
   hoveredPrimitivePath,
   onHoverPrimitive,
   onSelectPrimitive,
+  onPrimitiveStyleSet,
 }: PreviewBlockProps) {
   const tree = buildPreviewTreeForBlock(block);
   const style: CSSProperties = {
     marginTop: block.styleOverrides.marginTop,
+    marginRight: block.styleOverrides.marginRight,
     marginBottom: block.styleOverrides.marginBottom,
+    marginLeft: block.styleOverrides.marginLeft,
     paddingTop: block.styleOverrides.paddingTop,
     paddingRight: block.styleOverrides.paddingRight,
     paddingBottom: block.styleOverrides.paddingBottom,
@@ -52,6 +68,7 @@ export function PreviewBlock({
           hoveredPrimitivePath={hoveredPrimitivePath}
           onHoverPrimitive={onHoverPrimitive}
           onSelectPrimitive={onSelectPrimitive}
+          onPrimitiveStyleSet={onPrimitiveStyleSet}
           primitiveStyles={block.styleOverrides.primitiveStyles}
         />
       ))}

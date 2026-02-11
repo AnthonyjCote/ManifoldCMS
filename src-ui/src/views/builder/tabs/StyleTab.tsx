@@ -4,7 +4,9 @@ import type { PrimitiveNode, PrimitiveType } from "../../../features/builder/typ
 
 type SectionStyleKey =
   | "marginTop"
+  | "marginRight"
   | "marginBottom"
+  | "marginLeft"
   | "paddingTop"
   | "paddingRight"
   | "paddingBottom"
@@ -44,7 +46,9 @@ const SECTION_STYLE_FIELDS: Array<{ heading: string; fields: StyleField<SectionS
     heading: "Spacing",
     fields: [
       { key: "marginTop", label: "Margin Top", placeholder: "0px" },
+      { key: "marginRight", label: "Margin Right", placeholder: "0px" },
       { key: "marginBottom", label: "Margin Bottom", placeholder: "0px" },
+      { key: "marginLeft", label: "Margin Left", placeholder: "0px" },
       { key: "paddingTop", label: "Padding Top", placeholder: "64px" },
       { key: "paddingRight", label: "Padding Right", placeholder: "48px" },
       { key: "paddingBottom", label: "Padding Bottom", placeholder: "64px" },

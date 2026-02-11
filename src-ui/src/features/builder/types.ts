@@ -66,7 +66,9 @@ export type BlockInstance = {
   styleOverrides: {
     variant: string;
     marginTop?: string;
+    marginRight?: string;
     marginBottom?: string;
+    marginLeft?: string;
     paddingTop?: string;
     paddingRight?: string;
     paddingBottom?: string;
@@ -82,7 +84,9 @@ export type BlockInstance = {
       string,
       {
         marginTop?: string;
+        marginRight?: string;
         marginBottom?: string;
+        marginLeft?: string;
         paddingTop?: string;
         paddingRight?: string;
         paddingBottom?: string;
