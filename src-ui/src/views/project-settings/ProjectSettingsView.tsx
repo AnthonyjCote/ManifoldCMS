@@ -139,7 +139,7 @@ export function ProjectSettingsView() {
             />
           </label>
           <label className="inspector-field">
-            <span>Desktop Preview Width (px)</span>
+            <span>Desktop / Laptop / HD Preview Width (px)</span>
             <input
               value={String(settings.preview.desktopWidth)}
               onChange={(event) => {
@@ -158,7 +158,7 @@ export function ProjectSettingsView() {
             />
           </label>
           <label className="inspector-field">
-            <span>Wide / Retina Preview Width (px)</span>
+            <span>Retina / Wide / UHD Preview Width (px)</span>
             <input
               value={String(settings.preview.wideWidth)}
               onChange={(event) => {

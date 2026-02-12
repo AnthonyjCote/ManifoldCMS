@@ -1006,8 +1006,8 @@ export function BuilderView() {
                     [
                       { id: "mobile", label: "Mobile" },
                       { id: "tablet", label: "Tablet" },
-                      { id: "desktop", label: "Desktop" },
-                      { id: "wide", label: "Wide / Retina" },
+                      { id: "desktop", label: "Desktop / Laptop / HD" },
+                      { id: "wide", label: "Retina / Wide / UHD" },
                     ] as const
                   ).map((mode) => (
                     <button
