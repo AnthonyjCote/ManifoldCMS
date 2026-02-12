@@ -51,7 +51,7 @@ function IconButton(props: IconButtonProps) {
   );
 }
 
-function previewModeIcon(mode: "mobile" | "tablet" | "desktop") {
+function previewModeIcon(mode: "mobile" | "tablet" | "desktop" | "wide") {
   if (mode === "mobile") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -65,6 +65,15 @@ function previewModeIcon(mode: "mobile" | "tablet" | "desktop") {
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect x="6" y="3.5" width="12" height="17" rx="2.4" />
         <path d="M11 17.5h2" />
+      </svg>
+    );
+  }
+  if (mode === "wide") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="2.5" y="5.5" width="19" height="11" rx="2" />
+        <path d="M8 19h8M12 16.5V19" />
+        <path d="M18.5 8.5h2M19.5 7.5v2" />
       </svg>
     );
   }
@@ -267,7 +276,7 @@ export function BuilderView() {
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
   const [hoveredPrimitivePath, setHoveredPrimitivePath] = useState<string | null>(null);
-  const [device, setDevice] = useState<"mobile" | "tablet" | "desktop">("desktop");
+  const [device, setDevice] = useState<"mobile" | "tablet" | "desktop" | "wide">("wide");
   const [activePopover, setActivePopover] = useState<"page" | "device" | "route" | null>(null);
   const [routeDraft, setRouteDraft] = useState(builder.selectedPage.route);
   const [newPageModalOpen, setNewPageModalOpen] = useState(false);
@@ -275,9 +284,9 @@ export function BuilderView() {
   const [newPageSlug, setNewPageSlug] = useState("");
   const [newPageError, setNewPageError] = useState<string | null>(null);
   const previewPageRef = useRef<HTMLDivElement | null>(null);
-  const [previewBreakpoint, setPreviewBreakpoint] = useState<"mobile" | "tablet" | "desktop">(
-    "desktop"
-  );
+  const [previewBreakpoint, setPreviewBreakpoint] = useState<
+    "mobile" | "tablet" | "desktop" | "wide"
+  >("wide");
   const pagePopoverRef = useRef<HTMLDivElement | null>(null);
   const devicePopoverRef = useRef<HTMLDivElement | null>(null);
   const routePopoverRef = useRef<HTMLDivElement | null>(null);
@@ -449,9 +458,12 @@ export function BuilderView() {
       ? projectSettings.settings.preview.mobileWidth
       : device === "tablet"
         ? projectSettings.settings.preview.tabletWidth
-        : null;
+        : device === "desktop"
+          ? projectSettings.settings.preview.desktopWidth
+          : projectSettings.settings.preview.wideWidth;
   const mobileMaxBreakpoint = projectSettings.settings.breakpoints.mobileMax;
   const tabletMaxBreakpoint = projectSettings.settings.breakpoints.tabletMax;
+  const desktopMaxBreakpoint = projectSettings.settings.breakpoints.desktopMax;
 
   useEffect(() => {
     const node = previewPageRef.current;
@@ -469,14 +481,24 @@ export function BuilderView() {
         setPreviewBreakpoint("tablet");
         return;
       }
-      setPreviewBreakpoint("desktop");
+      if (width <= desktopMaxBreakpoint) {
+        setPreviewBreakpoint("desktop");
+        return;
+      }
+      setPreviewBreakpoint("wide");
     };
 
     const observer = new ResizeObserver(updateBreakpoint);
     observer.observe(node);
     updateBreakpoint();
     return () => observer.disconnect();
-  }, [mobileMaxBreakpoint, tabletMaxBreakpoint, device, previewDeviceWidthCap]);
+  }, [
+    mobileMaxBreakpoint,
+    tabletMaxBreakpoint,
+    desktopMaxBreakpoint,
+    device,
+    previewDeviceWidthCap,
+  ]);
 
   const draggedCatalogBlock =
     activePointerDrag?.payload.kind === "catalog"
@@ -980,16 +1002,23 @@ export function BuilderView() {
               <div className="builder-popover align-start">
                 <div className="popover-title">Viewport size</div>
                 <div className="popover-option-list">
-                  {(["mobile", "tablet", "desktop"] as const).map((mode) => (
+                  {(
+                    [
+                      { id: "mobile", label: "Mobile" },
+                      { id: "tablet", label: "Tablet" },
+                      { id: "desktop", label: "Desktop" },
+                      { id: "wide", label: "Wide / Retina" },
+                    ] as const
+                  ).map((mode) => (
                     <button
-                      key={mode}
-                      className={`popover-option single-line${mode === device ? " active" : ""}`}
+                      key={mode.id}
+                      className={`popover-option single-line${mode.id === device ? " active" : ""}`}
                       onClick={() => {
-                        setDevice(mode);
+                        setDevice(mode.id);
                         setActivePopover(null);
                       }}
                     >
-                      <span className="capitalize">{mode}</span>
+                      <span>{mode.label}</span>
                     </button>
                   ))}
                 </div>

@@ -4,10 +4,13 @@ export type ProjectSettings = {
   breakpoints: {
     mobileMax: number;
     tabletMax: number;
+    desktopMax: number;
   };
   preview: {
     mobileWidth: number;
     tabletWidth: number;
+    desktopWidth: number;
+    wideWidth: number;
   };
 };
 
@@ -16,11 +19,14 @@ const PROJECT_SETTINGS_KEY = "manifold.project-settings.v1";
 const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   breakpoints: {
     mobileMax: 767,
-    tabletMax: 1023,
+    tabletMax: 1199,
+    desktopMax: 1919,
   },
   preview: {
     mobileWidth: 420,
     tabletWidth: 880,
+    desktopWidth: 1920,
+    wideWidth: 2880,
   },
 };
 
@@ -46,13 +52,19 @@ function coerceProjectSettings(raw: unknown): ProjectSettings {
     input.breakpoints?.tabletMax,
     DEFAULT_PROJECT_SETTINGS.breakpoints.tabletMax
   );
-  const safeMobileMax = Math.min(mobileMax, tabletMax - 1);
-  const safeTabletMax = Math.max(tabletMax, safeMobileMax + 1);
+  const desktopMax = toPositiveInt(
+    input.breakpoints?.desktopMax,
+    DEFAULT_PROJECT_SETTINGS.breakpoints.desktopMax
+  );
+  const safeMobileMax = Math.min(mobileMax, tabletMax - 1, desktopMax - 2);
+  const safeTabletMax = Math.max(Math.min(tabletMax, desktopMax - 1), safeMobileMax + 1);
+  const safeDesktopMax = Math.max(desktopMax, safeTabletMax + 1);
 
   return {
     breakpoints: {
       mobileMax: safeMobileMax,
       tabletMax: safeTabletMax,
+      desktopMax: safeDesktopMax,
     },
     preview: {
       mobileWidth: toPositiveInt(
@@ -62,6 +74,14 @@ function coerceProjectSettings(raw: unknown): ProjectSettings {
       tabletWidth: toPositiveInt(
         input.preview?.tabletWidth,
         DEFAULT_PROJECT_SETTINGS.preview.tabletWidth
+      ),
+      desktopWidth: toPositiveInt(
+        input.preview?.desktopWidth,
+        DEFAULT_PROJECT_SETTINGS.preview.desktopWidth
+      ),
+      wideWidth: toPositiveInt(
+        input.preview?.wideWidth,
+        DEFAULT_PROJECT_SETTINGS.preview.wideWidth
       ),
     },
   };

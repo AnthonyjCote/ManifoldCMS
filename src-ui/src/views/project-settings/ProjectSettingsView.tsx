@@ -76,6 +76,25 @@ export function ProjectSettingsView() {
               }}
             />
           </label>
+          <label className="inspector-field">
+            <span>Desktop Max Width (px)</span>
+            <input
+              value={String(settings.breakpoints.desktopMax)}
+              onChange={(event) => {
+                const next = parsePositiveInt(event.target.value);
+                if (next == null) {
+                  return;
+                }
+                updateSettings((prev) => ({
+                  ...prev,
+                  breakpoints: {
+                    ...prev.breakpoints,
+                    desktopMax: next,
+                  },
+                }));
+              }}
+            />
+          </label>
         </section>
 
         <section className="panel-card">
@@ -114,6 +133,44 @@ export function ProjectSettingsView() {
                   preview: {
                     ...prev.preview,
                     tabletWidth: next,
+                  },
+                }));
+              }}
+            />
+          </label>
+          <label className="inspector-field">
+            <span>Desktop Preview Width (px)</span>
+            <input
+              value={String(settings.preview.desktopWidth)}
+              onChange={(event) => {
+                const next = parsePositiveInt(event.target.value);
+                if (next == null) {
+                  return;
+                }
+                updateSettings((prev) => ({
+                  ...prev,
+                  preview: {
+                    ...prev.preview,
+                    desktopWidth: next,
+                  },
+                }));
+              }}
+            />
+          </label>
+          <label className="inspector-field">
+            <span>Wide / Retina Preview Width (px)</span>
+            <input
+              value={String(settings.preview.wideWidth)}
+              onChange={(event) => {
+                const next = parsePositiveInt(event.target.value);
+                if (next == null) {
+                  return;
+                }
+                updateSettings((prev) => ({
+                  ...prev,
+                  preview: {
+                    ...prev.preview,
+                    wideWidth: next,
                   },
                 }));
               }}
