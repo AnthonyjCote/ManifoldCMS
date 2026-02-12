@@ -111,7 +111,11 @@ export function PreviewBlock({
         : undefined,
   };
   return (
-    <section className={`site-block site-block-${block.type.replace(/_/g, "-")}`} style={style}>
+    <section
+      className={`site-block site-block-${block.type.replace(/_/g, "-")}`}
+      style={style}
+      data-block-id={block.id}
+    >
       {tree.map((node, index) => (
         <PrimitiveRenderer
           key={`${node.type}-${index}`}

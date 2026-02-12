@@ -19,6 +19,10 @@ import {
 } from "../../features/builder/dnd";
 import { blockDefinitionById } from "../../features/builder/catalog";
 import { useBuilderStore } from "../../features/builder/builder-store";
+import {
+  decodePrimitiveTarget,
+  encodePrimitiveTarget,
+} from "../../features/builder/primitive-target";
 import { useActiveProjectSession } from "../../features/project-launcher/session";
 import { PreviewBlock } from "./components/PreviewBlock";
 
@@ -233,16 +237,6 @@ function isEditableTarget(target: EventTarget | null): boolean {
   }
   const tagName = target.tagName.toLowerCase();
   return tagName === "input" || tagName === "textarea" || tagName === "select";
-}
-
-const DEBUG_SECTION_DRAG = true;
-
-function logSectionDrag(stage: string, payload: Record<string, unknown>) {
-  if (!DEBUG_SECTION_DRAG) {
-    return;
-  }
-  // Temporary diagnostics for section-handle regression.
-  console.debug("[section-drag]", stage, payload);
 }
 
 type BuilderBlock = ReturnType<typeof useBuilderStore>["selectedPage"]["blocks"][number];
@@ -512,13 +506,6 @@ export function BuilderView() {
     }
     event.preventDefault();
     event.stopPropagation();
-    logSectionDrag("start-spacing", {
-      blockId: block.id,
-      key: handle.key,
-      pointerId: event.pointerId,
-      clientX: event.clientX,
-      clientY: event.clientY,
-    });
     builder.beginStyleDragSession();
 
     const startCoord = handle.axis === "y" ? event.clientY : event.clientX;
@@ -533,14 +520,6 @@ export function BuilderView() {
       const currentCoord = handle.axis === "y" ? moveEvent.clientY : moveEvent.clientX;
       const delta = (currentCoord - startCoord) * handle.deltaSign;
       const nextValue = normalizeSectionSpacingByKey(handle.key, startValue + delta);
-      logSectionDrag("move-spacing", {
-        blockId: block.id,
-        key: handle.key,
-        currentCoord,
-        startCoord,
-        delta,
-        nextValue,
-      });
       builder.setBlockStyleForBlock(block.id, handle.key, `${nextValue}px`);
       setActiveSectionSpacingDrag({
         blockId: block.id,
@@ -553,7 +532,6 @@ export function BuilderView() {
       if (!sectionSpacingDragRef.current) {
         return;
       }
-      logSectionDrag("end-spacing", { blockId: block.id, key: handle.key });
       document.removeEventListener(
         "pointermove",
         sectionSpacingDragRef.current.onPointerMove,
@@ -622,12 +600,6 @@ export function BuilderView() {
     }
     event.preventDefault();
     event.stopPropagation();
-    logSectionDrag("start-transform", {
-      blockId: block.id,
-      pointerId: event.pointerId,
-      clientX: event.clientX,
-      clientY: event.clientY,
-    });
     builder.beginStyleDragSession();
 
     const startX = event.clientX;
@@ -640,13 +612,6 @@ export function BuilderView() {
       const deltaY = moveEvent.clientY - startY;
       const nextX = roundPx(initial.x + deltaX);
       const nextY = roundPx(initial.y + deltaY);
-      logSectionDrag("move-transform", {
-        blockId: block.id,
-        deltaX,
-        deltaY,
-        nextX,
-        nextY,
-      });
       builder.setBlockStyleForBlock(block.id, "translateX", `${nextX}px`);
       builder.setBlockStyleForBlock(block.id, "translateY", `${nextY}px`);
       setActiveSectionTransformDrag({ blockId: block.id, x: nextX, y: nextY });
@@ -656,7 +621,6 @@ export function BuilderView() {
       if (!sectionSpacingDragRef.current) {
         return;
       }
-      logSectionDrag("end-transform", { blockId: block.id });
       document.removeEventListener(
         "pointermove",
         sectionSpacingDragRef.current.onPointerMove,
@@ -1128,14 +1092,14 @@ export function BuilderView() {
                       />
 
                       <div
-                        className={`site-block-shell${builder.state.selectedBlockId === block.id ? " selected" : ""}${hoveredBlockId === block.id ? " hovered" : ""}${block.visibility === "hidden" ? " hidden" : ""}`}
+                        className={`site-block-shell${builder.state.selectedBlockIds.includes(block.id) ? " selected" : ""}${hoveredBlockId === block.id ? " hovered" : ""}${block.visibility === "hidden" ? " hidden" : ""}`}
                         onMouseEnter={() => setHoveredBlockId(block.id)}
                         onMouseLeave={() => {
                           setHoveredBlockId((prev) => (prev === block.id ? null : prev));
                           setHoveredPrimitivePath(null);
                         }}
-                        onClick={() => {
-                          builder.selectBlock(block.id);
+                        onClick={(event) => {
+                          builder.selectBlock(block.id, { multi: event.shiftKey });
                           builder.selectPrimitivePath(null);
                         }}
                       >
@@ -1238,21 +1202,23 @@ export function BuilderView() {
                             onInlineCommit={(fieldKey, value) =>
                               builder.setBlockFieldForBlock(block.id, fieldKey, value)
                             }
-                            selectedPrimitivePaths={
-                              builder.state.selectedBlockId === block.id
-                                ? builder.state.selectedPrimitivePaths
-                                : []
-                            }
+                            selectedPrimitivePaths={builder.state.selectedPrimitivePaths
+                              .map((target) => decodePrimitiveTarget(target))
+                              .filter((target) => target.blockId === block.id)
+                              .map((target) => target.primitivePath)}
                             hoveredPrimitivePath={
                               hoveredBlockId === block.id ? hoveredPrimitivePath : null
                             }
                             onHoverPrimitive={(path) => setHoveredPrimitivePath(path)}
                             onSelectPrimitive={(path, _type, multi) => {
-                              builder.selectBlock(block.id);
-                              builder.selectPrimitivePath(path, { multi });
+                              builder.selectPrimitiveTarget(block.id, path, { multi });
                             }}
                             onPrimitiveStyleSet={(path, key, value) =>
-                              builder.setPrimitiveStyle(path, key, value)
+                              builder.setPrimitiveStyleForTargets(
+                                [encodePrimitiveTarget(block.id, path)],
+                                key,
+                                value
+                              )
                             }
                             onStyleDragSessionStart={() => builder.beginStyleDragSession()}
                             onStyleDragSessionEnd={() => builder.endStyleDragSession()}

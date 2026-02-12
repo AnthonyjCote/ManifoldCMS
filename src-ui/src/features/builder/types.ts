@@ -128,6 +128,7 @@ export type BuilderState = {
   pages: BuilderPage[];
   selectedPageId: string;
   selectedBlockId: string | null;
+  selectedBlockIds: string[];
   selectedPrimitivePaths: string[];
   dirty: boolean;
   lastSavedAt: string;

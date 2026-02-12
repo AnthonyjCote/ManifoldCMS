@@ -1,4 +1,5 @@
 import {
+  cloneElement,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -644,7 +645,9 @@ export function PrimitiveRenderer({
 
   const withOverlay = (element: ReactElement) => (
     <>
-      {element}
+      {cloneElement(element as ReactElement<Record<string, unknown>>, {
+        "data-primitive-path": primitivePath,
+      })}
       {renderSpacingOverlay()}
     </>
   );

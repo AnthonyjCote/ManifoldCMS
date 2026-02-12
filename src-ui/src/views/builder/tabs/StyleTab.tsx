@@ -2,6 +2,10 @@ import { useState } from "react";
 
 import { buildPreviewTreeForBlock } from "../../../features/builder/catalog";
 import { useBuilderStore } from "../../../features/builder/builder-store";
+import {
+  decodePrimitiveTarget,
+  encodePrimitiveTarget,
+} from "../../../features/builder/primitive-target";
 import type { PrimitiveNode, PrimitiveType } from "../../../features/builder/types";
 
 type BaseSectionStyleKey =
@@ -329,12 +333,109 @@ function buildStyleGroups<K extends AllStyleKey>(
   }).filter((group) => group.fields.length > 0);
 }
 
+function parseTranslateFromComputed(transform: string | null): { x: number; y: number } {
+  if (!transform || transform === "none") {
+    return { x: 0, y: 0 };
+  }
+  const matrixMatch = transform.match(/matrix\(([^)]+)\)/);
+  if (matrixMatch) {
+    const parts = matrixMatch[1].split(",").map((part) => Number.parseFloat(part.trim()));
+    if (parts.length === 6 && Number.isFinite(parts[4]) && Number.isFinite(parts[5])) {
+      return { x: Math.round(parts[4]), y: Math.round(parts[5]) };
+    }
+  }
+  const matrix3dMatch = transform.match(/matrix3d\(([^)]+)\)/);
+  if (matrix3dMatch) {
+    const parts = matrix3dMatch[1].split(",").map((part) => Number.parseFloat(part.trim()));
+    if (parts.length === 16 && Number.isFinite(parts[12]) && Number.isFinite(parts[13])) {
+      return { x: Math.round(parts[12]), y: Math.round(parts[13]) };
+    }
+  }
+  return { x: 0, y: 0 };
+}
+
+function findBlockElement(blockId: string): HTMLElement | null {
+  return (
+    Array.from(document.querySelectorAll<HTMLElement>(".site-block[data-block-id]")).find(
+      (element) => element.dataset.blockId === blockId
+    ) ?? null
+  );
+}
+
+function findPrimitiveElement(blockId: string, primitivePath: string): HTMLElement | null {
+  const block = findBlockElement(blockId);
+  if (!block) {
+    return null;
+  }
+  return (
+    Array.from(block.querySelectorAll<HTMLElement>("[data-primitive-path]")).find(
+      (element) => element.dataset.primitivePath === primitivePath
+    ) ?? null
+  );
+}
+
+function readComputedStyleValue(
+  element: HTMLElement,
+  key: BaseSectionStyleKey | PrimitiveStyleKey
+): string {
+  const computed = window.getComputedStyle(element);
+  switch (key) {
+    case "marginTop":
+      return computed.marginTop;
+    case "marginRight":
+      return computed.marginRight;
+    case "marginBottom":
+      return computed.marginBottom;
+    case "marginLeft":
+      return computed.marginLeft;
+    case "paddingTop":
+      return computed.paddingTop;
+    case "paddingRight":
+      return computed.paddingRight;
+    case "paddingBottom":
+      return computed.paddingBottom;
+    case "paddingLeft":
+      return computed.paddingLeft;
+    case "borderWidth":
+      return computed.borderTopWidth;
+    case "borderStyle":
+      return computed.borderTopStyle;
+    case "borderColor":
+      return computed.borderTopColor;
+    case "borderRadius":
+      return computed.borderRadius;
+    case "backgroundColor":
+      return computed.backgroundColor;
+    case "textColor":
+      return computed.color;
+    case "fontSize":
+      return computed.fontSize;
+    case "fontWeight":
+      return computed.fontWeight;
+    case "lineHeight":
+      return computed.lineHeight;
+    case "textAlign":
+      return computed.textAlign;
+    case "width":
+      return computed.width;
+    case "height":
+      return computed.height;
+    case "translateX":
+      return `${parseTranslateFromComputed(computed.transform).x}px`;
+    case "translateY":
+      return `${parseTranslateFromComputed(computed.transform).y}px`;
+    default:
+      return "";
+  }
+}
+
 function renderStyleField<K extends AllStyleKey>(opts: {
   field: MasterStyleField<K>;
   value: string;
+  placeholder?: string;
   setValue: (value: string) => void;
 }) {
-  const { field, value, setValue } = opts;
+  const { field, value, setValue, placeholder } = opts;
   if (field.type === "select") {
     return (
       <select
@@ -360,7 +461,7 @@ function renderStyleField<K extends AllStyleKey>(opts: {
         <input
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder={field.placeholder}
+          placeholder={placeholder ?? field.placeholder}
           className="compact-input"
         />
       </div>
@@ -370,7 +471,7 @@ function renderStyleField<K extends AllStyleKey>(opts: {
     <input
       value={value}
       onChange={(event) => setValue(event.target.value)}
-      placeholder={field.placeholder}
+      placeholder={placeholder ?? field.placeholder}
       className="compact-input"
     />
   );
@@ -387,7 +488,21 @@ export function StyleTab() {
   }
 
   const primitiveList = walkPrimitives(buildPreviewTreeForBlock(block));
-  const selectedPaths = builder.state.selectedPrimitivePaths;
+  const selectedTargets = builder.state.selectedPrimitivePaths
+    .map((target) => decodePrimitiveTarget(target))
+    .filter((target) => target.blockId.length > 0);
+  const selectedPaths = selectedTargets
+    .filter((target) => target.blockId === block.id)
+    .map((target) => target.primitivePath);
+  const selectedSectionBlockIds =
+    builder.state.selectedBlockIds.length > 0
+      ? builder.state.selectedBlockIds
+      : block
+        ? [block.id]
+        : [];
+  const selectedSectionBlocks = selectedSectionBlockIds
+    .map((blockId) => builder.selectedPage.blocks.find((entry) => entry.id === blockId))
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
   const selectedPath = selectedPaths[selectedPaths.length - 1] ?? null;
   const selectedPrimitive = selectedPath
     ? primitiveList.find((entry) => entry.path === selectedPath)
@@ -415,11 +530,19 @@ export function StyleTab() {
       <section className="inspector-card-item">
         <h4>Target</h4>
         <label className="inspector-field compact">
-          <span>Element</span>
+          <span>
+            Element
+            {!selectedPrimitive && selectedSectionBlocks.length > 1
+              ? ` (${selectedSectionBlocks.length} sections selected)`
+              : ""}
+          </span>
           <select
             value={selectedPrimitive?.path ?? ""}
             onChange={(event) =>
-              builder.selectPrimitivePath(event.target.value ? event.target.value : null)
+              builder.selectPrimitiveTarget(
+                block.id,
+                event.target.value ? event.target.value : null
+              )
             }
           >
             <option value="">Section</option>
@@ -473,26 +596,52 @@ export function StyleTab() {
                 <div className="inspector-card-grid">
                   {group.fields.map((field) => {
                     if (selectedPrimitive) {
-                      const valuesForSelection = selectedPaths.map((path) =>
-                        String(
-                          block.styleOverrides.primitiveStyles?.[path]?.[
+                      const primitiveSelectionTargets =
+                        selectedTargets.length > 0
+                          ? selectedTargets
+                          : selectedPaths.map((path) => ({
+                              blockId: block.id,
+                              primitivePath: path,
+                            }));
+                      const valuesForSelection = primitiveSelectionTargets.map((target) => {
+                        const targetBlock = builder.selectedPage.blocks.find(
+                          (entry) => entry.id === target.blockId
+                        );
+                        return String(
+                          targetBlock?.styleOverrides.primitiveStyles?.[target.primitivePath]?.[
                             field.key as PrimitiveStyleKey
                           ] ?? ""
-                        )
-                      );
+                        );
+                      });
                       const firstValue = valuesForSelection[0] ?? "";
                       const value = valuesForSelection.every((entry) => entry === firstValue)
                         ? firstValue
                         : "";
+                      const placeholderValues = primitiveSelectionTargets.map((target) => {
+                        const element = findPrimitiveElement(target.blockId, target.primitivePath);
+                        if (!element) {
+                          return "";
+                        }
+                        return readComputedStyleValue(element, field.key as PrimitiveStyleKey);
+                      });
+                      const placeholder =
+                        placeholderValues.length > 0 &&
+                        placeholderValues.every((entry) => entry === placeholderValues[0])
+                          ? placeholderValues[0]
+                          : "Mixed values";
+                      const targetIds = primitiveSelectionTargets.map((target) =>
+                        encodePrimitiveTarget(target.blockId, target.primitivePath)
+                      );
                       return (
                         <label key={field.key} className="inspector-field compact">
                           <span>{field.label}</span>
                           {renderStyleField({
                             field,
                             value,
+                            placeholder,
                             setValue: (next) =>
-                              builder.setPrimitiveStyleForPaths(
-                                selectedPaths,
+                              builder.setPrimitiveStyleForTargets(
+                                targetIds,
                                 field.key as PrimitiveStyleKey,
                                 next
                               ),
@@ -502,14 +651,44 @@ export function StyleTab() {
                     }
 
                     const sectionField = field.key as SectionStyleKey;
-                    const value = String(block.styleOverrides[sectionField] ?? "");
+                    const sectionValues = selectedSectionBlocks.map((entry) =>
+                      String(entry.styleOverrides[sectionField] ?? "")
+                    );
+                    const firstValue = sectionValues[0] ?? "";
+                    const value = sectionValues.every((entry) => entry === firstValue)
+                      ? firstValue
+                      : "";
+                    const placeholderValues = selectedSectionBlockIds.map((blockId) => {
+                      const element = findBlockElement(blockId);
+                      if (!element) {
+                        return "";
+                      }
+                      if (sectionField === "backgroundImage") {
+                        return window.getComputedStyle(element).backgroundImage;
+                      }
+                      return readComputedStyleValue(
+                        element,
+                        sectionField as BaseSectionStyleKey | PrimitiveStyleKey
+                      );
+                    });
+                    const placeholder =
+                      placeholderValues.length > 0 &&
+                      placeholderValues.every((entry) => entry === placeholderValues[0])
+                        ? placeholderValues[0]
+                        : "Mixed values";
                     return (
                       <label key={field.key} className="inspector-field compact">
                         <span>{field.label}</span>
                         {renderStyleField({
                           field,
                           value,
-                          setValue: (next) => builder.setBlockStyle(sectionField, next),
+                          placeholder,
+                          setValue: (next) =>
+                            builder.setBlockStyleForBlocks(
+                              selectedSectionBlockIds,
+                              sectionField,
+                              next
+                            ),
                         })}
                       </label>
                     );

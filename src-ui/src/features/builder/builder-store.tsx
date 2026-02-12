@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useRef, type ReactNode, useState 
 import { BLOCK_CATALOG } from "./catalog";
 import { FOCUS_INSPECTOR_EVENT } from "./events";
 import { loadBuilderProject, saveBuilderProject, type BuilderProjectDoc } from "./persistence";
+import { decodePrimitiveTarget, encodePrimitiveTarget } from "./primitive-target";
 import type { BlockType, BuilderPage, BuilderState } from "./types";
 
 type BuilderContextValue = {
@@ -17,7 +18,12 @@ type BuilderContextValue = {
   duplicatePage: () => void;
   renameRoute: (nextRoute: string) => void;
   deletePage: () => void;
-  selectBlock: (blockId: string | null) => void;
+  selectBlock: (blockId: string | null, options?: { multi?: boolean }) => void;
+  selectPrimitiveTarget: (
+    blockId: string,
+    path: string | null,
+    options?: { multi?: boolean }
+  ) => void;
   selectPrimitivePath: (path: string | null, options?: { multi?: boolean }) => void;
   addBlock: (type: BlockType) => void;
   insertBlock: (type: BlockType, index: number) => void;
@@ -52,6 +58,29 @@ type BuilderContextValue = {
   ) => void;
   setBlockStyleForBlock: (
     blockId: string,
+    key:
+      | "marginTop"
+      | "marginRight"
+      | "marginBottom"
+      | "marginLeft"
+      | "paddingTop"
+      | "paddingRight"
+      | "paddingBottom"
+      | "paddingLeft"
+      | "borderWidth"
+      | "borderStyle"
+      | "borderColor"
+      | "borderRadius"
+      | "backgroundColor"
+      | "backgroundImage"
+      | "textColor"
+      | "fontSize"
+      | "translateX"
+      | "translateY",
+    value: string
+  ) => void;
+  setBlockStyleForBlocks: (
+    blockIds: string[],
     key:
       | "marginTop"
       | "marginRight"
@@ -127,6 +156,33 @@ type BuilderContextValue = {
       | "translateY",
     value: string
   ) => void;
+  setPrimitiveStyleForTargets: (
+    targets: string[],
+    key:
+      | "marginTop"
+      | "marginRight"
+      | "marginBottom"
+      | "marginLeft"
+      | "paddingTop"
+      | "paddingRight"
+      | "paddingBottom"
+      | "paddingLeft"
+      | "borderWidth"
+      | "borderStyle"
+      | "borderColor"
+      | "borderRadius"
+      | "backgroundColor"
+      | "textColor"
+      | "fontSize"
+      | "fontWeight"
+      | "lineHeight"
+      | "textAlign"
+      | "width"
+      | "height"
+      | "translateX"
+      | "translateY",
+    value: string
+  ) => void;
   setPageSeo: (key: "title" | "description", value: string) => void;
   beginStyleDragSession: () => void;
   endStyleDragSession: () => void;
@@ -150,6 +206,7 @@ function buildDefaultState(): BuilderState {
     ],
     selectedPageId: "page-home",
     selectedBlockId: null,
+    selectedBlockIds: [],
     selectedPrimitivePaths: [],
     dirty: false,
     lastSavedAt: new Date().toISOString(),
@@ -166,6 +223,7 @@ function stateFromDocument(document: BuilderProjectDoc): BuilderState {
     pages,
     selectedPageId,
     selectedBlockId: null,
+    selectedBlockIds: [],
     selectedPrimitivePaths: [],
     dirty: false,
     lastSavedAt: new Date().toISOString(),
@@ -494,6 +552,7 @@ export function BuilderProvider({
         ...prev,
         selectedPageId: pageId,
         selectedBlockId: null,
+        selectedBlockIds: [],
         selectedPrimitivePaths: [],
       }));
     },
@@ -520,6 +579,7 @@ export function BuilderProvider({
           pages: [...prev.pages, nextPage],
           selectedPageId: nextPage.id,
           selectedBlockId: null,
+          selectedBlockIds: [],
           selectedPrimitivePaths: [],
           routeValidationError: null,
         };
@@ -543,6 +603,7 @@ export function BuilderProvider({
           pages: [...prev.pages, duplicated],
           selectedPageId: duplicated.id,
           selectedBlockId: null,
+          selectedBlockIds: [],
           selectedPrimitivePaths: [],
         };
       });
@@ -582,17 +643,41 @@ export function BuilderProvider({
           pages: remaining,
           selectedPageId: remaining[0]?.id ?? prev.selectedPageId,
           selectedBlockId: null,
+          selectedBlockIds: [],
           selectedPrimitivePaths: [],
         };
       });
     },
-    selectBlock: (blockId) => {
-      setState((prev) => ({
-        ...prev,
-        selectedBlockId: blockId,
-        selectedPrimitivePaths:
-          !blockId || prev.selectedBlockId !== blockId ? [] : prev.selectedPrimitivePaths,
-      }));
+    selectBlock: (blockId, options) => {
+      setState((prev) => {
+        if (!blockId) {
+          return {
+            ...prev,
+            selectedBlockId: null,
+            selectedBlockIds: [],
+            selectedPrimitivePaths: [],
+          };
+        }
+        if (options?.multi) {
+          const exists = prev.selectedBlockIds.includes(blockId);
+          const selectedBlockIds = exists
+            ? prev.selectedBlockIds.filter((entry) => entry !== blockId)
+            : [...prev.selectedBlockIds, blockId];
+          return {
+            ...prev,
+            selectedBlockId: selectedBlockIds[selectedBlockIds.length - 1] ?? null,
+            selectedBlockIds,
+            selectedPrimitivePaths: [],
+          };
+        }
+        return {
+          ...prev,
+          selectedBlockId: blockId,
+          selectedBlockIds: [blockId],
+          selectedPrimitivePaths:
+            prev.selectedBlockId !== blockId ? [] : prev.selectedPrimitivePaths,
+        };
+      });
       if (blockId) {
         window.dispatchEvent(new CustomEvent(FOCUS_INSPECTOR_EVENT));
       }
@@ -614,6 +699,40 @@ export function BuilderProvider({
         return { ...prev, selectedPrimitivePaths: [path] };
       });
     },
+    selectPrimitiveTarget: (blockId, path, options) => {
+      setState((prev) => {
+        if (!path) {
+          return { ...prev, selectedPrimitivePaths: [] };
+        }
+        const target = encodePrimitiveTarget(blockId, path);
+        if (options?.multi) {
+          const exists = prev.selectedPrimitivePaths.includes(target);
+          const selectedPrimitivePaths = exists
+            ? prev.selectedPrimitivePaths.filter((entry) => entry !== target)
+            : [...prev.selectedPrimitivePaths, target];
+          const selectedBlockIds = Array.from(
+            new Set(
+              selectedPrimitivePaths
+                .map((entry) => decodePrimitiveTarget(entry).blockId)
+                .filter((entry) => entry.length > 0)
+            )
+          );
+          return {
+            ...prev,
+            selectedBlockId: selectedBlockIds[selectedBlockIds.length - 1] ?? null,
+            selectedBlockIds,
+            selectedPrimitivePaths,
+          };
+        }
+        return {
+          ...prev,
+          selectedBlockId: blockId,
+          selectedBlockIds: [blockId],
+          selectedPrimitivePaths: [target],
+        };
+      });
+      window.dispatchEvent(new CustomEvent(FOCUS_INSPECTOR_EVENT));
+    },
     addBlock: (type) => {
       const newBlock = createBlock(type);
       if (!newBlock) {
@@ -626,6 +745,7 @@ export function BuilderProvider({
             page.id === prev.selectedPageId ? { ...page, blocks: [...page.blocks, newBlock] } : page
           ),
           selectedBlockId: newBlock.id,
+          selectedBlockIds: [newBlock.id],
           selectedPrimitivePaths: [],
         };
       });
@@ -647,6 +767,7 @@ export function BuilderProvider({
           return { ...page, blocks };
         }),
         selectedBlockId: newBlock.id,
+        selectedBlockIds: [newBlock.id],
         selectedPrimitivePaths: [],
       }));
     },
@@ -694,6 +815,7 @@ export function BuilderProvider({
           return { ...page, blocks };
         }),
         selectedBlockId: blockId,
+        selectedBlockIds: [blockId],
         selectedPrimitivePaths: [],
       }));
     },
@@ -712,6 +834,7 @@ export function BuilderProvider({
             : page
         ),
         selectedBlockId: null,
+        selectedBlockIds: [],
         selectedPrimitivePaths: [],
       }));
     },
@@ -751,6 +874,7 @@ export function BuilderProvider({
             : page
         ),
         selectedBlockId: blockId,
+        selectedBlockIds: [blockId],
       }));
     },
     setBlockVisibility: (visibility) => {
@@ -846,6 +970,42 @@ export function BuilderProvider({
             : page
         ),
         selectedBlockId: blockId,
+        selectedBlockIds: [blockId],
+      });
+      if (styleDragSessionRef.current) {
+        commitWithoutHistory(applyStyle);
+      } else {
+        commit(applyStyle);
+      }
+    },
+    setBlockStyleForBlocks: (blockIds, key, value) => {
+      if (blockIds.length === 0) {
+        return;
+      }
+      const selectedSet = new Set(blockIds);
+      const applyStyle = (prev: BuilderState) => ({
+        ...prev,
+        pages: prev.pages.map((page) =>
+          page.id === prev.selectedPageId
+            ? {
+                ...page,
+                blocks: page.blocks.map((block) => {
+                  if (!selectedSet.has(block.id)) {
+                    return block;
+                  }
+                  const styleOverrides = { ...block.styleOverrides };
+                  if (!value.trim()) {
+                    delete styleOverrides[key];
+                  } else {
+                    styleOverrides[key] = value;
+                  }
+                  return { ...block, styleOverrides };
+                }),
+              }
+            : page
+        ),
+        selectedBlockId: blockIds[blockIds.length - 1] ?? prev.selectedBlockId,
+        selectedBlockIds: blockIds,
       });
       if (styleDragSessionRef.current) {
         commitWithoutHistory(applyStyle);
@@ -910,6 +1070,67 @@ export function BuilderProvider({
                 ...page,
                 blocks: page.blocks.map((block) => {
                   if (block.id !== prev.selectedBlockId) {
+                    return block;
+                  }
+                  const primitiveStyles = { ...(block.styleOverrides.primitiveStyles ?? {}) };
+                  primitivePaths.forEach((primitivePath) => {
+                    const current = { ...(primitiveStyles[primitivePath] ?? {}) };
+                    if (!value.trim()) {
+                      delete current[key];
+                    } else {
+                      current[key] = value;
+                    }
+                    if (Object.keys(current).length === 0) {
+                      delete primitiveStyles[primitivePath];
+                    } else {
+                      primitiveStyles[primitivePath] = current;
+                    }
+                  });
+                  return {
+                    ...block,
+                    styleOverrides: {
+                      ...block.styleOverrides,
+                      primitiveStyles:
+                        Object.keys(primitiveStyles).length > 0 ? primitiveStyles : undefined,
+                    },
+                  };
+                }),
+              }
+            : page
+        ),
+      });
+      if (styleDragSessionRef.current) {
+        commitWithoutHistory(applyStyle);
+      } else {
+        commit(applyStyle);
+      }
+    },
+    setPrimitiveStyleForTargets: (targets, key, value) => {
+      if (targets.length === 0) {
+        return;
+      }
+      const pathsByBlock = new Map<string, string[]>();
+      targets.forEach((target) => {
+        const decoded = decodePrimitiveTarget(target);
+        if (!decoded.blockId || !decoded.primitivePath) {
+          return;
+        }
+        const existing = pathsByBlock.get(decoded.blockId) ?? [];
+        existing.push(decoded.primitivePath);
+        pathsByBlock.set(decoded.blockId, existing);
+      });
+      if (pathsByBlock.size === 0) {
+        return;
+      }
+      const applyStyle = (prev: BuilderState) => ({
+        ...prev,
+        pages: prev.pages.map((page) =>
+          page.id === prev.selectedPageId
+            ? {
+                ...page,
+                blocks: page.blocks.map((block) => {
+                  const primitivePaths = pathsByBlock.get(block.id);
+                  if (!primitivePaths || primitivePaths.length === 0) {
                     return block;
                   }
                   const primitiveStyles = { ...(block.styleOverrides.primitiveStyles ?? {}) };
