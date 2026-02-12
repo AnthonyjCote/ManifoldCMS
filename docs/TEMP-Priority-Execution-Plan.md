@@ -17,13 +17,12 @@ Turn the current scattered priority notes into an executable backlog with sequen
 
 ### P0.1 Drag/Drop UX Clarity
 
-- [ ] Add full-canvas drop state for section insertion with strong visual target indicators.
-- [ ] Add insertion marker between existing sections (line + shaded zone).
-- [ ] Add premium drag-ghost while dragging from block library (show block card/thumbnail + plus badge).
-- [ ] Replace basic cursor-only drag feedback with explicit grabbed-state UI.
-- [ ] Keep success feedback visual-only in canvas (no toast requirement).
-- [ ] Add empty-page onboarding drop panel with stronger CTA.
-- [ ] Improve empty-page CTA visual styling to better match premium UI quality.
+- [x] Add full-canvas drop state for section insertion with strong visual target indicators.
+- [x] Add insertion marker between existing sections (line + shaded zone).
+- [x] Add premium drag-ghost while dragging from block library (show block card/thumbnail + plus badge).
+- [x] Replace basic cursor-only drag feedback with explicit grabbed-state UI.
+- [x] Keep success feedback visual-only in canvas (no toast requirement).
+- [x] Improve empty-page CTA visual styling to better match premium UI quality.
 
 Definition of done:
 
@@ -34,13 +33,13 @@ Definition of done:
 
 ### P0.2 Master Style System Refactor
 
-- [ ] Build one master style field registry (single source of truth).
-- [ ] Default every primitive to all available CSS fields from the master registry.
-- [ ] Add per-primitive exclusion lists (not include lists) for non-relevant fields.
-- [ ] Add collapsible categories in Style tab (Layout, Spacing, Border, Background, Typography, Effects, Transform).
-- [ ] Add sticky search/filter field at top of Style tab to quickly locate style controls.
-- [ ] Ensure all edits are undo/redo compatible.
-- [ ] Ensure all style controls render with current dark UI style.
+- [x] Build one master style field registry (single source of truth).
+- [x] Default every primitive to all available CSS fields from the master registry.
+- [x] Add per-primitive exclusion lists (not include lists) for non-relevant fields.
+- [x] Add collapsible categories in Style tab (Layout, Spacing, Border, Background, Typography, Effects, Transform).
+- [x] Add sticky search/filter field at top of Style tab to quickly locate style controls.
+- [x] Ensure all edits are undo/redo compatible.
+- [x] Ensure all style controls render with current dark UI style.
 
 Definition of done:
 

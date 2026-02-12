@@ -50,6 +50,29 @@ type BuilderContextValue = {
       | "translateY",
     value: string
   ) => void;
+  setBlockStyleForBlock: (
+    blockId: string,
+    key:
+      | "marginTop"
+      | "marginRight"
+      | "marginBottom"
+      | "marginLeft"
+      | "paddingTop"
+      | "paddingRight"
+      | "paddingBottom"
+      | "paddingLeft"
+      | "borderWidth"
+      | "borderStyle"
+      | "borderColor"
+      | "borderRadius"
+      | "backgroundColor"
+      | "backgroundImage"
+      | "textColor"
+      | "fontSize"
+      | "translateX"
+      | "translateY",
+    value: string
+  ) => void;
   setPrimitiveStyle: (
     primitivePath: string,
     key:
@@ -793,6 +816,36 @@ export function BuilderProvider({
               }
             : page
         ),
+      });
+      if (styleDragSessionRef.current) {
+        commitWithoutHistory(applyStyle);
+      } else {
+        commit(applyStyle);
+      }
+    },
+    setBlockStyleForBlock: (blockId, key, value) => {
+      const applyStyle = (prev: BuilderState) => ({
+        ...prev,
+        pages: prev.pages.map((page) =>
+          page.id === prev.selectedPageId
+            ? {
+                ...page,
+                blocks: page.blocks.map((block) => {
+                  if (block.id !== blockId) {
+                    return block;
+                  }
+                  const styleOverrides = { ...block.styleOverrides };
+                  if (!value.trim()) {
+                    delete styleOverrides[key];
+                  } else {
+                    styleOverrides[key] = value;
+                  }
+                  return { ...block, styleOverrides };
+                }),
+              }
+            : page
+        ),
+        selectedBlockId: blockId,
       });
       if (styleDragSessionRef.current) {
         commitWithoutHistory(applyStyle);

@@ -17,6 +17,7 @@ import {
   clearBuilderDragPayload,
   readBuilderDragPayload,
 } from "../../features/builder/dnd";
+import { blockDefinitionById } from "../../features/builder/catalog";
 import { useBuilderStore } from "../../features/builder/builder-store";
 import { useActiveProjectSession } from "../../features/project-launcher/session";
 import { PreviewBlock } from "./components/PreviewBlock";
@@ -234,6 +235,16 @@ function isEditableTarget(target: EventTarget | null): boolean {
   return tagName === "input" || tagName === "textarea" || tagName === "select";
 }
 
+const DEBUG_SECTION_DRAG = true;
+
+function logSectionDrag(stage: string, payload: Record<string, unknown>) {
+  if (!DEBUG_SECTION_DRAG) {
+    return;
+  }
+  // Temporary diagnostics for section-handle regression.
+  console.debug("[section-drag]", stage, payload);
+}
+
 type BuilderBlock = ReturnType<typeof useBuilderStore>["selectedPage"]["blocks"][number];
 
 function sectionSpacingFromOverrides(block: BuilderBlock) {
@@ -269,8 +280,14 @@ export function BuilderView() {
   const devicePopoverRef = useRef<HTMLDivElement | null>(null);
   const routePopoverRef = useRef<HTMLDivElement | null>(null);
   const sectionSpacingDragRef = useRef<{
+    handle: SectionSpacingHandle | "transform";
+    startCoord: number;
+    startValue: number;
     onPointerMove: (event: PointerEvent) => void;
     onPointerUp: () => void;
+    onPointerCancel: () => void;
+    onMouseMove: (event: MouseEvent) => void;
+    onMouseUp: () => void;
   } | null>(null);
   const [activeSectionSpacingDrag, setActiveSectionSpacingDrag] = useState<{
     blockId: string;
@@ -282,6 +299,7 @@ export function BuilderView() {
     x: number;
     y: number;
   } | null>(null);
+  const [activePointerDrag, setActivePointerDrag] = useState<BuilderPointerDragDetail | null>(null);
 
   useEffect(() => {
     const onWindowPointerDown = (event: MouseEvent) => {
@@ -346,12 +364,23 @@ export function BuilderView() {
       if (!sectionSpacingDragRef.current) {
         return;
       }
-      window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
-      window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+      document.removeEventListener(
+        "pointermove",
+        sectionSpacingDragRef.current.onPointerMove,
+        true
+      );
+      document.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp, true);
+      document.removeEventListener(
+        "pointercancel",
+        sectionSpacingDragRef.current.onPointerCancel,
+        true
+      );
+      document.removeEventListener("mousemove", sectionSpacingDragRef.current.onMouseMove, true);
+      document.removeEventListener("mouseup", sectionSpacingDragRef.current.onMouseUp, true);
       sectionSpacingDragRef.current = null;
       builder.endStyleDragSession();
     };
-  }, [builder]);
+  }, []);
 
   const applyRouteDraft = () => {
     const trimmed = routeDraft.trim();
@@ -407,6 +436,13 @@ export function BuilderView() {
     }
     return `${normalizedBase}${route}`;
   })();
+
+  const draggedCatalogBlock =
+    activePointerDrag?.payload.kind === "catalog"
+      ? blockDefinitionById(activePointerDrag.payload.blockType)
+      : undefined;
+  const isCatalogDragActive = Boolean(draggedCatalogBlock);
+  const isCatalogDragOverPreview = isCatalogDragActive && dropIndex !== null;
 
   const readSectionSpacing = (
     block: (typeof builder.selectedPage.blocks)[number],
@@ -476,8 +512,13 @@ export function BuilderView() {
     }
     event.preventDefault();
     event.stopPropagation();
-    builder.selectBlock(block.id);
-    builder.selectPrimitivePath(null);
+    logSectionDrag("start-spacing", {
+      blockId: block.id,
+      key: handle.key,
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    });
     builder.beginStyleDragSession();
 
     const startCoord = handle.axis === "y" ? event.clientY : event.clientX;
@@ -492,7 +533,15 @@ export function BuilderView() {
       const currentCoord = handle.axis === "y" ? moveEvent.clientY : moveEvent.clientX;
       const delta = (currentCoord - startCoord) * handle.deltaSign;
       const nextValue = normalizeSectionSpacingByKey(handle.key, startValue + delta);
-      builder.setBlockStyle(handle.key, `${nextValue}px`);
+      logSectionDrag("move-spacing", {
+        blockId: block.id,
+        key: handle.key,
+        currentCoord,
+        startCoord,
+        delta,
+        nextValue,
+      });
+      builder.setBlockStyleForBlock(block.id, handle.key, `${nextValue}px`);
       setActiveSectionSpacingDrag({
         blockId: block.id,
         label: handle.label,
@@ -500,26 +549,67 @@ export function BuilderView() {
       });
     };
 
-    const onPointerUp = () => {
+    const cleanup = () => {
       if (!sectionSpacingDragRef.current) {
         return;
       }
-      window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
-      window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+      logSectionDrag("end-spacing", { blockId: block.id, key: handle.key });
+      document.removeEventListener(
+        "pointermove",
+        sectionSpacingDragRef.current.onPointerMove,
+        true
+      );
+      document.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp, true);
+      document.removeEventListener(
+        "pointercancel",
+        sectionSpacingDragRef.current.onPointerCancel,
+        true
+      );
+      document.removeEventListener("mousemove", sectionSpacingDragRef.current.onMouseMove, true);
+      document.removeEventListener("mouseup", sectionSpacingDragRef.current.onMouseUp, true);
       sectionSpacingDragRef.current = null;
       setActiveSectionSpacingDrag(null);
       builder.endStyleDragSession();
     };
+    const onPointerUp = cleanup;
+    const onPointerCancel = cleanup;
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      onPointerMove(moveEvent as unknown as PointerEvent);
+    };
+    const onMouseUp = cleanup;
 
     if (sectionSpacingDragRef.current) {
-      window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
-      window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+      document.removeEventListener(
+        "pointermove",
+        sectionSpacingDragRef.current.onPointerMove,
+        true
+      );
+      document.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp, true);
+      document.removeEventListener(
+        "pointercancel",
+        sectionSpacingDragRef.current.onPointerCancel,
+        true
+      );
+      document.removeEventListener("mousemove", sectionSpacingDragRef.current.onMouseMove, true);
+      document.removeEventListener("mouseup", sectionSpacingDragRef.current.onMouseUp, true);
       builder.endStyleDragSession();
     }
 
-    sectionSpacingDragRef.current = { onPointerMove, onPointerUp };
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
+    sectionSpacingDragRef.current = {
+      handle,
+      startCoord,
+      startValue,
+      onPointerMove,
+      onPointerUp,
+      onPointerCancel,
+      onMouseMove,
+      onMouseUp,
+    };
+    document.addEventListener("pointermove", onPointerMove, true);
+    document.addEventListener("pointerup", onPointerUp, true);
+    document.addEventListener("pointercancel", onPointerCancel, true);
+    document.addEventListener("mousemove", onMouseMove, true);
+    document.addEventListener("mouseup", onMouseUp, true);
   };
 
   const startSectionTransformDrag = (
@@ -532,8 +622,12 @@ export function BuilderView() {
     }
     event.preventDefault();
     event.stopPropagation();
-    builder.selectBlock(block.id);
-    builder.selectPrimitivePath(null);
+    logSectionDrag("start-transform", {
+      blockId: block.id,
+      pointerId: event.pointerId,
+      clientX: event.clientX,
+      clientY: event.clientY,
+    });
     builder.beginStyleDragSession();
 
     const startX = event.clientX;
@@ -546,31 +640,79 @@ export function BuilderView() {
       const deltaY = moveEvent.clientY - startY;
       const nextX = roundPx(initial.x + deltaX);
       const nextY = roundPx(initial.y + deltaY);
-      builder.setBlockStyle("translateX", `${nextX}px`);
-      builder.setBlockStyle("translateY", `${nextY}px`);
+      logSectionDrag("move-transform", {
+        blockId: block.id,
+        deltaX,
+        deltaY,
+        nextX,
+        nextY,
+      });
+      builder.setBlockStyleForBlock(block.id, "translateX", `${nextX}px`);
+      builder.setBlockStyleForBlock(block.id, "translateY", `${nextY}px`);
       setActiveSectionTransformDrag({ blockId: block.id, x: nextX, y: nextY });
     };
 
-    const onPointerUp = () => {
+    const cleanup = () => {
       if (!sectionSpacingDragRef.current) {
         return;
       }
-      window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
-      window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+      logSectionDrag("end-transform", { blockId: block.id });
+      document.removeEventListener(
+        "pointermove",
+        sectionSpacingDragRef.current.onPointerMove,
+        true
+      );
+      document.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp, true);
+      document.removeEventListener(
+        "pointercancel",
+        sectionSpacingDragRef.current.onPointerCancel,
+        true
+      );
+      document.removeEventListener("mousemove", sectionSpacingDragRef.current.onMouseMove, true);
+      document.removeEventListener("mouseup", sectionSpacingDragRef.current.onMouseUp, true);
       sectionSpacingDragRef.current = null;
       setActiveSectionTransformDrag(null);
       builder.endStyleDragSession();
     };
+    const onPointerUp = cleanup;
+    const onPointerCancel = cleanup;
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      onPointerMove(moveEvent as unknown as PointerEvent);
+    };
+    const onMouseUp = cleanup;
 
     if (sectionSpacingDragRef.current) {
-      window.removeEventListener("pointermove", sectionSpacingDragRef.current.onPointerMove);
-      window.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp);
+      document.removeEventListener(
+        "pointermove",
+        sectionSpacingDragRef.current.onPointerMove,
+        true
+      );
+      document.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp, true);
+      document.removeEventListener(
+        "pointercancel",
+        sectionSpacingDragRef.current.onPointerCancel,
+        true
+      );
+      document.removeEventListener("mousemove", sectionSpacingDragRef.current.onMouseMove, true);
+      document.removeEventListener("mouseup", sectionSpacingDragRef.current.onMouseUp, true);
       builder.endStyleDragSession();
     }
 
-    sectionSpacingDragRef.current = { onPointerMove, onPointerUp };
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
+    sectionSpacingDragRef.current = {
+      handle: "transform",
+      startCoord: startX,
+      startValue: initial.x,
+      onPointerMove,
+      onPointerUp,
+      onPointerCancel,
+      onMouseMove,
+      onMouseUp,
+    };
+    document.addEventListener("pointermove", onPointerMove, true);
+    document.addEventListener("pointerup", onPointerUp, true);
+    document.addEventListener("pointercancel", onPointerCancel, true);
+    document.addEventListener("mousemove", onMouseMove, true);
+    document.addEventListener("mouseup", onMouseUp, true);
   };
 
   const resolveDropIndex = (event: DragEvent<HTMLDivElement>): number => {
@@ -681,6 +823,7 @@ export function BuilderView() {
       if (!detail) {
         return;
       }
+      setActivePointerDrag(detail);
       const container = previewPageRef.current;
       if (!container) {
         return;
@@ -704,6 +847,7 @@ export function BuilderView() {
       if (!detail) {
         return;
       }
+      setActivePointerDrag(detail);
       const container = previewPageRef.current;
       if (!container) {
         return;
@@ -729,6 +873,7 @@ export function BuilderView() {
 
     const onWindowDragEnd = () => {
       setDropIndex(null);
+      setActivePointerDrag(null);
       clearBuilderDragPayload();
     };
 
@@ -950,7 +1095,7 @@ export function BuilderView() {
 
               <div
                 ref={previewPageRef}
-                className="site-preview-page"
+                className={`site-preview-page${isCatalogDragActive ? " catalog-dragging" : ""}${isCatalogDragOverPreview ? " catalog-drag-over" : ""}`}
                 onDragOver={handlePreviewDragOver}
                 onDragOverCapture={handlePreviewDragOver}
                 onDragLeave={(event) => {
@@ -962,6 +1107,18 @@ export function BuilderView() {
                 }}
                 onDropCapture={handlePreviewDrop}
               >
+                {isCatalogDragActive ? (
+                  <div className="site-preview-drop-hint-layer">
+                    <div
+                      className={`site-preview-drop-hint${isCatalogDragOverPreview ? " active" : ""}`}
+                    >
+                      <span className="dot" />
+                      {isCatalogDragOverPreview
+                        ? `Release to add ${draggedCatalogBlock?.label ?? "block"}`
+                        : `Drag ${draggedCatalogBlock?.label ?? "block"} into the canvas`}
+                    </div>
+                  </div>
+                ) : null}
                 {builder.selectedPage.blocks.map((block, index) => {
                   const sectionGuide = sectionSpacingFromOverrides(block);
                   return (
@@ -1001,79 +1158,77 @@ export function BuilderView() {
                                 <path d="M8 6h8M8 12h8M8 18h8" />
                               </svg>
                             </button>
-                            {builder.state.selectedPrimitivePaths.length === 0 ? (
+                            <div
+                              className="site-block-spacing-controls"
+                              style={{
+                                transform:
+                                  sectionGuide.translateX !== 0 || sectionGuide.translateY !== 0
+                                    ? `translate(${sectionGuide.translateX}px, ${sectionGuide.translateY}px)`
+                                    : undefined,
+                              }}
+                            >
+                              <div className="site-block-spacing-guide baseline" />
                               <div
-                                className="site-block-spacing-controls"
+                                className="site-block-spacing-guide transform-origin"
                                 style={{
-                                  transform:
-                                    sectionGuide.translateX !== 0 || sectionGuide.translateY !== 0
-                                      ? `translate(${sectionGuide.translateX}px, ${sectionGuide.translateY}px)`
-                                      : undefined,
+                                  transform: `translate(${-sectionGuide.translateX}px, ${-sectionGuide.translateY}px)`,
                                 }}
-                              >
-                                <div className="site-block-spacing-guide baseline" />
-                                <div
-                                  className="site-block-spacing-guide transform-origin"
-                                  style={{
-                                    transform: `translate(${-sectionGuide.translateX}px, ${-sectionGuide.translateY}px)`,
-                                  }}
-                                />
-                                <div
-                                  className="site-block-spacing-guide margin"
-                                  style={{
-                                    top: `${-sectionGuide.marginTop}px`,
-                                    right: `${-sectionGuide.marginRight}px`,
-                                    bottom: `${-sectionGuide.marginBottom}px`,
-                                    left: `${-sectionGuide.marginLeft}px`,
-                                  }}
-                                />
-                                <div
-                                  className="site-block-spacing-guide padding"
-                                  style={{
-                                    top: `${sectionGuide.paddingTop}px`,
-                                    right: `${sectionGuide.paddingRight}px`,
-                                    bottom: `${sectionGuide.paddingBottom}px`,
-                                    left: `${sectionGuide.paddingLeft}px`,
-                                  }}
-                                />
-                                {SECTION_SPACING_HANDLES.map((handle) => (
-                                  <button
-                                    key={`${block.id}-${handle.id}`}
-                                    className={`site-block-spacing-handle ${handle.kind} ${handle.side}`}
-                                    onPointerDown={(event) =>
-                                      startSectionSpacingDrag(event, block, handle)
-                                    }
-                                    title={handle.label}
-                                    aria-label={handle.label}
-                                    type="button"
-                                  />
-                                ))}
+                              />
+                              <div
+                                className="site-block-spacing-guide margin"
+                                style={{
+                                  top: `${-sectionGuide.marginTop}px`,
+                                  right: `${-sectionGuide.marginRight}px`,
+                                  bottom: `${-sectionGuide.marginBottom}px`,
+                                  left: `${-sectionGuide.marginLeft}px`,
+                                }}
+                              />
+                              <div
+                                className="site-block-spacing-guide padding"
+                                style={{
+                                  top: `${sectionGuide.paddingTop}px`,
+                                  right: `${sectionGuide.paddingRight}px`,
+                                  bottom: `${sectionGuide.paddingBottom}px`,
+                                  left: `${sectionGuide.paddingLeft}px`,
+                                }}
+                              />
+                              {SECTION_SPACING_HANDLES.map((handle) => (
                                 <button
-                                  className="site-block-transform-handle"
-                                  onPointerDown={(event) => startSectionTransformDrag(event, block)}
-                                  title="Drag to offset section X and Y"
-                                  aria-label="Drag to offset section X and Y"
+                                  key={`${block.id}-${handle.id}`}
+                                  className={`site-block-spacing-handle ${handle.kind} ${handle.side}`}
+                                  onPointerDown={(event) =>
+                                    startSectionSpacingDrag(event, block, handle)
+                                  }
+                                  title={handle.label}
+                                  aria-label={handle.label}
                                   type="button"
-                                >
-                                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M12 4v16M4 12h16M7 7l-3 5 3 5M17 7l3 5-3 5" />
-                                  </svg>
-                                </button>
-                                {activeSectionSpacingDrag?.blockId === block.id ? (
-                                  <div className="site-block-spacing-readout">
-                                    {activeSectionSpacingDrag.label}:{" "}
-                                    {activeSectionSpacingDrag.value}
-                                    px
-                                  </div>
-                                ) : null}
-                                {activeSectionTransformDrag?.blockId === block.id ? (
-                                  <div className="site-block-transform-readout">
-                                    X: {activeSectionTransformDrag.x}px Y:{" "}
-                                    {activeSectionTransformDrag.y}px
-                                  </div>
-                                ) : null}
-                              </div>
-                            ) : null}
+                                />
+                              ))}
+                              <button
+                                className="site-block-transform-handle"
+                                onPointerDown={(event) => startSectionTransformDrag(event, block)}
+                                title="Drag to offset section X and Y"
+                                aria-label="Drag to offset section X and Y"
+                                type="button"
+                              >
+                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                  <path d="M12 4v16M4 12h16M7 7l-3 5 3 5M17 7l3 5-3 5" />
+                                </svg>
+                              </button>
+                              {activeSectionSpacingDrag?.blockId === block.id ? (
+                                <div className="site-block-spacing-readout">
+                                  {activeSectionSpacingDrag.label}: {activeSectionSpacingDrag.value}
+                                  px
+                                </div>
+                              ) : null}
+                              {activeSectionTransformDrag?.blockId === block.id ? (
+                                <div className="site-block-transform-readout">
+                                  X: {activeSectionTransformDrag.x}px Y:{" "}
+                                  {activeSectionTransformDrag.y}
+                                  px
+                                </div>
+                              ) : null}
+                            </div>
                           </>
                         ) : null}
                         <div className="site-block-render">
@@ -1118,7 +1273,15 @@ export function BuilderView() {
                     onDragOver={handlePreviewDragOver}
                     onDrop={handlePreviewDrop}
                   >
-                    Drag a block from the right drawer to start building this page.
+                    <div className="site-preview-empty-icon" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <path d="M4 6h16v4H4zM7 14h10M12 11v10" />
+                      </svg>
+                    </div>
+                    <div className="site-preview-empty-title">Start building this page</div>
+                    <div className="site-preview-empty-copy">
+                      Drag a block card from the Blocks drawer and drop it anywhere in this canvas.
+                    </div>
                   </div>
                 ) : null}
               </div>
@@ -1126,6 +1289,27 @@ export function BuilderView() {
           </div>
         </div>
       </div>
+      {draggedCatalogBlock && activePointerDrag ? (
+        <div
+          className="builder-drag-ghost"
+          style={{
+            left: `${activePointerDrag.clientX + 14}px`,
+            top: `${activePointerDrag.clientY + 14}px`,
+          }}
+          aria-hidden="true"
+        >
+          <span className="builder-drag-ghost-plus">+</span>
+          <span className="builder-drag-ghost-thumb">
+            <span />
+            <span />
+            <span />
+          </span>
+          <span className="builder-drag-ghost-meta">
+            <strong>{draggedCatalogBlock.label}</strong>
+            <small>{draggedCatalogBlock.category}</small>
+          </span>
+        </div>
+      ) : null}
 
       {newPageModalOpen ? (
         <div className="modal-scrim" role="presentation">

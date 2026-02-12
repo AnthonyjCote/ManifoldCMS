@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 import { buildPreviewTreeForBlock } from "../../../features/builder/catalog";
 import { useBuilderStore } from "../../../features/builder/builder-store";
 import type { PrimitiveNode, PrimitiveType } from "../../../features/builder/types";
@@ -31,10 +33,24 @@ type PrimitiveStyleKey =
   | "width"
   | "height";
 
-type StyleField<K extends string> = {
+type AllStyleKey = SectionStyleKey | PrimitiveStyleKey;
+
+type StyleCategory =
+  | "Layout"
+  | "Spacing"
+  | "Border"
+  | "Background"
+  | "Typography"
+  | "Effects"
+  | "Transform";
+
+type StyleFieldType = "text" | "color" | "select";
+
+type MasterStyleField<K extends AllStyleKey> = {
   key: K;
   label: string;
-  type?: "text" | "color" | "select";
+  category: StyleCategory;
+  type?: StyleFieldType;
   options?: string[];
   placeholder?: string;
 };
@@ -45,228 +61,226 @@ type PrimitiveEntry = {
   label: string;
 };
 
-const UNIVERSAL_PRIMITIVE_OFFSET_GROUP: {
-  heading: string;
-  fields: StyleField<PrimitiveStyleKey>[];
-} = {
-  heading: "Offset",
-  fields: [
-    { key: "translateX", label: "Offset X", placeholder: "0px" },
-    { key: "translateY", label: "Offset Y", placeholder: "0px" },
-  ],
+type StyleGroup<K extends AllStyleKey> = {
+  category: StyleCategory;
+  fields: MasterStyleField<K>[];
 };
 
-const UNIVERSAL_PRIMITIVE_SPACING_FIELDS: StyleField<PrimitiveStyleKey>[] = [
-  { key: "marginTop", label: "Margin Top", placeholder: "0px" },
-  { key: "marginRight", label: "Margin Right", placeholder: "0px" },
-  { key: "marginBottom", label: "Margin Bottom", placeholder: "0px" },
-  { key: "marginLeft", label: "Margin Left", placeholder: "0px" },
-  { key: "paddingTop", label: "Padding Top", placeholder: "0px" },
-  { key: "paddingRight", label: "Padding Right", placeholder: "0px" },
-  { key: "paddingBottom", label: "Padding Bottom", placeholder: "0px" },
-  { key: "paddingLeft", label: "Padding Left", placeholder: "0px" },
+const CATEGORY_ORDER: StyleCategory[] = [
+  "Layout",
+  "Spacing",
+  "Border",
+  "Background",
+  "Typography",
+  "Effects",
+  "Transform",
 ];
 
-const SECTION_STYLE_FIELDS: Array<{ heading: string; fields: StyleField<SectionStyleKey>[] }> = [
-  {
-    heading: "Spacing",
-    fields: [
-      { key: "marginTop", label: "Margin Top", placeholder: "0px" },
-      { key: "marginRight", label: "Margin Right", placeholder: "0px" },
-      { key: "marginBottom", label: "Margin Bottom", placeholder: "0px" },
-      { key: "marginLeft", label: "Margin Left", placeholder: "0px" },
-      { key: "paddingTop", label: "Padding Top", placeholder: "64px" },
-      { key: "paddingRight", label: "Padding Right", placeholder: "48px" },
-      { key: "paddingBottom", label: "Padding Bottom", placeholder: "64px" },
-      { key: "paddingLeft", label: "Padding Left", placeholder: "48px" },
-      { key: "translateX", label: "Offset X", placeholder: "0px" },
-      { key: "translateY", label: "Offset Y", placeholder: "0px" },
-    ],
+const MASTER_STYLE_FIELD_REGISTRY: Record<AllStyleKey, MasterStyleField<AllStyleKey>> = {
+  width: {
+    key: "width",
+    label: "Width",
+    category: "Layout",
+    placeholder: "auto",
   },
-  {
-    heading: "Border",
-    fields: [
-      { key: "borderWidth", label: "Border Width", placeholder: "1px" },
-      {
-        key: "borderStyle",
-        label: "Border Style",
-        type: "select",
-        options: ["solid", "dashed", "dotted", "double", "none"],
-      },
-      { key: "borderColor", label: "Border Color", type: "color", placeholder: "#dce3f2" },
-      { key: "borderRadius", label: "Border Radius", placeholder: "12px" },
-    ],
+  height: {
+    key: "height",
+    label: "Height",
+    category: "Layout",
+    placeholder: "auto",
   },
-  {
-    heading: "Typography & Surface",
-    fields: [
-      { key: "backgroundColor", label: "Background", type: "color", placeholder: "#ffffff" },
-      { key: "backgroundImage", label: "Background Image URL", placeholder: "https://..." },
-      { key: "textColor", label: "Text Color", type: "color", placeholder: "#11161f" },
-      { key: "fontSize", label: "Base Font Size", placeholder: "16px" },
-    ],
+  marginTop: {
+    key: "marginTop",
+    label: "Margin Top",
+    category: "Spacing",
+    placeholder: "0px",
   },
+  marginRight: {
+    key: "marginRight",
+    label: "Margin Right",
+    category: "Spacing",
+    placeholder: "0px",
+  },
+  marginBottom: {
+    key: "marginBottom",
+    label: "Margin Bottom",
+    category: "Spacing",
+    placeholder: "0px",
+  },
+  marginLeft: {
+    key: "marginLeft",
+    label: "Margin Left",
+    category: "Spacing",
+    placeholder: "0px",
+  },
+  paddingTop: {
+    key: "paddingTop",
+    label: "Padding Top",
+    category: "Spacing",
+    placeholder: "0px",
+  },
+  paddingRight: {
+    key: "paddingRight",
+    label: "Padding Right",
+    category: "Spacing",
+    placeholder: "0px",
+  },
+  paddingBottom: {
+    key: "paddingBottom",
+    label: "Padding Bottom",
+    category: "Spacing",
+    placeholder: "0px",
+  },
+  paddingLeft: {
+    key: "paddingLeft",
+    label: "Padding Left",
+    category: "Spacing",
+    placeholder: "0px",
+  },
+  borderWidth: {
+    key: "borderWidth",
+    label: "Border Width",
+    category: "Border",
+    placeholder: "1px",
+  },
+  borderStyle: {
+    key: "borderStyle",
+    label: "Border Style",
+    category: "Border",
+    type: "select",
+    options: ["solid", "dashed", "dotted", "double", "none"],
+  },
+  borderColor: {
+    key: "borderColor",
+    label: "Border Color",
+    category: "Border",
+    type: "color",
+    placeholder: "#dce3f2",
+  },
+  borderRadius: {
+    key: "borderRadius",
+    label: "Border Radius",
+    category: "Border",
+    placeholder: "12px",
+  },
+  backgroundColor: {
+    key: "backgroundColor",
+    label: "Background",
+    category: "Background",
+    type: "color",
+    placeholder: "#ffffff",
+  },
+  backgroundImage: {
+    key: "backgroundImage",
+    label: "Background Image URL",
+    category: "Background",
+    placeholder: "https://...",
+  },
+  textColor: {
+    key: "textColor",
+    label: "Text Color",
+    category: "Typography",
+    type: "color",
+    placeholder: "#11161f",
+  },
+  fontSize: {
+    key: "fontSize",
+    label: "Font Size",
+    category: "Typography",
+    placeholder: "16px",
+  },
+  fontWeight: {
+    key: "fontWeight",
+    label: "Font Weight",
+    category: "Typography",
+    placeholder: "400",
+  },
+  lineHeight: {
+    key: "lineHeight",
+    label: "Line Height",
+    category: "Typography",
+    placeholder: "1.5",
+  },
+  textAlign: {
+    key: "textAlign",
+    label: "Text Align",
+    category: "Typography",
+    type: "select",
+    options: ["left", "center", "right", "justify"],
+  },
+  translateX: {
+    key: "translateX",
+    label: "Offset X",
+    category: "Transform",
+    placeholder: "0px",
+  },
+  translateY: {
+    key: "translateY",
+    label: "Offset Y",
+    category: "Transform",
+    placeholder: "0px",
+  },
+};
+
+const SECTION_SUPPORTED_KEYS: SectionStyleKey[] = [
+  "marginTop",
+  "marginRight",
+  "marginBottom",
+  "marginLeft",
+  "paddingTop",
+  "paddingRight",
+  "paddingBottom",
+  "paddingLeft",
+  "borderWidth",
+  "borderStyle",
+  "borderColor",
+  "borderRadius",
+  "backgroundColor",
+  "backgroundImage",
+  "textColor",
+  "fontSize",
+  "translateX",
+  "translateY",
 ];
 
-const PRIMITIVE_FIELD_GROUPS: Record<
-  PrimitiveType,
-  Array<{ heading: string; fields: StyleField<PrimitiveStyleKey>[] }>
-> = {
-  heading: [
-    {
-      heading: "Typography",
-      fields: [
-        { key: "textColor", label: "Text Color", type: "color", placeholder: "#11161f" },
-        { key: "fontSize", label: "Font Size", placeholder: "32px" },
-        { key: "fontWeight", label: "Weight", placeholder: "700" },
-        { key: "lineHeight", label: "Line Height", placeholder: "1.1" },
-        {
-          key: "textAlign",
-          label: "Align",
-          type: "select",
-          options: ["left", "center", "right", "justify"],
-        },
-      ],
-    },
-    {
-      heading: "Spacing",
-      fields: [
-        { key: "marginTop", label: "Margin Top", placeholder: "0px" },
-        { key: "marginBottom", label: "Margin Bottom", placeholder: "16px" },
-      ],
-    },
-  ],
-  text: [
-    {
-      heading: "Typography",
-      fields: [
-        { key: "textColor", label: "Text Color", type: "color", placeholder: "#44506a" },
-        { key: "fontSize", label: "Font Size", placeholder: "16px" },
-        { key: "lineHeight", label: "Line Height", placeholder: "1.6" },
-        {
-          key: "textAlign",
-          label: "Align",
-          type: "select",
-          options: ["left", "center", "right", "justify"],
-        },
-      ],
-    },
-    {
-      heading: "Spacing",
-      fields: [
-        { key: "marginTop", label: "Margin Top", placeholder: "0px" },
-        { key: "marginBottom", label: "Margin Bottom", placeholder: "16px" },
-      ],
-    },
-  ],
-  button: [
-    {
-      heading: "Surface",
-      fields: [
-        { key: "backgroundColor", label: "Background", type: "color", placeholder: "#0f1726" },
-        { key: "textColor", label: "Text Color", type: "color", placeholder: "#f6f9ff" },
-        { key: "borderRadius", label: "Radius", placeholder: "999px" },
-      ],
-    },
-    {
-      heading: "Box",
-      fields: [
-        { key: "paddingTop", label: "Padding Top", placeholder: "11px" },
-        { key: "paddingRight", label: "Padding Right", placeholder: "18px" },
-        { key: "paddingBottom", label: "Padding Bottom", placeholder: "11px" },
-        { key: "paddingLeft", label: "Padding Left", placeholder: "18px" },
-        { key: "borderWidth", label: "Border Width", placeholder: "0px" },
-        { key: "borderColor", label: "Border Color", type: "color", placeholder: "#000000" },
-      ],
-    },
-  ],
-  image: [
-    {
-      heading: "Frame",
-      fields: [
-        { key: "width", label: "Width", placeholder: "100%" },
-        { key: "height", label: "Height", placeholder: "auto" },
-        { key: "borderRadius", label: "Radius", placeholder: "12px" },
-      ],
-    },
-  ],
-  video: [
-    {
-      heading: "Frame",
-      fields: [
-        { key: "width", label: "Width", placeholder: "100%" },
-        { key: "height", label: "Height", placeholder: "240px" },
-        { key: "borderRadius", label: "Radius", placeholder: "12px" },
-      ],
-    },
-  ],
-  embed: [
-    {
-      heading: "Frame",
-      fields: [
-        { key: "width", label: "Width", placeholder: "100%" },
-        { key: "height", label: "Height", placeholder: "240px" },
-        { key: "borderRadius", label: "Radius", placeholder: "12px" },
-      ],
-    },
-  ],
-  code: [
-    {
-      heading: "Typography",
-      fields: [
-        { key: "fontSize", label: "Font Size", placeholder: "14px" },
-        { key: "lineHeight", label: "Line Height", placeholder: "1.5" },
-      ],
-    },
-  ],
-  spacer: [
-    {
-      heading: "Spacing",
-      fields: [
-        { key: "height", label: "Height", placeholder: "24px" },
-        { key: "marginTop", label: "Margin Top", placeholder: "0px" },
-        { key: "marginBottom", label: "Margin Bottom", placeholder: "0px" },
-      ],
-    },
-  ],
-  stack: [
-    {
-      heading: "Spacing",
-      fields: [
-        { key: "paddingTop", label: "Padding Top", placeholder: "0px" },
-        { key: "paddingBottom", label: "Padding Bottom", placeholder: "0px" },
-        { key: "backgroundColor", label: "Background", type: "color", placeholder: "#ffffff" },
-      ],
-    },
-  ],
-  columns: [
-    {
-      heading: "Spacing",
-      fields: [
-        { key: "paddingTop", label: "Padding Top", placeholder: "0px" },
-        { key: "paddingBottom", label: "Padding Bottom", placeholder: "0px" },
-        { key: "backgroundColor", label: "Background", type: "color", placeholder: "#ffffff" },
-      ],
-    },
-  ],
-  cards: [
-    {
-      heading: "Spacing",
-      fields: [
-        { key: "paddingTop", label: "Padding Top", placeholder: "0px" },
-        { key: "paddingBottom", label: "Padding Bottom", placeholder: "0px" },
-      ],
-    },
-  ],
-  details: [
-    {
-      heading: "Surface",
-      fields: [
-        { key: "backgroundColor", label: "Background", type: "color", placeholder: "#ffffff" },
-        { key: "borderRadius", label: "Radius", placeholder: "12px" },
-      ],
-    },
-  ],
+const PRIMITIVE_SUPPORTED_KEYS: PrimitiveStyleKey[] = [
+  "width",
+  "height",
+  "marginTop",
+  "marginRight",
+  "marginBottom",
+  "marginLeft",
+  "paddingTop",
+  "paddingRight",
+  "paddingBottom",
+  "paddingLeft",
+  "borderWidth",
+  "borderStyle",
+  "borderColor",
+  "borderRadius",
+  "backgroundColor",
+  "textColor",
+  "fontSize",
+  "fontWeight",
+  "lineHeight",
+  "textAlign",
+  "translateX",
+  "translateY",
+];
+
+const PRIMITIVE_EXCLUDED_KEYS: Record<PrimitiveType, PrimitiveStyleKey[]> = {
+  heading: ["width", "height", "backgroundColor", "borderWidth", "borderStyle", "borderColor"],
+  text: ["width", "height", "backgroundColor", "borderWidth", "borderStyle", "borderColor"],
+  button: ["lineHeight", "textAlign", "width", "height"],
+  image: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
+  video: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
+  embed: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
+  code: ["width", "height", "textAlign"],
+  spacer: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
+  stack: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "width", "height"],
+  columns: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "width", "height"],
+  cards: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "width", "height"],
+  details: ["width", "height", "textColor", "fontSize", "fontWeight", "lineHeight", "textAlign"],
 };
 
 function walkPrimitives(nodes: PrimitiveNode[], pathPrefix = ""): PrimitiveEntry[] {
@@ -285,33 +299,38 @@ function walkPrimitives(nodes: PrimitiveNode[], pathPrefix = ""): PrimitiveEntry
   return out;
 }
 
-function withUniversalPrimitiveSpacing(
-  groups: Array<{ heading: string; fields: StyleField<PrimitiveStyleKey>[] }>
-) {
-  const spacingIndex = groups.findIndex((group) => group.heading === "Spacing");
-  if (spacingIndex === -1) {
-    return [...groups, { heading: "Spacing", fields: UNIVERSAL_PRIMITIVE_SPACING_FIELDS }];
-  }
+function buildStyleGroups<K extends AllStyleKey>(
+  supportedKeys: K[],
+  query: string,
+  excludedKeys: ReadonlySet<K>
+): StyleGroup<K>[] {
+  const needle = query.trim().toLowerCase();
+  const groups = new Map<StyleCategory, MasterStyleField<K>[]>();
 
-  const spacingGroup = groups[spacingIndex];
-  const existingKeys = new Set(spacingGroup.fields.map((field) => field.key));
-  const missingFields = UNIVERSAL_PRIMITIVE_SPACING_FIELDS.filter(
-    (field) => !existingKeys.has(field.key)
-  );
-  if (missingFields.length === 0) {
-    return groups;
-  }
+  supportedKeys.forEach((key) => {
+    if (excludedKeys.has(key)) {
+      return;
+    }
+    const field = MASTER_STYLE_FIELD_REGISTRY[key] as MasterStyleField<K>;
+    if (needle) {
+      const haystack = `${field.label} ${field.key} ${field.category}`.toLowerCase();
+      if (!haystack.includes(needle)) {
+        return;
+      }
+    }
+    const list = groups.get(field.category) ?? [];
+    list.push(field);
+    groups.set(field.category, list);
+  });
 
-  const nextGroups = [...groups];
-  nextGroups[spacingIndex] = {
-    ...spacingGroup,
-    fields: [...spacingGroup.fields, ...missingFields],
-  };
-  return nextGroups;
+  return CATEGORY_ORDER.map((category) => {
+    const fields = groups.get(category) ?? [];
+    return { category, fields };
+  }).filter((group) => group.fields.length > 0);
 }
 
-function renderStyleField<K extends string>(opts: {
-  field: StyleField<K>;
+function renderStyleField<K extends AllStyleKey>(opts: {
+  field: MasterStyleField<K>;
   value: string;
   setValue: (value: string) => void;
 }) {
@@ -359,6 +378,8 @@ function renderStyleField<K extends string>(opts: {
 
 export function StyleTab() {
   const builder = useBuilderStore();
+  const [query, setQuery] = useState("");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const block = builder.selectedBlock;
 
   if (!block) {
@@ -372,15 +393,25 @@ export function StyleTab() {
     ? primitiveList.find((entry) => entry.path === selectedPath)
     : null;
 
-  const primitiveFieldGroups = selectedPrimitive
-    ? [
-        ...withUniversalPrimitiveSpacing(PRIMITIVE_FIELD_GROUPS[selectedPrimitive.type] ?? []),
-        UNIVERSAL_PRIMITIVE_OFFSET_GROUP,
-      ]
-    : [];
+  const primitiveStyleGroups = selectedPrimitive
+    ? buildStyleGroups(
+        PRIMITIVE_SUPPORTED_KEYS,
+        query,
+        new Set(PRIMITIVE_EXCLUDED_KEYS[selectedPrimitive.type] ?? [])
+      )
+    : ([] as StyleGroup<PrimitiveStyleKey>[]);
+
+  const sectionStyleGroups = buildStyleGroups(
+    SECTION_SUPPORTED_KEYS,
+    query,
+    new Set<SectionStyleKey>()
+  );
+
+  const currentGroups = selectedPrimitive ? primitiveStyleGroups : sectionStyleGroups;
+  const collapseScope = selectedPrimitive ? `primitive:${selectedPrimitive.type}` : "section";
 
   return (
-    <div className="drawer-stack">
+    <div className="drawer-stack style-tab-root">
       <section className="inspector-card-item">
         <h4>Target</h4>
         <label className="inspector-field compact">
@@ -401,54 +432,94 @@ export function StyleTab() {
         </label>
       </section>
 
-      {selectedPrimitive
-        ? primitiveFieldGroups.map((group) => (
-            <section key={`primitive-${group.heading}`} className="inspector-card-item">
-              <h4>{group.heading}</h4>
-              <div className="inspector-card-grid">
-                {group.fields.map((field) => {
-                  const valuesForSelection = selectedPaths.map((path) =>
-                    String(block.styleOverrides.primitiveStyles?.[path]?.[field.key] ?? "")
-                  );
-                  const firstValue = valuesForSelection[0] ?? "";
-                  const value = valuesForSelection.every((entry) => entry === firstValue)
-                    ? firstValue
-                    : "";
-                  return (
-                    <label key={field.key} className="inspector-field compact">
-                      <span>{field.label}</span>
-                      {renderStyleField({
-                        field,
-                        value,
-                        setValue: (next) =>
-                          builder.setPrimitiveStyleForPaths(selectedPaths, field.key, next),
-                      })}
-                    </label>
-                  );
-                })}
-              </div>
+      <section className="inspector-card-item style-tab-search-sticky">
+        <label className="inspector-field compact">
+          <span>Find style field</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search margin, color, border..."
+            className="compact-input"
+          />
+        </label>
+      </section>
+
+      {currentGroups.length === 0 ? (
+        <section className="inspector-card-item">
+          <h4>No fields found</h4>
+          <div className="drawer-panel">Try a different search term.</div>
+        </section>
+      ) : (
+        currentGroups.map((group) => {
+          const groupKey = `${collapseScope}:${group.category}`;
+          const collapsed = collapsedGroups[groupKey] ?? true;
+          return (
+            <section key={groupKey} className="inspector-card-item style-group-card">
+              <button
+                className="style-group-toggle"
+                onClick={() =>
+                  setCollapsedGroups((prev) => ({
+                    ...prev,
+                    [groupKey]: !collapsed,
+                  }))
+                }
+                aria-expanded={!collapsed}
+              >
+                <h4>{group.category}</h4>
+                <span>{collapsed ? "+" : "−"}</span>
+              </button>
+
+              {!collapsed ? (
+                <div className="inspector-card-grid">
+                  {group.fields.map((field) => {
+                    if (selectedPrimitive) {
+                      const valuesForSelection = selectedPaths.map((path) =>
+                        String(
+                          block.styleOverrides.primitiveStyles?.[path]?.[
+                            field.key as PrimitiveStyleKey
+                          ] ?? ""
+                        )
+                      );
+                      const firstValue = valuesForSelection[0] ?? "";
+                      const value = valuesForSelection.every((entry) => entry === firstValue)
+                        ? firstValue
+                        : "";
+                      return (
+                        <label key={field.key} className="inspector-field compact">
+                          <span>{field.label}</span>
+                          {renderStyleField({
+                            field,
+                            value,
+                            setValue: (next) =>
+                              builder.setPrimitiveStyleForPaths(
+                                selectedPaths,
+                                field.key as PrimitiveStyleKey,
+                                next
+                              ),
+                          })}
+                        </label>
+                      );
+                    }
+
+                    const sectionField = field.key as SectionStyleKey;
+                    const value = String(block.styleOverrides[sectionField] ?? "");
+                    return (
+                      <label key={field.key} className="inspector-field compact">
+                        <span>{field.label}</span>
+                        {renderStyleField({
+                          field,
+                          value,
+                          setValue: (next) => builder.setBlockStyle(sectionField, next),
+                        })}
+                      </label>
+                    );
+                  })}
+                </div>
+              ) : null}
             </section>
-          ))
-        : SECTION_STYLE_FIELDS.map((group) => (
-            <section key={`section-${group.heading}`} className="inspector-card-item">
-              <h4>{group.heading}</h4>
-              <div className="inspector-card-grid">
-                {group.fields.map((field) => {
-                  const value = String(block.styleOverrides[field.key] ?? "");
-                  return (
-                    <label key={field.key} className="inspector-field compact">
-                      <span>{field.label}</span>
-                      {renderStyleField({
-                        field,
-                        value,
-                        setValue: (next) => builder.setBlockStyle(field.key, next),
-                      })}
-                    </label>
-                  );
-                })}
-              </div>
-            </section>
-          ))}
+          );
+        })
+      )}
     </div>
   );
 }

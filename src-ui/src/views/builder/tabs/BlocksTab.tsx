@@ -1,10 +1,18 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { groupedBlockCatalog } from "../../../features/builder/catalog";
-import { beginPointerCatalogDrag } from "../../../features/builder/dnd";
+import { useBuilderStore } from "../../../features/builder/builder-store";
+import {
+  BUILDER_POINTER_DRAG_END_EVENT,
+  BUILDER_POINTER_DRAG_MOVE_EVENT,
+  beginPointerCatalogDrag,
+  type BuilderPointerDragDetail,
+} from "../../../features/builder/dnd";
 
 export function BlocksTab() {
+  const builder = useBuilderStore();
   const [query, setQuery] = useState("");
+  const [draggingBlockType, setDraggingBlockType] = useState<string | null>(null);
   const groups = groupedBlockCatalog();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Hero: true,
@@ -28,6 +36,29 @@ export function BlocksTab() {
       }))
       .filter((group) => group.blocks.length > 0);
   }, [groups, query]);
+
+  useEffect(() => {
+    const onPointerDragMove = (event: Event) => {
+      const detail = (event as CustomEvent<BuilderPointerDragDetail>).detail;
+      if (!detail) {
+        return;
+      }
+      if (detail.payload.kind === "catalog") {
+        setDraggingBlockType(detail.payload.blockType);
+      } else {
+        setDraggingBlockType(null);
+      }
+    };
+    const onPointerDragEnd = () => {
+      setDraggingBlockType(null);
+    };
+    window.addEventListener(BUILDER_POINTER_DRAG_MOVE_EVENT, onPointerDragMove);
+    window.addEventListener(BUILDER_POINTER_DRAG_END_EVENT, onPointerDragEnd);
+    return () => {
+      window.removeEventListener(BUILDER_POINTER_DRAG_MOVE_EVENT, onPointerDragMove);
+      window.removeEventListener(BUILDER_POINTER_DRAG_END_EVENT, onPointerDragEnd);
+    };
+  }, []);
 
   return (
     <div className="drawer-stack">
@@ -61,11 +92,13 @@ export function BlocksTab() {
                     {group.blocks.map((block) => (
                       <div
                         key={block.id}
-                        className="block-catalog-card"
+                        className={`block-catalog-card${draggingBlockType === block.id ? " dragging" : ""}`}
                         role="button"
                         tabIndex={0}
                         onPointerDown={(event) => {
                           event.preventDefault();
+                          builder.selectPrimitivePath(null);
+                          builder.selectBlock(null);
                           beginPointerCatalogDrag(block.id, {
                             clientX: event.clientX,
                             clientY: event.clientY,
