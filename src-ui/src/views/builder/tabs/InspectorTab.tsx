@@ -98,7 +98,15 @@ export function InspectorTab() {
   const block = builder.selectedBlock;
 
   if (!block) {
-    return <div className="drawer-panel">Select a block to inspect.</div>;
+    return (
+      <div className="drawer-panel builder-empty-notice">
+        <span className="builder-empty-pill">
+          <span className="dot" />
+          Content
+        </span>
+        <p>Select a block to inspect.</p>
+      </div>
+    );
   }
 
   const definition = blockDefinitionById(block.type);

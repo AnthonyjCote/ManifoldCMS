@@ -6,7 +6,15 @@ import {
   decodePrimitiveTarget,
   encodePrimitiveTarget,
 } from "../../../features/builder/primitive-target";
+import {
+  editScopeFromViewport,
+  getExplicitPrimitiveStyleValue,
+  getExplicitSectionStyleValue,
+  type BuilderViewport,
+} from "../../../features/builder/style-scopes";
+import { useBuilderInteractionModeStore } from "../../../state/useBuilderInteractionModeStore";
 import type { PrimitiveNode, PrimitiveType } from "../../../features/builder/types";
+import { useBuilderViewportStore } from "../../../state/useBuilderViewportStore";
 
 type BaseSectionStyleKey =
   | "marginTop"
@@ -287,6 +295,22 @@ const PRIMITIVE_EXCLUDED_KEYS: Record<PrimitiveType, PrimitiveStyleKey[]> = {
   details: ["width", "height", "textColor", "fontSize", "fontWeight", "lineHeight", "textAlign"],
 };
 
+const SCOPE_LABELS: Record<string, string> = {
+  default: "Default",
+  mobile: "Mobile",
+  tablet: "Tablet",
+  desktop: "Desktop",
+  wide: "Retina/Wide",
+};
+
+const VIEWPORT_LABELS: Record<BuilderViewport, string> = {
+  default: "Default (Base)",
+  mobile: "Mobile",
+  tablet: "Tablet",
+  desktop: "Desktop / Laptop / HD",
+  wide: "Retina / Wide / UHD",
+};
+
 function walkPrimitives(nodes: PrimitiveNode[], pathPrefix = ""): PrimitiveEntry[] {
   const out: PrimitiveEntry[] = [];
   nodes.forEach((node, index) => {
@@ -479,12 +503,37 @@ function renderStyleField<K extends AllStyleKey>(opts: {
 
 export function StyleTab() {
   const builder = useBuilderStore();
+  const interaction = useBuilderInteractionModeStore();
+  const viewport = useBuilderViewportStore();
   const [query, setQuery] = useState("");
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const editScope = editScopeFromViewport(viewport.viewport);
   const block = builder.selectedBlock;
 
   if (!block) {
-    return <div className="drawer-panel">Select a block to style.</div>;
+    if (interaction.mode === "preview") {
+      return (
+        <div className="drawer-panel style-mode-notice">
+          <span className="builder-empty-pill">
+            <span className="dot" />
+            Preview mode
+          </span>
+          <p>Style editing is disabled while preview mode is active.</p>
+          <button className="style-mode-action" onClick={() => interaction.setMode("edit")}>
+            Switch to Edit Mode
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="drawer-panel builder-empty-notice">
+        <span className="builder-empty-pill">
+          <span className="dot" />
+          Style
+        </span>
+        <p>Select a block to style.</p>
+      </div>
+    );
   }
 
   const primitiveList = walkPrimitives(buildPreviewTreeForBlock(block));
@@ -527,6 +576,23 @@ export function StyleTab() {
 
   return (
     <div className="drawer-stack style-tab-root">
+      <section className="inspector-card-item style-tab-topbar">
+        <label className="inspector-field compact">
+          <span className="style-tab-topbar-label">Find style field</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search margin, color, border..."
+            className="compact-input"
+          />
+        </label>
+        <div className="style-tab-scope-indicator" aria-live="polite">
+          <span className="dot" />
+          {SCOPE_LABELS[editScope]}
+          <small>{VIEWPORT_LABELS[viewport.viewport]}</small>
+        </div>
+      </section>
+
       <section className="inspector-card-item">
         <h4>Target</h4>
         <label className="inspector-field compact">
@@ -552,18 +618,6 @@ export function StyleTab() {
               </option>
             ))}
           </select>
-        </label>
-      </section>
-
-      <section className="inspector-card-item style-tab-search-sticky">
-        <label className="inspector-field compact">
-          <span>Find style field</span>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search margin, color, border..."
-            className="compact-input"
-          />
         </label>
       </section>
 
@@ -607,10 +661,14 @@ export function StyleTab() {
                         const targetBlock = builder.selectedPage.blocks.find(
                           (entry) => entry.id === target.blockId
                         );
-                        return String(
-                          targetBlock?.styleOverrides.primitiveStyles?.[target.primitivePath]?.[
-                            field.key as PrimitiveStyleKey
-                          ] ?? ""
+                        if (!targetBlock) {
+                          return "";
+                        }
+                        return getExplicitPrimitiveStyleValue(
+                          targetBlock.styleOverrides,
+                          target.primitivePath,
+                          field.key as PrimitiveStyleKey,
+                          editScope
                         );
                       });
                       const firstValue = valuesForSelection[0] ?? "";
@@ -634,7 +692,10 @@ export function StyleTab() {
                       );
                       return (
                         <label key={field.key} className="inspector-field compact">
-                          <span>{field.label}</span>
+                          <span>
+                            {field.label}
+                            <small className="style-scope-badge">{SCOPE_LABELS[editScope]}</small>
+                          </span>
                           {renderStyleField({
                             field,
                             value,
@@ -643,7 +704,8 @@ export function StyleTab() {
                               builder.setPrimitiveStyleForTargets(
                                 targetIds,
                                 field.key as PrimitiveStyleKey,
-                                next
+                                next,
+                                editScope
                               ),
                           })}
                         </label>
@@ -652,7 +714,7 @@ export function StyleTab() {
 
                     const sectionField = field.key as SectionStyleKey;
                     const sectionValues = selectedSectionBlocks.map((entry) =>
-                      String(entry.styleOverrides[sectionField] ?? "")
+                      getExplicitSectionStyleValue(entry.styleOverrides, sectionField, editScope)
                     );
                     const firstValue = sectionValues[0] ?? "";
                     const value = sectionValues.every((entry) => entry === firstValue)
@@ -678,7 +740,10 @@ export function StyleTab() {
                         : "Mixed values";
                     return (
                       <label key={field.key} className="inspector-field compact">
-                        <span>{field.label}</span>
+                        <span>
+                          {field.label}
+                          <small className="style-scope-badge">{SCOPE_LABELS[editScope]}</small>
+                        </span>
                         {renderStyleField({
                           field,
                           value,
@@ -687,7 +752,8 @@ export function StyleTab() {
                             builder.setBlockStyleForBlocks(
                               selectedSectionBlockIds,
                               sectionField,
-                              next
+                              next,
+                              editScope
                             ),
                         })}
                       </label>

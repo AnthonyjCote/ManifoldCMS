@@ -5,6 +5,7 @@ export type ProjectSettings = {
     mobileMax: number;
     tabletMax: number;
     desktopMax: number;
+    retinaMin: number;
   };
   preview: {
     mobileWidth: number;
@@ -21,6 +22,7 @@ const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
     mobileMax: 767,
     tabletMax: 1199,
     desktopMax: 1919,
+    retinaMin: 2560,
   },
   preview: {
     mobileWidth: 420,
@@ -56,15 +58,21 @@ function coerceProjectSettings(raw: unknown): ProjectSettings {
     input.breakpoints?.desktopMax,
     DEFAULT_PROJECT_SETTINGS.breakpoints.desktopMax
   );
+  const retinaMin = toPositiveInt(
+    input.breakpoints?.retinaMin,
+    DEFAULT_PROJECT_SETTINGS.breakpoints.retinaMin
+  );
   const safeMobileMax = Math.min(mobileMax, tabletMax - 1, desktopMax - 2);
   const safeTabletMax = Math.max(Math.min(tabletMax, desktopMax - 1), safeMobileMax + 1);
   const safeDesktopMax = Math.max(desktopMax, safeTabletMax + 1);
+  const safeRetinaMin = Math.max(retinaMin, safeDesktopMax + 1);
 
   return {
     breakpoints: {
       mobileMax: safeMobileMax,
       tabletMax: safeTabletMax,
       desktopMax: safeDesktopMax,
+      retinaMin: safeRetinaMin,
     },
     preview: {
       mobileWidth: toPositiveInt(

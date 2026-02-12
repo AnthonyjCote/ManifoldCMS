@@ -58,6 +58,40 @@ export type PrimitiveNode = {
   children?: PrimitiveNode[];
 };
 
+export type StyleViewportKey = "default" | "mobile" | "tablet" | "desktop" | "wide";
+
+export type SectionStyleKey =
+  | "marginTop"
+  | "marginRight"
+  | "marginBottom"
+  | "marginLeft"
+  | "paddingTop"
+  | "paddingRight"
+  | "paddingBottom"
+  | "paddingLeft"
+  | "borderWidth"
+  | "borderStyle"
+  | "borderColor"
+  | "borderRadius"
+  | "backgroundColor"
+  | "backgroundImage"
+  | "textColor"
+  | "fontSize"
+  | "translateX"
+  | "translateY";
+
+export type PrimitiveStyleKey =
+  | Exclude<SectionStyleKey, "backgroundImage">
+  | "fontWeight"
+  | "lineHeight"
+  | "textAlign"
+  | "width"
+  | "height";
+
+export type SectionStyleValues = Partial<Record<SectionStyleKey, string>>;
+export type PrimitiveStyleValues = Partial<Record<PrimitiveStyleKey, string>>;
+export type ResponsiveStyleValues<T> = Partial<Record<StyleViewportKey, T>>;
+
 export type BlockInstance = {
   id: string;
   type: BlockType;
@@ -65,52 +99,10 @@ export type BlockInstance = {
   visibility: "visible" | "hidden";
   styleOverrides: {
     variant: string;
-    marginTop?: string;
-    marginRight?: string;
-    marginBottom?: string;
-    marginLeft?: string;
-    paddingTop?: string;
-    paddingRight?: string;
-    paddingBottom?: string;
-    paddingLeft?: string;
-    borderWidth?: string;
-    borderStyle?: string;
-    borderColor?: string;
-    borderRadius?: string;
-    backgroundColor?: string;
-    backgroundImage?: string;
-    textColor?: string;
-    fontSize?: string;
-    translateX?: string;
-    translateY?: string;
-    primitiveStyles?: Record<
-      string,
-      {
-        marginTop?: string;
-        marginRight?: string;
-        marginBottom?: string;
-        marginLeft?: string;
-        paddingTop?: string;
-        paddingRight?: string;
-        paddingBottom?: string;
-        paddingLeft?: string;
-        borderWidth?: string;
-        borderStyle?: string;
-        borderColor?: string;
-        borderRadius?: string;
-        backgroundColor?: string;
-        textColor?: string;
-        fontSize?: string;
-        fontWeight?: string;
-        lineHeight?: string;
-        textAlign?: string;
-        width?: string;
-        height?: string;
-        translateX?: string;
-        translateY?: string;
-      }
-    >;
-  };
+    primitiveStyles?: Record<string, PrimitiveStyleValues>;
+    viewportStyles?: ResponsiveStyleValues<SectionStyleValues>;
+    primitiveViewportStyles?: Record<string, ResponsiveStyleValues<PrimitiveStyleValues>>;
+  } & SectionStyleValues;
 };
 
 export type BuilderPage = {

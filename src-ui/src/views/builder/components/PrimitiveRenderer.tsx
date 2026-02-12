@@ -12,6 +12,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import {
+  getPrimitiveStyleValue,
+  type BuilderViewport,
+} from "../../../features/builder/style-scopes";
 import type { BlockInstance, PrimitiveNode, PrimitiveType } from "../../../features/builder/types";
 
 type PrimitiveStyleSetKey =
@@ -39,7 +43,9 @@ type PrimitiveRendererProps = {
   onPrimitiveStyleSet?: (path: string, key: PrimitiveStyleSetKey, value: string) => void;
   onStyleDragSessionStart?: () => void;
   onStyleDragSessionEnd?: () => void;
+  previewScope: BuilderViewport;
   primitiveStyles?: BlockInstance["styleOverrides"]["primitiveStyles"];
+  primitiveViewportStyles?: BlockInstance["styleOverrides"]["primitiveViewportStyles"];
 };
 
 type SpacingHandle = {
@@ -170,9 +176,145 @@ function onEditableKeyDown(event: KeyboardEvent<HTMLElement>) {
   }
 }
 
-function toPrimitiveStyle(
-  style: NonNullable<BlockInstance["styleOverrides"]["primitiveStyles"]>[string] | undefined
-) {
+function toPrimitiveStyle(opts: {
+  primitivePath: string;
+  styleOverrides: BlockInstance["styleOverrides"];
+  previewScope: BuilderViewport;
+}) {
+  const style = {
+    marginTop: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "marginTop",
+      opts.previewScope
+    ),
+    marginRight: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "marginRight",
+      opts.previewScope
+    ),
+    marginBottom: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "marginBottom",
+      opts.previewScope
+    ),
+    marginLeft: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "marginLeft",
+      opts.previewScope
+    ),
+    paddingTop: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "paddingTop",
+      opts.previewScope
+    ),
+    paddingRight: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "paddingRight",
+      opts.previewScope
+    ),
+    paddingBottom: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "paddingBottom",
+      opts.previewScope
+    ),
+    paddingLeft: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "paddingLeft",
+      opts.previewScope
+    ),
+    borderWidth: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "borderWidth",
+      opts.previewScope
+    ),
+    borderStyle: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "borderStyle",
+      opts.previewScope
+    ),
+    borderColor: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "borderColor",
+      opts.previewScope
+    ),
+    borderRadius: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "borderRadius",
+      opts.previewScope
+    ),
+    backgroundColor: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "backgroundColor",
+      opts.previewScope
+    ),
+    textColor: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "textColor",
+      opts.previewScope
+    ),
+    fontSize: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "fontSize",
+      opts.previewScope
+    ),
+    fontWeight: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "fontWeight",
+      opts.previewScope
+    ),
+    lineHeight: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "lineHeight",
+      opts.previewScope
+    ),
+    textAlign: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "textAlign",
+      opts.previewScope
+    ),
+    width: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "width",
+      opts.previewScope
+    ),
+    height: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "height",
+      opts.previewScope
+    ),
+    translateX: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "translateX",
+      opts.previewScope
+    ),
+    translateY: getPrimitiveStyleValue(
+      opts.styleOverrides,
+      opts.primitivePath,
+      "translateY",
+      opts.previewScope
+    ),
+  };
   if (!style) {
     return undefined;
   }
@@ -295,9 +437,19 @@ export function PrimitiveRenderer({
   onPrimitiveStyleSet,
   onStyleDragSessionStart,
   onStyleDragSessionEnd,
+  previewScope,
   primitiveStyles,
+  primitiveViewportStyles,
 }: PrimitiveRendererProps) {
-  const style = toPrimitiveStyle(primitiveStyles?.[primitivePath]);
+  const style = toPrimitiveStyle({
+    primitivePath,
+    previewScope,
+    styleOverrides: {
+      variant: "default",
+      primitiveStyles,
+      primitiveViewportStyles,
+    },
+  });
   const isSelected = selectionEnabled && selectedPrimitivePaths.includes(primitivePath);
   const isHovered = selectionEnabled && hoveredPrimitivePath === primitivePath;
   const primitiveClass = `preview-primitive-node${isSelected ? " selected" : ""}${isHovered ? " hovered" : ""}`;
@@ -425,7 +577,19 @@ export function PrimitiveRenderer({
   }, []);
 
   const readCurrentSpacing = (key: PrimitiveStyleSetKey): number => {
-    const overrideValue = primitiveStyles?.[primitivePath]?.[key];
+    const overrideValue =
+      key === "translateX" || key === "translateY"
+        ? undefined
+        : getPrimitiveStyleValue(
+            {
+              variant: "default",
+              primitiveStyles,
+              primitiveViewportStyles,
+            },
+            primitivePath,
+            key,
+            previewScope
+          );
     if (overrideValue) {
       return parsePxValue(overrideValue);
     }
@@ -482,8 +646,23 @@ export function PrimitiveRenderer({
   };
 
   const readCurrentTransform = (): { x: number; y: number } => {
-    const xOverride = primitiveStyles?.[primitivePath]?.translateX;
-    const yOverride = primitiveStyles?.[primitivePath]?.translateY;
+    const styleOverrides = {
+      variant: "default",
+      primitiveStyles,
+      primitiveViewportStyles,
+    } as const;
+    const xOverride = getPrimitiveStyleValue(
+      styleOverrides,
+      primitivePath,
+      "translateX",
+      previewScope
+    );
+    const yOverride = getPrimitiveStyleValue(
+      styleOverrides,
+      primitivePath,
+      "translateY",
+      previewScope
+    );
     if (xOverride || yOverride) {
       return {
         x: parsePxValue(xOverride),
@@ -688,7 +867,9 @@ export function PrimitiveRenderer({
             onPrimitiveStyleSet={onPrimitiveStyleSet}
             onStyleDragSessionStart={onStyleDragSessionStart}
             onStyleDragSessionEnd={onStyleDragSessionEnd}
+            previewScope={previewScope}
             primitiveStyles={primitiveStyles}
+            primitiveViewportStyles={primitiveViewportStyles}
           />
         ))}
       </div>
@@ -722,7 +903,9 @@ export function PrimitiveRenderer({
             onPrimitiveStyleSet={onPrimitiveStyleSet}
             onStyleDragSessionStart={onStyleDragSessionStart}
             onStyleDragSessionEnd={onStyleDragSessionEnd}
+            previewScope={previewScope}
             primitiveStyles={primitiveStyles}
+            primitiveViewportStyles={primitiveViewportStyles}
           />
         ))}
       </div>
@@ -755,7 +938,9 @@ export function PrimitiveRenderer({
             onPrimitiveStyleSet={onPrimitiveStyleSet}
             onStyleDragSessionStart={onStyleDragSessionStart}
             onStyleDragSessionEnd={onStyleDragSessionEnd}
+            previewScope={previewScope}
             primitiveStyles={primitiveStyles}
+            primitiveViewportStyles={primitiveViewportStyles}
           />
         ))}
       </div>

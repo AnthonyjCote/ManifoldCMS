@@ -1,11 +1,13 @@
 import type { CSSProperties } from "react";
 
 import { buildPreviewTreeForBlock } from "../../../features/builder/catalog";
+import { getSectionStyleValue, type BuilderViewport } from "../../../features/builder/style-scopes";
 import type { BlockInstance, PrimitiveType } from "../../../features/builder/types";
 import { PrimitiveRenderer } from "./PrimitiveRenderer";
 
 type PreviewBlockProps = {
   block: BlockInstance;
+  previewScope: BuilderViewport;
   editable: boolean;
   selectionEnabled?: boolean;
   onInlineCommit: (fieldKey: string, value: string) => void;
@@ -74,6 +76,7 @@ function composeBackgroundOverride(
 
 export function PreviewBlock({
   block,
+  previewScope,
   editable,
   selectionEnabled = true,
   onInlineCommit,
@@ -86,30 +89,33 @@ export function PreviewBlock({
   onStyleDragSessionEnd,
 }: PreviewBlockProps) {
   const tree = buildPreviewTreeForBlock(block);
-  const backgroundImage = normalizeBackgroundImage(block.styleOverrides.backgroundImage);
+  const backgroundImage = normalizeBackgroundImage(
+    getSectionStyleValue(block.styleOverrides, "backgroundImage", previewScope)
+  );
   const background = composeBackgroundOverride(
-    block.styleOverrides.backgroundColor,
+    getSectionStyleValue(block.styleOverrides, "backgroundColor", previewScope),
     backgroundImage
   );
   const style: CSSProperties = {
-    marginTop: block.styleOverrides.marginTop,
-    marginRight: block.styleOverrides.marginRight,
-    marginBottom: block.styleOverrides.marginBottom,
-    marginLeft: block.styleOverrides.marginLeft,
-    paddingTop: block.styleOverrides.paddingTop,
-    paddingRight: block.styleOverrides.paddingRight,
-    paddingBottom: block.styleOverrides.paddingBottom,
-    paddingLeft: block.styleOverrides.paddingLeft,
-    borderWidth: block.styleOverrides.borderWidth,
-    borderStyle: block.styleOverrides.borderStyle,
-    borderColor: block.styleOverrides.borderColor,
-    borderRadius: block.styleOverrides.borderRadius,
+    marginTop: getSectionStyleValue(block.styleOverrides, "marginTop", previewScope),
+    marginRight: getSectionStyleValue(block.styleOverrides, "marginRight", previewScope),
+    marginBottom: getSectionStyleValue(block.styleOverrides, "marginBottom", previewScope),
+    marginLeft: getSectionStyleValue(block.styleOverrides, "marginLeft", previewScope),
+    paddingTop: getSectionStyleValue(block.styleOverrides, "paddingTop", previewScope),
+    paddingRight: getSectionStyleValue(block.styleOverrides, "paddingRight", previewScope),
+    paddingBottom: getSectionStyleValue(block.styleOverrides, "paddingBottom", previewScope),
+    paddingLeft: getSectionStyleValue(block.styleOverrides, "paddingLeft", previewScope),
+    borderWidth: getSectionStyleValue(block.styleOverrides, "borderWidth", previewScope),
+    borderStyle: getSectionStyleValue(block.styleOverrides, "borderStyle", previewScope),
+    borderColor: getSectionStyleValue(block.styleOverrides, "borderColor", previewScope),
+    borderRadius: getSectionStyleValue(block.styleOverrides, "borderRadius", previewScope),
     background,
-    color: block.styleOverrides.textColor,
-    fontSize: block.styleOverrides.fontSize,
+    color: getSectionStyleValue(block.styleOverrides, "textColor", previewScope),
+    fontSize: getSectionStyleValue(block.styleOverrides, "fontSize", previewScope),
     transform:
-      block.styleOverrides.translateX || block.styleOverrides.translateY
-        ? `translate(${block.styleOverrides.translateX ?? "0px"}, ${block.styleOverrides.translateY ?? "0px"})`
+      getSectionStyleValue(block.styleOverrides, "translateX", previewScope) ||
+      getSectionStyleValue(block.styleOverrides, "translateY", previewScope)
+        ? `translate(${getSectionStyleValue(block.styleOverrides, "translateX", previewScope) ?? "0px"}, ${getSectionStyleValue(block.styleOverrides, "translateY", previewScope) ?? "0px"})`
         : undefined,
   };
   return (
@@ -133,7 +139,9 @@ export function PreviewBlock({
           onPrimitiveStyleSet={onPrimitiveStyleSet}
           onStyleDragSessionStart={onStyleDragSessionStart}
           onStyleDragSessionEnd={onStyleDragSessionEnd}
+          previewScope={previewScope}
           primitiveStyles={block.styleOverrides.primitiveStyles}
+          primitiveViewportStyles={block.styleOverrides.primitiveViewportStyles}
         />
       ))}
     </section>

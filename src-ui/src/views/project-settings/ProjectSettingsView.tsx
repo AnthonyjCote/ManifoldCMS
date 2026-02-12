@@ -37,7 +37,7 @@ export function ProjectSettingsView() {
       <div className="settings-grid">
         <section className="panel-card">
           <h2>Breakpoints</h2>
-          <p>Used for responsive behavior (mobile/tablet cutoffs).</p>
+          <p>Used for responsive behavior and scoped style overrides.</p>
           <label className="inspector-field">
             <span>Mobile Max Width (px)</span>
             <input
@@ -95,6 +95,26 @@ export function ProjectSettingsView() {
               }}
             />
           </label>
+          <label className="inspector-field">
+            <span>Retina / Wide / UHD Min Width (px)</span>
+            <input
+              value={String(settings.breakpoints.retinaMin)}
+              onChange={(event) => {
+                const next = parsePositiveInt(event.target.value);
+                if (next == null) {
+                  return;
+                }
+                updateSettings((prev) => ({
+                  ...prev,
+                  breakpoints: {
+                    ...prev.breakpoints,
+                    retinaMin: next,
+                  },
+                }));
+              }}
+            />
+          </label>
+          <small>Retina min is automatically kept higher than Desktop max.</small>
         </section>
 
         <section className="panel-card">

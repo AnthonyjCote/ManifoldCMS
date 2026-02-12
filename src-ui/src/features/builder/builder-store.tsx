@@ -5,7 +5,15 @@ import { BLOCK_CATALOG } from "./catalog";
 import { FOCUS_INSPECTOR_EVENT } from "./events";
 import { loadBuilderProject, saveBuilderProject, type BuilderProjectDoc } from "./persistence";
 import { decodePrimitiveTarget, encodePrimitiveTarget } from "./primitive-target";
-import type { BlockType, BuilderPage, BuilderState } from "./types";
+import { setPrimitiveStyleInOverrides, setSectionStyleInOverrides } from "./style-scopes";
+import type {
+  BlockType,
+  BuilderPage,
+  BuilderState,
+  PrimitiveStyleKey,
+  SectionStyleKey,
+  StyleViewportKey,
+} from "./types";
 
 type BuilderContextValue = {
   state: BuilderState;
@@ -34,154 +42,36 @@ type BuilderContextValue = {
   setBlockFieldForBlock: (blockId: string, key: string, value: string | number) => void;
   setBlockVisibility: (visibility: "visible" | "hidden") => void;
   setBlockVariant: (variant: string) => void;
-  setBlockStyle: (
-    key:
-      | "marginTop"
-      | "marginRight"
-      | "marginBottom"
-      | "marginLeft"
-      | "paddingTop"
-      | "paddingRight"
-      | "paddingBottom"
-      | "paddingLeft"
-      | "borderWidth"
-      | "borderStyle"
-      | "borderColor"
-      | "borderRadius"
-      | "backgroundColor"
-      | "backgroundImage"
-      | "textColor"
-      | "fontSize"
-      | "translateX"
-      | "translateY",
-    value: string
-  ) => void;
+  setBlockStyle: (key: SectionStyleKey, value: string, scope?: StyleViewportKey) => void;
   setBlockStyleForBlock: (
     blockId: string,
-    key:
-      | "marginTop"
-      | "marginRight"
-      | "marginBottom"
-      | "marginLeft"
-      | "paddingTop"
-      | "paddingRight"
-      | "paddingBottom"
-      | "paddingLeft"
-      | "borderWidth"
-      | "borderStyle"
-      | "borderColor"
-      | "borderRadius"
-      | "backgroundColor"
-      | "backgroundImage"
-      | "textColor"
-      | "fontSize"
-      | "translateX"
-      | "translateY",
-    value: string
+    key: SectionStyleKey,
+    value: string,
+    scope?: StyleViewportKey
   ) => void;
   setBlockStyleForBlocks: (
     blockIds: string[],
-    key:
-      | "marginTop"
-      | "marginRight"
-      | "marginBottom"
-      | "marginLeft"
-      | "paddingTop"
-      | "paddingRight"
-      | "paddingBottom"
-      | "paddingLeft"
-      | "borderWidth"
-      | "borderStyle"
-      | "borderColor"
-      | "borderRadius"
-      | "backgroundColor"
-      | "backgroundImage"
-      | "textColor"
-      | "fontSize"
-      | "translateX"
-      | "translateY",
-    value: string
+    key: SectionStyleKey,
+    value: string,
+    scope?: StyleViewportKey
   ) => void;
   setPrimitiveStyle: (
     primitivePath: string,
-    key:
-      | "marginTop"
-      | "marginRight"
-      | "marginBottom"
-      | "marginLeft"
-      | "paddingTop"
-      | "paddingRight"
-      | "paddingBottom"
-      | "paddingLeft"
-      | "borderWidth"
-      | "borderStyle"
-      | "borderColor"
-      | "borderRadius"
-      | "backgroundColor"
-      | "textColor"
-      | "fontSize"
-      | "fontWeight"
-      | "lineHeight"
-      | "textAlign"
-      | "width"
-      | "height"
-      | "translateX"
-      | "translateY",
-    value: string
+    key: PrimitiveStyleKey,
+    value: string,
+    scope?: StyleViewportKey
   ) => void;
   setPrimitiveStyleForPaths: (
     primitivePaths: string[],
-    key:
-      | "marginTop"
-      | "marginRight"
-      | "marginBottom"
-      | "marginLeft"
-      | "paddingTop"
-      | "paddingRight"
-      | "paddingBottom"
-      | "paddingLeft"
-      | "borderWidth"
-      | "borderStyle"
-      | "borderColor"
-      | "borderRadius"
-      | "backgroundColor"
-      | "textColor"
-      | "fontSize"
-      | "fontWeight"
-      | "lineHeight"
-      | "textAlign"
-      | "width"
-      | "height"
-      | "translateX"
-      | "translateY",
-    value: string
+    key: PrimitiveStyleKey,
+    value: string,
+    scope?: StyleViewportKey
   ) => void;
   setPrimitiveStyleForTargets: (
     targets: string[],
-    key:
-      | "marginTop"
-      | "marginRight"
-      | "marginBottom"
-      | "marginLeft"
-      | "paddingTop"
-      | "paddingRight"
-      | "paddingBottom"
-      | "paddingLeft"
-      | "borderWidth"
-      | "borderStyle"
-      | "borderColor"
-      | "borderRadius"
-      | "backgroundColor"
-      | "textColor"
-      | "fontSize"
-      | "fontWeight"
-      | "lineHeight"
-      | "textAlign"
-      | "width"
-      | "height"
-      | "translateX"
-      | "translateY",
-    value: string
+    key: PrimitiveStyleKey,
+    value: string,
+    scope?: StyleViewportKey
   ) => void;
   setPageSeo: (key: "title" | "description", value: string) => void;
   beginStyleDragSession: () => void;
@@ -915,7 +805,7 @@ export function BuilderProvider({
         ),
       }));
     },
-    setBlockStyle: (key, value) => {
+    setBlockStyle: (key, value, scope = "default") => {
       if (!state.selectedBlockId) {
         return;
       }
@@ -929,12 +819,12 @@ export function BuilderProvider({
                   if (block.id !== prev.selectedBlockId) {
                     return block;
                   }
-                  const styleOverrides = { ...block.styleOverrides };
-                  if (!value.trim()) {
-                    delete styleOverrides[key];
-                  } else {
-                    styleOverrides[key] = value;
-                  }
+                  const styleOverrides = setSectionStyleInOverrides(
+                    block.styleOverrides,
+                    key,
+                    value,
+                    scope
+                  );
                   return { ...block, styleOverrides };
                 }),
               }
@@ -947,7 +837,7 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setBlockStyleForBlock: (blockId, key, value) => {
+    setBlockStyleForBlock: (blockId, key, value, scope = "default") => {
       const applyStyle = (prev: BuilderState) => ({
         ...prev,
         pages: prev.pages.map((page) =>
@@ -958,12 +848,12 @@ export function BuilderProvider({
                   if (block.id !== blockId) {
                     return block;
                   }
-                  const styleOverrides = { ...block.styleOverrides };
-                  if (!value.trim()) {
-                    delete styleOverrides[key];
-                  } else {
-                    styleOverrides[key] = value;
-                  }
+                  const styleOverrides = setSectionStyleInOverrides(
+                    block.styleOverrides,
+                    key,
+                    value,
+                    scope
+                  );
                   return { ...block, styleOverrides };
                 }),
               }
@@ -978,7 +868,7 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setBlockStyleForBlocks: (blockIds, key, value) => {
+    setBlockStyleForBlocks: (blockIds, key, value, scope = "default") => {
       if (blockIds.length === 0) {
         return;
       }
@@ -993,12 +883,12 @@ export function BuilderProvider({
                   if (!selectedSet.has(block.id)) {
                     return block;
                   }
-                  const styleOverrides = { ...block.styleOverrides };
-                  if (!value.trim()) {
-                    delete styleOverrides[key];
-                  } else {
-                    styleOverrides[key] = value;
-                  }
+                  const styleOverrides = setSectionStyleInOverrides(
+                    block.styleOverrides,
+                    key,
+                    value,
+                    scope
+                  );
                   return { ...block, styleOverrides };
                 }),
               }
@@ -1013,7 +903,7 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setPrimitiveStyle: (primitivePath, key, value) => {
+    setPrimitiveStyle: (primitivePath, key, value, scope = "default") => {
       if (!state.selectedBlockId) {
         return;
       }
@@ -1027,25 +917,16 @@ export function BuilderProvider({
                   if (block.id !== prev.selectedBlockId) {
                     return block;
                   }
-                  const primitiveStyles = { ...(block.styleOverrides.primitiveStyles ?? {}) };
-                  const current = { ...(primitiveStyles[primitivePath] ?? {}) };
-                  if (!value.trim()) {
-                    delete current[key];
-                  } else {
-                    current[key] = value;
-                  }
-                  if (Object.keys(current).length === 0) {
-                    delete primitiveStyles[primitivePath];
-                  } else {
-                    primitiveStyles[primitivePath] = current;
-                  }
+                  const styleOverrides = setPrimitiveStyleInOverrides(
+                    block.styleOverrides,
+                    primitivePath,
+                    key,
+                    value,
+                    scope
+                  );
                   return {
                     ...block,
-                    styleOverrides: {
-                      ...block.styleOverrides,
-                      primitiveStyles:
-                        Object.keys(primitiveStyles).length > 0 ? primitiveStyles : undefined,
-                    },
+                    styleOverrides,
                   };
                 }),
               }
@@ -1058,7 +939,7 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setPrimitiveStyleForPaths: (primitivePaths, key, value) => {
+    setPrimitiveStyleForPaths: (primitivePaths, key, value, scope = "default") => {
       if (!state.selectedBlockId || primitivePaths.length === 0) {
         return;
       }
@@ -1072,27 +953,19 @@ export function BuilderProvider({
                   if (block.id !== prev.selectedBlockId) {
                     return block;
                   }
-                  const primitiveStyles = { ...(block.styleOverrides.primitiveStyles ?? {}) };
+                  let styleOverrides = block.styleOverrides;
                   primitivePaths.forEach((primitivePath) => {
-                    const current = { ...(primitiveStyles[primitivePath] ?? {}) };
-                    if (!value.trim()) {
-                      delete current[key];
-                    } else {
-                      current[key] = value;
-                    }
-                    if (Object.keys(current).length === 0) {
-                      delete primitiveStyles[primitivePath];
-                    } else {
-                      primitiveStyles[primitivePath] = current;
-                    }
+                    styleOverrides = setPrimitiveStyleInOverrides(
+                      styleOverrides,
+                      primitivePath,
+                      key,
+                      value,
+                      scope
+                    );
                   });
                   return {
                     ...block,
-                    styleOverrides: {
-                      ...block.styleOverrides,
-                      primitiveStyles:
-                        Object.keys(primitiveStyles).length > 0 ? primitiveStyles : undefined,
-                    },
+                    styleOverrides,
                   };
                 }),
               }
@@ -1105,7 +978,7 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setPrimitiveStyleForTargets: (targets, key, value) => {
+    setPrimitiveStyleForTargets: (targets, key, value, scope = "default") => {
       if (targets.length === 0) {
         return;
       }
@@ -1133,27 +1006,19 @@ export function BuilderProvider({
                   if (!primitivePaths || primitivePaths.length === 0) {
                     return block;
                   }
-                  const primitiveStyles = { ...(block.styleOverrides.primitiveStyles ?? {}) };
+                  let styleOverrides = block.styleOverrides;
                   primitivePaths.forEach((primitivePath) => {
-                    const current = { ...(primitiveStyles[primitivePath] ?? {}) };
-                    if (!value.trim()) {
-                      delete current[key];
-                    } else {
-                      current[key] = value;
-                    }
-                    if (Object.keys(current).length === 0) {
-                      delete primitiveStyles[primitivePath];
-                    } else {
-                      primitiveStyles[primitivePath] = current;
-                    }
+                    styleOverrides = setPrimitiveStyleInOverrides(
+                      styleOverrides,
+                      primitivePath,
+                      key,
+                      value,
+                      scope
+                    );
                   });
                   return {
                     ...block,
-                    styleOverrides: {
-                      ...block.styleOverrides,
-                      primitiveStyles:
-                        Object.keys(primitiveStyles).length > 0 ? primitiveStyles : undefined,
-                    },
+                    styleOverrides,
                   };
                 }),
               }

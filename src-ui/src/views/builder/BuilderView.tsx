@@ -23,8 +23,15 @@ import {
   decodePrimitiveTarget,
   encodePrimitiveTarget,
 } from "../../features/builder/primitive-target";
+import {
+  editScopeFromViewport,
+  getSectionStyleValue,
+  type BuilderViewport,
+} from "../../features/builder/style-scopes";
 import { useActiveProjectSession } from "../../features/project-launcher/session";
 import { useProjectSettings } from "../../features/project-settings/useProjectSettings";
+import { useBuilderInteractionModeStore } from "../../state/useBuilderInteractionModeStore";
+import { useBuilderViewportStore } from "../../state/useBuilderViewportStore";
 import { PreviewBlock } from "./components/PreviewBlock";
 
 type IconButtonProps = {
@@ -51,7 +58,16 @@ function IconButton(props: IconButtonProps) {
   );
 }
 
-function previewModeIcon(mode: "mobile" | "tablet" | "desktop" | "wide") {
+function previewModeIcon(mode: BuilderViewport) {
+  if (mode === "default") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3.5" y="5.5" width="17" height="11" rx="2" />
+        <path d="M9 19h6M12 16.5V19" />
+        <path d="M17.5 8.5h2M18.5 7.5v2" />
+      </svg>
+    );
+  }
   if (mode === "mobile") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -252,18 +268,18 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 type BuilderBlock = ReturnType<typeof useBuilderStore>["selectedPage"]["blocks"][number];
 
-function sectionSpacingFromOverrides(block: BuilderBlock) {
+function sectionSpacingFromOverrides(block: BuilderBlock, scope: BuilderViewport) {
   return {
-    marginTop: parsePxValue(block.styleOverrides.marginTop),
-    marginRight: parsePxValue(block.styleOverrides.marginRight),
-    marginBottom: parsePxValue(block.styleOverrides.marginBottom),
-    marginLeft: parsePxValue(block.styleOverrides.marginLeft),
-    paddingTop: parsePxValue(block.styleOverrides.paddingTop),
-    paddingRight: parsePxValue(block.styleOverrides.paddingRight),
-    paddingBottom: parsePxValue(block.styleOverrides.paddingBottom),
-    paddingLeft: parsePxValue(block.styleOverrides.paddingLeft),
-    translateX: parsePxValue(block.styleOverrides.translateX),
-    translateY: parsePxValue(block.styleOverrides.translateY),
+    marginTop: parsePxValue(getSectionStyleValue(block.styleOverrides, "marginTop", scope)),
+    marginRight: parsePxValue(getSectionStyleValue(block.styleOverrides, "marginRight", scope)),
+    marginBottom: parsePxValue(getSectionStyleValue(block.styleOverrides, "marginBottom", scope)),
+    marginLeft: parsePxValue(getSectionStyleValue(block.styleOverrides, "marginLeft", scope)),
+    paddingTop: parsePxValue(getSectionStyleValue(block.styleOverrides, "paddingTop", scope)),
+    paddingRight: parsePxValue(getSectionStyleValue(block.styleOverrides, "paddingRight", scope)),
+    paddingBottom: parsePxValue(getSectionStyleValue(block.styleOverrides, "paddingBottom", scope)),
+    paddingLeft: parsePxValue(getSectionStyleValue(block.styleOverrides, "paddingLeft", scope)),
+    translateX: parsePxValue(getSectionStyleValue(block.styleOverrides, "translateX", scope)),
+    translateY: parsePxValue(getSectionStyleValue(block.styleOverrides, "translateY", scope)),
   };
 }
 
@@ -271,12 +287,14 @@ export function BuilderView() {
   const builder = useBuilderStore();
   const projectSession = useActiveProjectSession();
   const projectSettings = useProjectSettings(projectSession?.project.path);
-  const [interactionMode, setInteractionMode] = useState<"edit" | "preview">("edit");
+  const viewport = useBuilderViewportStore();
+  const interaction = useBuilderInteractionModeStore();
+  const interactionMode = interaction.mode;
   const [previewRunId, setPreviewRunId] = useState(0);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
   const [hoveredPrimitivePath, setHoveredPrimitivePath] = useState<string | null>(null);
-  const [device, setDevice] = useState<"mobile" | "tablet" | "desktop" | "wide">("wide");
+  const device = viewport.viewport;
   const [activePopover, setActivePopover] = useState<"page" | "device" | "route" | null>(null);
   const [routeDraft, setRouteDraft] = useState(builder.selectedPage.route);
   const [newPageModalOpen, setNewPageModalOpen] = useState(false);
@@ -284,9 +302,7 @@ export function BuilderView() {
   const [newPageSlug, setNewPageSlug] = useState("");
   const [newPageError, setNewPageError] = useState<string | null>(null);
   const previewPageRef = useRef<HTMLDivElement | null>(null);
-  const [previewBreakpoint, setPreviewBreakpoint] = useState<
-    "mobile" | "tablet" | "desktop" | "wide"
-  >("wide");
+  const [previewBreakpoint, setPreviewBreakpoint] = useState<BuilderViewport>("default");
   const pagePopoverRef = useRef<HTMLDivElement | null>(null);
   const devicePopoverRef = useRef<HTMLDivElement | null>(null);
   const routePopoverRef = useRef<HTMLDivElement | null>(null);
@@ -454,16 +470,20 @@ export function BuilderView() {
   })();
 
   const previewDeviceWidthCap =
-    device === "mobile"
-      ? projectSettings.settings.preview.mobileWidth
-      : device === "tablet"
-        ? projectSettings.settings.preview.tabletWidth
-        : device === "desktop"
-          ? projectSettings.settings.preview.desktopWidth
-          : projectSettings.settings.preview.wideWidth;
+    device === "default"
+      ? null
+      : device === "mobile"
+        ? projectSettings.settings.preview.mobileWidth
+        : device === "tablet"
+          ? projectSettings.settings.preview.tabletWidth
+          : device === "desktop"
+            ? projectSettings.settings.preview.desktopWidth
+            : projectSettings.settings.preview.wideWidth;
+  const editScope = editScopeFromViewport(device);
   const mobileMaxBreakpoint = projectSettings.settings.breakpoints.mobileMax;
   const tabletMaxBreakpoint = projectSettings.settings.breakpoints.tabletMax;
   const desktopMaxBreakpoint = projectSettings.settings.breakpoints.desktopMax;
+  const retinaMinBreakpoint = projectSettings.settings.breakpoints.retinaMin;
 
   useEffect(() => {
     const node = previewPageRef.current;
@@ -485,7 +505,11 @@ export function BuilderView() {
         setPreviewBreakpoint("desktop");
         return;
       }
-      setPreviewBreakpoint("wide");
+      if (width >= retinaMinBreakpoint) {
+        setPreviewBreakpoint("wide");
+        return;
+      }
+      setPreviewBreakpoint("default");
     };
 
     const observer = new ResizeObserver(updateBreakpoint);
@@ -496,6 +520,7 @@ export function BuilderView() {
     mobileMaxBreakpoint,
     tabletMaxBreakpoint,
     desktopMaxBreakpoint,
+    retinaMinBreakpoint,
     device,
     previewDeviceWidthCap,
   ]);
@@ -507,15 +532,7 @@ export function BuilderView() {
   const isCatalogDragActive = Boolean(draggedCatalogBlock);
   const isCatalogDragOverPreview = isCatalogDragActive && dropIndex !== null;
 
-  const readSectionSpacing = (
-    block: (typeof builder.selectedPage.blocks)[number],
-    key: SectionStyleKey,
-    shell: HTMLElement
-  ): number => {
-    const override = block.styleOverrides[key];
-    if (override) {
-      return parsePxValue(override);
-    }
+  const readSectionSpacing = (key: SectionStyleKey, shell: HTMLElement): number => {
     const section = shell.querySelector<HTMLElement>(".site-block");
     if (!section) {
       return 0;
@@ -545,18 +562,7 @@ export function BuilderView() {
     return parsePxValue(computed.paddingLeft);
   };
 
-  const readSectionTransform = (
-    block: (typeof builder.selectedPage.blocks)[number],
-    shell: HTMLElement
-  ) => {
-    const xOverride = block.styleOverrides.translateX;
-    const yOverride = block.styleOverrides.translateY;
-    if (xOverride || yOverride) {
-      return {
-        x: parsePxValue(xOverride),
-        y: parsePxValue(yOverride),
-      };
-    }
+  const readSectionTransform = (shell: HTMLElement) => {
     const section = shell.querySelector<HTMLElement>(".site-block");
     if (!section) {
       return { x: 0, y: 0 };
@@ -578,7 +584,7 @@ export function BuilderView() {
     builder.beginStyleDragSession();
 
     const startCoord = handle.axis === "y" ? event.clientY : event.clientX;
-    const startValue = readSectionSpacing(block, handle.key, shell);
+    const startValue = readSectionSpacing(handle.key, shell);
     setActiveSectionSpacingDrag({
       blockId: block.id,
       label: handle.label,
@@ -589,7 +595,7 @@ export function BuilderView() {
       const currentCoord = handle.axis === "y" ? moveEvent.clientY : moveEvent.clientX;
       const delta = (currentCoord - startCoord) * handle.deltaSign;
       const nextValue = normalizeSectionSpacingByKey(handle.key, startValue + delta);
-      builder.setBlockStyleForBlock(block.id, handle.key, `${nextValue}px`);
+      builder.setBlockStyleForBlock(block.id, handle.key, `${nextValue}px`, editScope);
       setActiveSectionSpacingDrag({
         blockId: block.id,
         label: handle.label,
@@ -673,7 +679,7 @@ export function BuilderView() {
 
     const startX = event.clientX;
     const startY = event.clientY;
-    const initial = readSectionTransform(block, shell);
+    const initial = readSectionTransform(shell);
     setActiveSectionTransformDrag({ blockId: block.id, x: initial.x, y: initial.y });
 
     const onPointerMove = (moveEvent: PointerEvent) => {
@@ -681,8 +687,8 @@ export function BuilderView() {
       const deltaY = moveEvent.clientY - startY;
       const nextX = roundPx(initial.x + deltaX);
       const nextY = roundPx(initial.y + deltaY);
-      builder.setBlockStyleForBlock(block.id, "translateX", `${nextX}px`);
-      builder.setBlockStyleForBlock(block.id, "translateY", `${nextY}px`);
+      builder.setBlockStyleForBlock(block.id, "translateX", `${nextX}px`, editScope);
+      builder.setBlockStyleForBlock(block.id, "translateY", `${nextY}px`, editScope);
       setActiveSectionTransformDrag({ blockId: block.id, x: nextX, y: nextY });
     };
 
@@ -1004,17 +1010,30 @@ export function BuilderView() {
                 <div className="popover-option-list">
                   {(
                     [
-                      { id: "mobile", label: "Mobile" },
-                      { id: "tablet", label: "Tablet" },
-                      { id: "desktop", label: "Desktop / Laptop / HD" },
-                      { id: "wide", label: "Retina / Wide / UHD" },
+                      { id: "default", label: "Default (Base)" },
+                      {
+                        id: "mobile",
+                        label: `Mobile [<= ${projectSettings.settings.breakpoints.mobileMax}px]`,
+                      },
+                      {
+                        id: "tablet",
+                        label: `Tablet [<= ${projectSettings.settings.breakpoints.tabletMax}px]`,
+                      },
+                      {
+                        id: "desktop",
+                        label: `Desktop / Laptop / HD [<= ${projectSettings.settings.breakpoints.desktopMax}px]`,
+                      },
+                      {
+                        id: "wide",
+                        label: `Retina / Wide / UHD [>= ${projectSettings.settings.breakpoints.retinaMin}px]`,
+                      },
                     ] as const
                   ).map((mode) => (
                     <button
                       key={mode.id}
                       className={`popover-option single-line${mode.id === device ? " active" : ""}`}
                       onClick={() => {
-                        setDevice(mode.id);
+                        viewport.setViewport(mode.id);
                         setActivePopover(null);
                       }}
                     >
@@ -1038,7 +1057,7 @@ export function BuilderView() {
                 : "builder-mode-toggle preview-mode"
             }
             onClick={() => {
-              setInteractionMode((prev) => (prev === "edit" ? "preview" : "edit"));
+              interaction.setMode(interactionMode === "edit" ? "preview" : "edit");
               setActivePopover(null);
               if (interactionMode === "edit") {
                 builder.selectBlock(null);
@@ -1231,7 +1250,7 @@ export function BuilderView() {
                   </div>
                 ) : null}
                 {builder.selectedPage.blocks.map((block, index) => {
-                  const sectionGuide = sectionSpacingFromOverrides(block);
+                  const sectionGuide = sectionSpacingFromOverrides(block, previewBreakpoint);
                   return (
                     <div key={block.id} className="canvas-block-shell">
                       <div
@@ -1350,6 +1369,7 @@ export function BuilderView() {
                           <PreviewBlock
                             key={`${block.id}-${previewRunId}`}
                             block={block}
+                            previewScope={previewBreakpoint}
                             editable={
                               interactionMode === "edit" &&
                               builder.state.selectedBlockId === block.id
@@ -1373,7 +1393,8 @@ export function BuilderView() {
                               builder.setPrimitiveStyleForTargets(
                                 [encodePrimitiveTarget(block.id, path)],
                                 key,
-                                value
+                                value,
+                                editScope
                               )
                             }
                             onStyleDragSessionStart={() => builder.beginStyleDragSession()}
