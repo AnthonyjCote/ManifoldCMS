@@ -2544,3 +2544,86 @@ textarea:focus-visible {
   background: #f4f7fc;
   color: #44506a;
 }
+
+.site-preview-page.breakpoint-tablet .site-block {
+  padding: clamp(18px, 2.6vw, 28px);
+}
+
+.site-preview-page.breakpoint-tablet .primitive-columns {
+  gap: clamp(14px, 2.2vw, 24px);
+}
+
+.site-preview-page.breakpoint-tablet .primitive-cards {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.site-preview-page.breakpoint-mobile {
+  padding: 10px;
+}
+
+.site-preview-page.breakpoint-mobile .site-block {
+  padding: 16px;
+}
+
+.site-preview-page.breakpoint-mobile .primitive-columns {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 12px;
+}
+
+.site-preview-page.breakpoint-mobile .primitive-cards {
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 12px;
+}
+
+.site-preview-page.breakpoint-mobile .site-block h1 {
+  font-size: clamp(28px, 8vw, 38px);
+  line-height: 1.08;
+}
+
+.site-preview-page.breakpoint-mobile .site-block h2 {
+  font-size: clamp(22px, 6vw, 30px);
+  line-height: 1.12;
+}
+
+.site-preview-page.breakpoint-mobile .site-block h3 {
+  font-size: clamp(17px, 4.6vw, 20px);
+}
+
+.site-preview-page.breakpoint-mobile .site-block p {
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.site-preview-page.breakpoint-mobile .hero-layout p {
+  max-width: 100%;
+}
+
+.site-preview-page.breakpoint-mobile .hero-image,
+.site-preview-page.breakpoint-mobile .hero-layout .primitive-image-placeholder {
+  min-height: 220px;
+  border-radius: 12px;
+}
+
+.site-preview-page.breakpoint-mobile .feature-card {
+  padding: 14px;
+}
+
+.site-preview-page.breakpoint-mobile .cta-banner {
+  padding: 22px 14px;
+}
+
+.site-preview-page.breakpoint-mobile .hero-cta {
+  width: 100%;
+}
+
+.site-preview-page.breakpoint-mobile .logo-badge {
+  padding: 14px 12px;
+}
+
+.site-preview-page.breakpoint-mobile .faq-item {
+  padding: 10px 12px;
+}
+
+.site-preview-page.breakpoint-mobile .footer-block {
+  padding: 18px 14px;
+}

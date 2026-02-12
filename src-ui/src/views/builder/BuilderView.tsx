@@ -275,6 +275,9 @@ export function BuilderView() {
   const [newPageSlug, setNewPageSlug] = useState("");
   const [newPageError, setNewPageError] = useState<string | null>(null);
   const previewPageRef = useRef<HTMLDivElement | null>(null);
+  const [previewBreakpoint, setPreviewBreakpoint] = useState<"mobile" | "tablet" | "desktop">(
+    "desktop"
+  );
   const pagePopoverRef = useRef<HTMLDivElement | null>(null);
   const devicePopoverRef = useRef<HTMLDivElement | null>(null);
   const routePopoverRef = useRef<HTMLDivElement | null>(null);
@@ -447,6 +450,33 @@ export function BuilderView() {
       : device === "tablet"
         ? projectSettings.settings.preview.tabletWidth
         : null;
+  const mobileMaxBreakpoint = projectSettings.settings.breakpoints.mobileMax;
+  const tabletMaxBreakpoint = projectSettings.settings.breakpoints.tabletMax;
+
+  useEffect(() => {
+    const node = previewPageRef.current;
+    if (!node) {
+      return;
+    }
+
+    const updateBreakpoint = () => {
+      const width = node.clientWidth;
+      if (width <= mobileMaxBreakpoint) {
+        setPreviewBreakpoint("mobile");
+        return;
+      }
+      if (width <= tabletMaxBreakpoint) {
+        setPreviewBreakpoint("tablet");
+        return;
+      }
+      setPreviewBreakpoint("desktop");
+    };
+
+    const observer = new ResizeObserver(updateBreakpoint);
+    observer.observe(node);
+    updateBreakpoint();
+    return () => observer.disconnect();
+  }, [mobileMaxBreakpoint, tabletMaxBreakpoint, device, previewDeviceWidthCap]);
 
   const draggedCatalogBlock =
     activePointerDrag?.payload.kind === "catalog"
@@ -1144,7 +1174,7 @@ export function BuilderView() {
 
               <div
                 ref={previewPageRef}
-                className={`site-preview-page${isCatalogDragActive ? " catalog-dragging" : ""}${isCatalogDragOverPreview ? " catalog-drag-over" : ""}`}
+                className={`site-preview-page breakpoint-${previewBreakpoint}${isCatalogDragActive ? " catalog-dragging" : ""}${isCatalogDragOverPreview ? " catalog-drag-over" : ""}`}
                 onDragOver={interactionMode === "edit" ? handlePreviewDragOver : undefined}
                 onDragOverCapture={interactionMode === "edit" ? handlePreviewDragOver : undefined}
                 onDragLeave={(event) => {
