@@ -882,6 +882,18 @@ body,
   background: #2a3039;
 }
 
+.builder-icon-btn.builder-mode-toggle.edit-mode {
+  border-color: #6e5b32;
+  background: #2b2418;
+  color: #f0c777;
+}
+
+.builder-icon-btn.builder-mode-toggle.preview-mode {
+  border-color: #3a6654;
+  background: #14231b;
+  color: #87c8a9;
+}
+
 .builder-icon-btn:disabled {
   opacity: 0.45;
   cursor: default;

@@ -29,6 +29,7 @@ type PrimitiveStyleSetKey =
 type PrimitiveRendererProps = {
   node: PrimitiveNode;
   editable?: boolean;
+  selectionEnabled?: boolean;
   onInlineCommit?: (fieldKey: string, value: string) => void;
   primitivePath?: string;
   selectedPrimitivePaths?: string[];
@@ -284,6 +285,7 @@ function normalizeSpacingByKey(key: PrimitiveStyleSetKey, value: number): number
 export function PrimitiveRenderer({
   node,
   editable = false,
+  selectionEnabled = true,
   onInlineCommit,
   primitivePath = "0",
   selectedPrimitivePaths = [],
@@ -296,8 +298,8 @@ export function PrimitiveRenderer({
   primitiveStyles,
 }: PrimitiveRendererProps) {
   const style = toPrimitiveStyle(primitiveStyles?.[primitivePath]);
-  const isSelected = selectedPrimitivePaths.includes(primitivePath);
-  const isHovered = hoveredPrimitivePath === primitivePath;
+  const isSelected = selectionEnabled && selectedPrimitivePaths.includes(primitivePath);
+  const isHovered = selectionEnabled && hoveredPrimitivePath === primitivePath;
   const primitiveClass = `preview-primitive-node${isSelected ? " selected" : ""}${isHovered ? " hovered" : ""}`;
   const selectPrimitive = (multi = false) => onSelectPrimitive?.(primitivePath, node.type, multi);
   const primitiveRef = useRef<HTMLElement | null>(null);
@@ -547,7 +549,7 @@ export function PrimitiveRenderer({
   };
 
   const renderSpacingOverlay = () => {
-    if (!isSelected || !overlayModel || !onPrimitiveStyleSet) {
+    if (!selectionEnabled || !isSelected || !overlayModel || !onPrimitiveStyleSet) {
       return null;
     }
 
@@ -630,6 +632,9 @@ export function PrimitiveRenderer({
   };
 
   const onPrimitiveClick = (event: MouseEvent<HTMLElement>) => {
+    if (!selectionEnabled) {
+      return;
+    }
     event.stopPropagation();
     const active = document.activeElement;
     if (active instanceof HTMLElement && active.isContentEditable && !isSelected) {
@@ -639,6 +644,9 @@ export function PrimitiveRenderer({
   };
 
   const onPrimitiveMove = (event: MouseEvent<HTMLElement>) => {
+    if (!selectionEnabled) {
+      return;
+    }
     event.stopPropagation();
     onHoverPrimitive?.(primitivePath);
   };
@@ -670,6 +678,7 @@ export function PrimitiveRenderer({
             key={`${child.type}-${index}`}
             node={child}
             editable={editable}
+            selectionEnabled={selectionEnabled}
             onInlineCommit={onInlineCommit}
             primitivePath={`${primitivePath}.${index}`}
             selectedPrimitivePaths={selectedPrimitivePaths}
@@ -703,6 +712,7 @@ export function PrimitiveRenderer({
             key={`${child.type}-${index}`}
             node={child}
             editable={editable}
+            selectionEnabled={selectionEnabled}
             onInlineCommit={onInlineCommit}
             primitivePath={`${primitivePath}.${index}`}
             selectedPrimitivePaths={selectedPrimitivePaths}
@@ -735,6 +745,7 @@ export function PrimitiveRenderer({
             key={`${child.type}-${index}`}
             node={child}
             editable={editable}
+            selectionEnabled={selectionEnabled}
             onInlineCommit={onInlineCommit}
             primitivePath={`${primitivePath}.${index}`}
             selectedPrimitivePaths={selectedPrimitivePaths}
@@ -930,9 +941,17 @@ export function PrimitiveRenderer({
         href={String(node.props?.href ?? "#")}
         className={`${primitiveClass} hero-cta`}
         style={style}
-        onMouseDown={(event) => event.stopPropagation()}
+        onMouseDown={(event) => {
+          if (!selectionEnabled) {
+            return;
+          }
+          event.stopPropagation();
+        }}
         onMouseMove={onPrimitiveMove}
         onClick={(event) => {
+          if (!selectionEnabled) {
+            return;
+          }
           event.stopPropagation();
           selectPrimitive(event.shiftKey);
           event.preventDefault();

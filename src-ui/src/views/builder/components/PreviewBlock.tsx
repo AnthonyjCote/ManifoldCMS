@@ -7,6 +7,7 @@ import { PrimitiveRenderer } from "./PrimitiveRenderer";
 type PreviewBlockProps = {
   block: BlockInstance;
   editable: boolean;
+  selectionEnabled?: boolean;
   onInlineCommit: (fieldKey: string, value: string) => void;
   selectedPrimitivePaths: string[];
   hoveredPrimitivePath: string | null;
@@ -74,6 +75,7 @@ function composeBackgroundOverride(
 export function PreviewBlock({
   block,
   editable,
+  selectionEnabled = true,
   onInlineCommit,
   selectedPrimitivePaths,
   hoveredPrimitivePath,
@@ -121,6 +123,7 @@ export function PreviewBlock({
           key={`${node.type}-${index}`}
           node={node}
           editable={editable}
+          selectionEnabled={selectionEnabled}
           onInlineCommit={onInlineCommit}
           primitivePath={String(index)}
           selectedPrimitivePaths={selectedPrimitivePaths}

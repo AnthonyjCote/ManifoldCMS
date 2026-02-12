@@ -33,12 +33,13 @@ type IconButtonProps = {
   disabled?: boolean;
   tone?: "default" | "danger";
   active?: boolean;
+  className?: string;
 };
 
 function IconButton(props: IconButtonProps) {
   return (
     <button
-      className={`builder-icon-btn${props.tone === "danger" ? " danger" : ""}${props.active ? " active" : ""}`}
+      className={`builder-icon-btn${props.tone === "danger" ? " danger" : ""}${props.active ? " active" : ""}${props.className ? ` ${props.className}` : ""}`}
       onClick={props.onClick}
       disabled={props.disabled}
       aria-label={props.label}
@@ -259,6 +260,8 @@ function sectionSpacingFromOverrides(block: BuilderBlock) {
 export function BuilderView() {
   const builder = useBuilderStore();
   const projectSession = useActiveProjectSession();
+  const [interactionMode, setInteractionMode] = useState<"edit" | "preview">("edit");
+  const [previewRunId, setPreviewRunId] = useState(0);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
   const [hoveredPrimitivePath, setHoveredPrimitivePath] = useState<string | null>(null);
@@ -863,6 +866,9 @@ export function BuilderView() {
   }, [builder]);
 
   const handlePreviewDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (interactionMode !== "edit") {
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     event.dataTransfer.dropEffect = "copy";
@@ -870,10 +876,21 @@ export function BuilderView() {
   };
 
   const handlePreviewDrop = (event: DragEvent<HTMLDivElement>) => {
+    if (interactionMode !== "edit") {
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     const resolvedIndex = resolveDropIndex(event);
     applyDrop(event, resolvedIndex);
+  };
+
+  const replayPreviewLoad = () => {
+    if (previewPageRef.current) {
+      previewPageRef.current.scrollTop = 0;
+      previewPageRef.current.scrollLeft = 0;
+    }
+    setPreviewRunId((prev) => prev + 1);
   };
 
   return (
@@ -915,14 +932,14 @@ export function BuilderView() {
 
           <div className="builder-popover-anchor" ref={devicePopoverRef}>
             <IconButton
-              label="Preview Mode"
+              label="Viewport size"
               active={activePopover === "device"}
               onClick={() => setActivePopover((prev) => (prev === "device" ? null : "device"))}
               icon={previewModeIcon(device)}
             />
             {activePopover === "device" ? (
               <div className="builder-popover align-start">
-                <div className="popover-title">Preview mode</div>
+                <div className="popover-title">Viewport size</div>
                 <div className="popover-option-list">
                   {(["mobile", "tablet", "desktop"] as const).map((mode) => (
                     <button
@@ -940,6 +957,50 @@ export function BuilderView() {
               </div>
             ) : null}
           </div>
+          <IconButton
+            label={
+              interactionMode === "edit"
+                ? "Edit mode (click to switch to Preview)"
+                : "Preview mode (click to switch to Edit)"
+            }
+            active={interactionMode === "preview"}
+            className={
+              interactionMode === "edit"
+                ? "builder-mode-toggle edit-mode"
+                : "builder-mode-toggle preview-mode"
+            }
+            onClick={() => {
+              setInteractionMode((prev) => (prev === "edit" ? "preview" : "edit"));
+              setActivePopover(null);
+              if (interactionMode === "edit") {
+                builder.selectBlock(null);
+                builder.selectPrimitivePath(null);
+              }
+            }}
+            icon={
+              interactionMode === "edit" ? (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 20h4l10-10-4-4L4 16v4Z" />
+                  <path d="m12 6 4 4" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )
+            }
+          />
+          <IconButton
+            label="Replay page load"
+            onClick={replayPreviewLoad}
+            icon={
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 12a8 8 0 1 1-2.4-5.7L20 8" />
+                <path d="M20 4v4h-4" />
+              </svg>
+            }
+          />
         </div>
 
         <div className="builder-rail-group compact">
@@ -1065,18 +1126,21 @@ export function BuilderView() {
               <div
                 ref={previewPageRef}
                 className={`site-preview-page${isCatalogDragActive ? " catalog-dragging" : ""}${isCatalogDragOverPreview ? " catalog-drag-over" : ""}`}
-                onDragOver={handlePreviewDragOver}
-                onDragOverCapture={handlePreviewDragOver}
+                onDragOver={interactionMode === "edit" ? handlePreviewDragOver : undefined}
+                onDragOverCapture={interactionMode === "edit" ? handlePreviewDragOver : undefined}
                 onDragLeave={(event) => {
+                  if (interactionMode !== "edit") {
+                    return;
+                  }
                   const nextTarget = event.relatedTarget;
                   if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
                     return;
                   }
                   setDropIndex(null);
                 }}
-                onDropCapture={handlePreviewDrop}
+                onDropCapture={interactionMode === "edit" ? handlePreviewDrop : undefined}
               >
-                {isCatalogDragActive ? (
+                {interactionMode === "edit" && isCatalogDragActive ? (
                   <div className="site-preview-drop-hint-layer">
                     <div
                       className={`site-preview-drop-hint${isCatalogDragOverPreview ? " active" : ""}`}
@@ -1097,18 +1161,22 @@ export function BuilderView() {
                       />
 
                       <div
-                        className={`site-block-shell${builder.state.selectedBlockIds.includes(block.id) ? " selected" : ""}${hoveredBlockId === block.id ? " hovered" : ""}${block.visibility === "hidden" ? " hidden" : ""}`}
+                        className={`site-block-shell${interactionMode === "edit" && builder.state.selectedBlockIds.includes(block.id) ? " selected" : ""}${interactionMode === "edit" && hoveredBlockId === block.id ? " hovered" : ""}${block.visibility === "hidden" ? " hidden" : ""}`}
                         onMouseEnter={() => setHoveredBlockId(block.id)}
                         onMouseLeave={() => {
                           setHoveredBlockId((prev) => (prev === block.id ? null : prev));
                           setHoveredPrimitivePath(null);
                         }}
                         onClick={(event) => {
+                          if (interactionMode !== "edit") {
+                            return;
+                          }
                           builder.selectBlock(block.id, { multi: event.shiftKey });
                           builder.selectPrimitivePath(null);
                         }}
                       >
-                        {builder.state.selectedBlockId === block.id ? (
+                        {interactionMode === "edit" &&
+                        builder.state.selectedBlockId === block.id ? (
                           <>
                             <button
                               className="site-block-drag-handle"
@@ -1202,8 +1270,13 @@ export function BuilderView() {
                         ) : null}
                         <div className="site-block-render">
                           <PreviewBlock
+                            key={`${block.id}-${previewRunId}`}
                             block={block}
-                            editable={builder.state.selectedBlockId === block.id}
+                            editable={
+                              interactionMode === "edit" &&
+                              builder.state.selectedBlockId === block.id
+                            }
+                            selectionEnabled={interactionMode === "edit"}
                             onInlineCommit={(fieldKey, value) =>
                               builder.setBlockFieldForBlock(block.id, fieldKey, value)
                             }
@@ -1238,7 +1311,7 @@ export function BuilderView() {
                   className={`canvas-insert-indicator final${dropIndex === builder.selectedPage.blocks.length ? " active" : ""}`}
                 />
 
-                {builder.selectedPage.blocks.length === 0 ? (
+                {interactionMode === "edit" && builder.selectedPage.blocks.length === 0 ? (
                   <div
                     className={`site-preview-empty${dropIndex === builder.selectedPage.blocks.length ? " active" : ""}`}
                     onDragOver={handlePreviewDragOver}
