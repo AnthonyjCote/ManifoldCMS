@@ -273,6 +273,7 @@ export function BuilderView() {
   const pagePopoverRef = useRef<HTMLDivElement | null>(null);
   const devicePopoverRef = useRef<HTMLDivElement | null>(null);
   const routePopoverRef = useRef<HTMLDivElement | null>(null);
+  const endStyleDragSessionRef = useRef(builder.endStyleDragSession);
   const sectionSpacingDragRef = useRef<{
     handle: SectionSpacingHandle | "transform";
     startCoord: number;
@@ -294,6 +295,10 @@ export function BuilderView() {
     y: number;
   } | null>(null);
   const [activePointerDrag, setActivePointerDrag] = useState<BuilderPointerDragDetail | null>(null);
+
+  useEffect(() => {
+    endStyleDragSessionRef.current = builder.endStyleDragSession;
+  }, [builder.endStyleDragSession]);
 
   useEffect(() => {
     const onWindowPointerDown = (event: MouseEvent) => {
@@ -372,7 +377,7 @@ export function BuilderView() {
       document.removeEventListener("mousemove", sectionSpacingDragRef.current.onMouseMove, true);
       document.removeEventListener("mouseup", sectionSpacingDragRef.current.onMouseUp, true);
       sectionSpacingDragRef.current = null;
-      builder.endStyleDragSession();
+      endStyleDragSessionRef.current();
     };
   }, []);
 
