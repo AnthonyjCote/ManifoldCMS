@@ -9,6 +9,7 @@ export type ViewMode =
   | "blocks_library"
   | "export_wizard"
   | "publish"
+  | "project_settings"
   | "settings";
 
 export type DrawerTarget = "right" | "bottom";

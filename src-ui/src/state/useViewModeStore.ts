@@ -18,6 +18,7 @@ function readInitialMode(): ViewMode {
     raw === "blocks_library" ||
     raw === "export_wizard" ||
     raw === "publish" ||
+    raw === "project_settings" ||
     raw === "settings"
   ) {
     return raw;

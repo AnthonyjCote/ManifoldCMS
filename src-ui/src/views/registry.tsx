@@ -15,6 +15,7 @@ import { ContentView } from "./content/ContentView";
 import { ExportWizardView } from "./export-wizard/ExportWizardView";
 import { HomeView } from "./home/HomeView";
 import { PublishView } from "./publish/PublishView";
+import { ProjectSettingsView } from "./project-settings/ProjectSettingsView";
 import { SettingsView } from "./settings/SettingsView";
 import { ThemeView } from "./theme/ThemeView";
 
@@ -32,6 +33,7 @@ function blocksTree() {
 
 export const VIEW_ORDER: ViewMode[] = [
   "home",
+  "project_settings",
   "builder",
   "content",
   "theme",
@@ -244,6 +246,23 @@ export const VIEW_DEFINITIONS: Record<ViewMode, ViewDefinition> = {
       rightDrawerDefault: { pinned: false, open: false },
       bottomDrawerDefault: { pinned: true, open: true },
       defaultPrimaryDrawer: "bottom",
+    },
+  },
+  project_settings: {
+    id: "project_settings",
+    label: "Project",
+    icon: "PS",
+    component: ProjectSettingsView,
+    layout: {
+      hasLeftPane: false,
+      hasRightDrawer: false,
+      hasBottomDrawer: false,
+      leftPaneDefaultWidth: 280,
+      rightDrawerTabs: [],
+      bottomDrawerTabs: [],
+      rightDrawerDefault: { pinned: false, open: false },
+      bottomDrawerDefault: { pinned: false, open: false },
+      defaultPrimaryDrawer: "right",
     },
   },
   settings: {

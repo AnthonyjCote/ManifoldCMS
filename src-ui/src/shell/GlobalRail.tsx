@@ -138,6 +138,20 @@ function RailIcon({ mode }: { mode: ViewMode }) {
           />
         </svg>
       );
+    case "project_settings":
+      return (
+        <svg {...common}>
+          <path
+            d="M4 6h16v12H4zM8 10h8M8 14h5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <path d="M16 4v4M8 4v4" fill="none" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+      );
     default:
       return null;
   }

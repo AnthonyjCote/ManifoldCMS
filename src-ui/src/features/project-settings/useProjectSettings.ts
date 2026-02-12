@@ -1,0 +1,125 @@
+import { useEffect, useMemo, useState } from "react";
+
+export type ProjectSettings = {
+  breakpoints: {
+    mobileMax: number;
+    tabletMax: number;
+  };
+  preview: {
+    mobileWidth: number;
+    tabletWidth: number;
+  };
+};
+
+const PROJECT_SETTINGS_KEY = "manifold.project-settings.v1";
+
+const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
+  breakpoints: {
+    mobileMax: 767,
+    tabletMax: 1023,
+  },
+  preview: {
+    mobileWidth: 420,
+    tabletWidth: 880,
+  },
+};
+
+function settingsKey(projectPath: string): string {
+  return `${PROJECT_SETTINGS_KEY}:${projectPath}`;
+}
+
+function toPositiveInt(value: unknown, fallback: number): number {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  if (Number.isNaN(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
+function coerceProjectSettings(raw: unknown): ProjectSettings {
+  const input = (raw as Partial<ProjectSettings>) ?? {};
+  const mobileMax = toPositiveInt(
+    input.breakpoints?.mobileMax,
+    DEFAULT_PROJECT_SETTINGS.breakpoints.mobileMax
+  );
+  const tabletMax = toPositiveInt(
+    input.breakpoints?.tabletMax,
+    DEFAULT_PROJECT_SETTINGS.breakpoints.tabletMax
+  );
+  const safeMobileMax = Math.min(mobileMax, tabletMax - 1);
+  const safeTabletMax = Math.max(tabletMax, safeMobileMax + 1);
+
+  return {
+    breakpoints: {
+      mobileMax: safeMobileMax,
+      tabletMax: safeTabletMax,
+    },
+    preview: {
+      mobileWidth: toPositiveInt(
+        input.preview?.mobileWidth,
+        DEFAULT_PROJECT_SETTINGS.preview.mobileWidth
+      ),
+      tabletWidth: toPositiveInt(
+        input.preview?.tabletWidth,
+        DEFAULT_PROJECT_SETTINGS.preview.tabletWidth
+      ),
+    },
+  };
+}
+
+function readProjectSettings(projectPath: string | undefined): ProjectSettings {
+  if (!projectPath) {
+    return DEFAULT_PROJECT_SETTINGS;
+  }
+  try {
+    const raw = window.localStorage.getItem(settingsKey(projectPath));
+    if (!raw) {
+      return DEFAULT_PROJECT_SETTINGS;
+    }
+    return coerceProjectSettings(JSON.parse(raw));
+  } catch {
+    return DEFAULT_PROJECT_SETTINGS;
+  }
+}
+
+function writeProjectSettings(projectPath: string, settings: ProjectSettings): void {
+  window.localStorage.setItem(settingsKey(projectPath), JSON.stringify(settings));
+}
+
+export function useProjectSettings(projectPath: string | undefined): {
+  settings: ProjectSettings;
+  updateSettings: (updater: (prev: ProjectSettings) => ProjectSettings) => void;
+  resetSettings: () => void;
+  hasProject: boolean;
+} {
+  const [settings, setSettings] = useState<ProjectSettings>(() => readProjectSettings(projectPath));
+
+  useEffect(() => {
+    setSettings(readProjectSettings(projectPath));
+  }, [projectPath]);
+
+  const updateSettings = (updater: (prev: ProjectSettings) => ProjectSettings) => {
+    setSettings((prev) => {
+      const next = coerceProjectSettings(updater(prev));
+      if (projectPath) {
+        writeProjectSettings(projectPath, next);
+      }
+      return next;
+    });
+  };
+
+  const resetSettings = () => {
+    const next = DEFAULT_PROJECT_SETTINGS;
+    if (projectPath) {
+      writeProjectSettings(projectPath, next);
+    }
+    setSettings(next);
+  };
+
+  return {
+    settings,
+    updateSettings,
+    resetSettings,
+    hasProject: useMemo(() => Boolean(projectPath), [projectPath]),
+  };
+}

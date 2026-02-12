@@ -24,6 +24,7 @@ import {
   encodePrimitiveTarget,
 } from "../../features/builder/primitive-target";
 import { useActiveProjectSession } from "../../features/project-launcher/session";
+import { useProjectSettings } from "../../features/project-settings/useProjectSettings";
 import { PreviewBlock } from "./components/PreviewBlock";
 
 type IconButtonProps = {
@@ -260,6 +261,7 @@ function sectionSpacingFromOverrides(block: BuilderBlock) {
 export function BuilderView() {
   const builder = useBuilderStore();
   const projectSession = useActiveProjectSession();
+  const projectSettings = useProjectSettings(projectSession?.project.path);
   const [interactionMode, setInteractionMode] = useState<"edit" | "preview">("edit");
   const [previewRunId, setPreviewRunId] = useState(0);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -438,6 +440,13 @@ export function BuilderView() {
     }
     return `${normalizedBase}${route}`;
   })();
+
+  const previewDeviceWidthCap =
+    device === "mobile"
+      ? projectSettings.settings.preview.mobileWidth
+      : device === "tablet"
+        ? projectSettings.settings.preview.tabletWidth
+        : null;
 
   const draggedCatalogBlock =
     activePointerDrag?.payload.kind === "catalog"
@@ -1113,7 +1122,17 @@ export function BuilderView() {
       <div className="builder-canvas">
         <div className="canvas-stack">
           <div className={`site-preview-viewport device-${device}`}>
-            <div className="site-preview-browser">
+            <div
+              className="site-preview-browser"
+              style={
+                previewDeviceWidthCap
+                  ? {
+                      width: `min(100%, ${previewDeviceWidthCap}px)`,
+                      marginInline: "auto",
+                    }
+                  : undefined
+              }
+            >
               <div className="browser-chrome">
                 <div className="browser-dots">
                   <span />
