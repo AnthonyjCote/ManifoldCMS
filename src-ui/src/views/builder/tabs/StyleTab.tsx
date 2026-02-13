@@ -82,7 +82,7 @@ type StyleGroup<K extends AllStyleKey> = {
   fields: MasterStyleField<K>[];
 };
 
-type FieldValueStatus = "edited" | "inherited" | "uninitialized";
+type FieldValueStatus = "override" | "edited" | "inherited" | "uninitialized";
 type FieldFilterMode = "all" | FieldValueStatus;
 
 const STYLE_TAB_COLLAPSE_KEY = "manifold.builder.style-tab.collapsed-groups";
@@ -339,10 +339,19 @@ const FIELD_FILTER_OPTIONS: Array<{
   label: string;
 }> = [
   { value: "all", label: "All fields" },
+  { value: "override", label: "Override" },
   { value: "edited", label: "Edited" },
   { value: "inherited", label: "Inherited" },
   { value: "uninitialized", label: "Uninitialized" },
 ];
+
+function viewportToneClass(viewport: BuilderViewport) {
+  return `viewport-tone-${viewport}`;
+}
+
+function filterToneClass(filter: FieldFilterMode) {
+  return `status-tone-${filter}`;
+}
 
 const STYLE_STATES: Array<{
   id: Exclude<StyleStateKey, "default">;
@@ -406,11 +415,19 @@ function buildStyleGroups<K extends AllStyleKey>(
   }).filter((group) => group.fields.length > 0);
 }
 
-function resolveFieldValueStatus(explicitValue: string, resolvedValue: string): FieldValueStatus {
-  if (explicitValue.trim().length > 0) {
+function resolveFieldValueStatus(opts: {
+  hasExplicitCurrent: boolean;
+  hasExplicitDefault: boolean;
+  resolvedValue: string;
+  scope: BuilderViewport;
+}): FieldValueStatus {
+  if (opts.scope !== "default" && opts.hasExplicitCurrent && opts.hasExplicitDefault) {
+    return "override";
+  }
+  if (opts.hasExplicitCurrent) {
     return "edited";
   }
-  if (resolvedValue.trim().length > 0) {
+  if (opts.resolvedValue.trim().length > 0) {
     return "inherited";
   }
   return "uninitialized";
@@ -864,7 +881,7 @@ export function StyleTab() {
           <div ref={scopePopoverRef} className="style-tab-scope-control">
             <button
               type="button"
-              className="style-tab-scope-indicator"
+              className={`style-tab-scope-indicator ${viewportToneClass(viewport.viewport)}`}
               aria-live="polite"
               aria-expanded={scopePopoverOpen}
               aria-haspopup="menu"
@@ -883,7 +900,7 @@ export function StyleTab() {
                     type="button"
                     role="menuitemradio"
                     aria-checked={viewport.viewport === entry}
-                    className={`style-tab-scope-option${
+                    className={`style-tab-scope-option ${viewportToneClass(entry)}${
                       viewport.viewport === entry ? " active" : ""
                     }`}
                     onClick={() => {
@@ -901,7 +918,7 @@ export function StyleTab() {
           <div ref={fieldFilterPopoverRef} className="style-tab-filter-control">
             <button
               type="button"
-              className="style-tab-filter-indicator"
+              className={`style-tab-filter-indicator ${filterToneClass(fieldFilter)}`}
               aria-expanded={fieldFilterPopoverOpen}
               aria-haspopup="menu"
               onClick={() => setFieldFilterPopoverOpen((prev) => !prev)}
@@ -922,7 +939,7 @@ export function StyleTab() {
                     type="button"
                     role="menuitemradio"
                     aria-checked={fieldFilter === option.value}
-                    className={`style-tab-filter-option${
+                    className={`style-tab-filter-option ${filterToneClass(option.value)}${
                       fieldFilter === option.value ? " active" : ""
                     }`}
                     onClick={() => {
@@ -1023,17 +1040,39 @@ export function StyleTab() {
                       activeFieldState
                     );
                   });
+                  const explicitDefaultValuesForSelection = primitiveSelectionTargets.map(
+                    (target) => {
+                      const targetBlock = builder.selectedPage.blocks.find(
+                        (entry) => entry.id === target.blockId
+                      );
+                      if (!targetBlock) {
+                        return "";
+                      }
+                      return getExplicitPrimitiveStyleValue(
+                        targetBlock.styleOverrides,
+                        target.primitivePath,
+                        field.key as PrimitiveStyleKey,
+                        "default",
+                        activeFieldState
+                      );
+                    }
+                  );
                   const firstValue = valuesForSelection[0] ?? "";
                   const value = valuesForSelection.every((entry) => entry === firstValue)
                     ? firstValue
                     : "";
-                  const explicitFirst = explicitValuesForSelection[0] ?? "";
-                  const explicitValue = explicitValuesForSelection.every(
-                    (entry) => entry === explicitFirst
-                  )
-                    ? explicitFirst
-                    : "";
-                  const status = resolveFieldValueStatus(explicitValue, value);
+                  const hasExplicitCurrent = explicitValuesForSelection.some(
+                    (entry) => entry.trim().length > 0
+                  );
+                  const hasExplicitDefault = explicitDefaultValuesForSelection.some(
+                    (entry) => entry.trim().length > 0
+                  );
+                  const status = resolveFieldValueStatus({
+                    hasExplicitCurrent,
+                    hasExplicitDefault,
+                    resolvedValue: value,
+                    scope: editScope,
+                  });
                   const inherited = status === "inherited";
                   if (!matchesFieldFilter(status, fieldFilter)) {
                     return null;
@@ -1056,17 +1095,18 @@ export function StyleTab() {
                   return (
                     <div key={field.key} className="inspector-field compact">
                       <span className="style-field-label-row">
-                        <span
-                          className={`style-field-status-dot ${status}`}
-                          title={
-                            status === "edited"
-                              ? `Edited in ${SCOPE_LABELS[editScope]}`
-                              : status === "inherited"
-                                ? `Inherited from Default`
-                                : `Uninitialized`
-                          }
-                          aria-hidden="true"
-                        />
+                        <span className="style-field-status-dot-wrap">
+                          <span className={`style-field-status-dot ${status}`} aria-hidden="true" />
+                          <span className="style-field-status-tooltip" role="tooltip">
+                            {status === "override"
+                              ? `Override of Default in ${SCOPE_LABELS[editScope]}`
+                              : status === "edited"
+                                ? `Edited in ${SCOPE_LABELS[editScope]}`
+                                : status === "inherited"
+                                  ? `Inherited from Default`
+                                  : `Uninitialized`}
+                          </span>
+                        </span>
                         <span className="style-field-label-text">
                           <span className="style-field-scope-prefix">{fieldScopeLabelPrefix}</span>{" "}
                           {field.label}
@@ -1144,17 +1184,30 @@ export function StyleTab() {
                     activeFieldState
                   )
                 );
+                const explicitDefaultSectionValues = selectedSectionBlocks.map((entry) =>
+                  getExplicitSectionStyleValue(
+                    entry.styleOverrides,
+                    sectionField,
+                    "default",
+                    activeFieldState
+                  )
+                );
                 const firstValue = sectionValues[0] ?? "";
                 const value = sectionValues.every((entry) => entry === firstValue)
                   ? firstValue
                   : "";
-                const explicitFirst = explicitSectionValues[0] ?? "";
-                const explicitValue = explicitSectionValues.every(
-                  (entry) => entry === explicitFirst
-                )
-                  ? explicitFirst
-                  : "";
-                const status = resolveFieldValueStatus(explicitValue, value);
+                const hasExplicitCurrent = explicitSectionValues.some(
+                  (entry) => entry.trim().length > 0
+                );
+                const hasExplicitDefault = explicitDefaultSectionValues.some(
+                  (entry) => entry.trim().length > 0
+                );
+                const status = resolveFieldValueStatus({
+                  hasExplicitCurrent,
+                  hasExplicitDefault,
+                  resolvedValue: value,
+                  scope: editScope,
+                });
                 const inherited = status === "inherited";
                 if (!matchesFieldFilter(status, fieldFilter)) {
                   return null;
@@ -1180,17 +1233,18 @@ export function StyleTab() {
                 return (
                   <div key={field.key} className="inspector-field compact">
                     <span className="style-field-label-row">
-                      <span
-                        className={`style-field-status-dot ${status}`}
-                        title={
-                          status === "edited"
-                            ? `Edited in ${SCOPE_LABELS[editScope]}`
-                            : status === "inherited"
-                              ? `Inherited from Default`
-                              : `Uninitialized`
-                        }
-                        aria-hidden="true"
-                      />
+                      <span className="style-field-status-dot-wrap">
+                        <span className={`style-field-status-dot ${status}`} aria-hidden="true" />
+                        <span className="style-field-status-tooltip" role="tooltip">
+                          {status === "override"
+                            ? `Override of Default in ${SCOPE_LABELS[editScope]}`
+                            : status === "edited"
+                              ? `Edited in ${SCOPE_LABELS[editScope]}`
+                              : status === "inherited"
+                                ? `Inherited from Default`
+                                : `Uninitialized`}
+                        </span>
+                      </span>
                       <span className="style-field-label-text">
                         <span className="style-field-scope-prefix">{fieldScopeLabelPrefix}</span>{" "}
                         {field.label}

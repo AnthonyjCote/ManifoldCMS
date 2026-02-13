@@ -102,6 +102,10 @@ function previewModeIcon(mode: BuilderViewport) {
   );
 }
 
+function viewportToneClass(mode: BuilderViewport) {
+  return `viewport-tone-${mode}`;
+}
+
 type SectionStyleKey =
   | "marginTop"
   | "marginRight"
@@ -880,6 +884,7 @@ export function BuilderView() {
             <IconButton
               label="Viewport size"
               active={activePopover === "device"}
+              className={viewportToneClass(device)}
               onClick={() => setActivePopover((prev) => (prev === "device" ? null : "device"))}
               icon={previewModeIcon(device)}
             />
@@ -910,7 +915,9 @@ export function BuilderView() {
                   ).map((mode) => (
                     <button
                       key={mode.id}
-                      className={`popover-option single-line${mode.id === device ? " active" : ""}`}
+                      className={`popover-option single-line viewport-option ${viewportToneClass(mode.id)}${
+                        mode.id === device ? " active" : ""
+                      }`}
                       onClick={() => {
                         viewport.setViewport(mode.id);
                         setActivePopover(null);

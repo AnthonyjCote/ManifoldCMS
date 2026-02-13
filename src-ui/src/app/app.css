@@ -22,6 +22,11 @@
   --ring: 0 0 0 2px rgba(173, 182, 198, 0.34);
   --right-drawer-width: 320px;
   --bottom-drawer-height: 220px;
+  --viewport-default: #8ea3c8;
+  --viewport-mobile: #4f86ff;
+  --viewport-tablet: #43d39a;
+  --viewport-desktop: #b9d37f;
+  --viewport-wide: #f3cc74;
 }
 
 body.builder-pointer-dragging {
@@ -631,9 +636,53 @@ body,
   flex: 0 0 auto;
 }
 
+.style-field-status-dot-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.style-field-status-tooltip {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  transform: translateY(2px);
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 120ms ease-out,
+    transform 120ms ease-out;
+  white-space: normal;
+  width: max-content;
+  max-width: 220px;
+  z-index: 30;
+  border: 1px solid rgba(95, 126, 194, 0.35);
+  border-radius: 8px;
+  background: rgba(10, 15, 24, 0.96);
+  color: #c7d6f3;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  padding: 5px 8px;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.style-field-status-dot-wrap:hover .style-field-status-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
 .style-field-status-dot.edited {
   background: #63d386;
   box-shadow: 0 0 0 3px rgba(66, 186, 105, 0.2);
+}
+
+.style-field-status-dot.override {
+  background: #e25a64;
+  box-shadow: 0 0 0 3px rgba(226, 90, 100, 0.2);
 }
 
 .style-field-status-dot.inherited {
@@ -785,18 +834,20 @@ body,
   gap: 7px;
   padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(95, 126, 194, 0.35);
-  background: rgba(15, 24, 37, 0.9);
-  color: #c7d6f3;
+  border: 1px solid var(--viewport-tone-border, rgba(95, 126, 194, 0.35));
+  background: var(--viewport-tone-bg, rgba(15, 24, 37, 0.9));
+  color: var(--viewport-tone-text, #c7d6f3);
   font-size: 10px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
   backdrop-filter: blur(8px);
   cursor: pointer;
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--viewport-tone-border, #6e89bc) 44%, transparent);
 }
 
 .style-tab-scope-indicator .caret {
-  color: #9fb1d6;
+  color: var(--viewport-tone-text, #9fb1d6);
   font-size: 9px;
   line-height: 1;
   transform: translateY(-0.5px);
@@ -810,9 +861,9 @@ body,
   gap: 7px;
   padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(95, 126, 194, 0.35);
-  background: rgba(15, 24, 37, 0.9);
-  color: #c7d6f3;
+  border: 1px solid var(--status-tone-border, rgba(95, 126, 194, 0.35));
+  background: var(--status-tone-bg, rgba(15, 24, 37, 0.9));
+  color: var(--status-tone-text, #c7d6f3);
   font-size: 10px;
   letter-spacing: 0.03em;
   text-transform: uppercase;
@@ -836,11 +887,12 @@ body,
 }
 
 .style-tab-scope-indicator .dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 999px;
-  background: #6e89bc;
-  box-shadow: 0 0 0 4px rgba(95, 126, 194, 0.18);
+  background: var(--viewport-tone-dot, #6e89bc);
+  border: 1px solid color-mix(in srgb, var(--viewport-tone-border, #6e89bc) 72%, #0c111a);
+  box-shadow: 0 0 0 3px var(--viewport-tone-glow, rgba(95, 126, 194, 0.18));
 }
 
 .style-tab-scope-popover {
@@ -865,7 +917,7 @@ body,
   border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
-  color: #c7d6f3;
+  color: var(--viewport-tone-text, #c7d6f3);
   text-align: left;
   padding: 7px 9px;
   cursor: pointer;
@@ -879,17 +931,17 @@ body,
 
 .style-tab-scope-option .meta {
   font-size: 10px;
-  color: #95a8ce;
+  color: color-mix(in srgb, var(--viewport-tone-text, #95a8ce) 74%, #6e7583);
 }
 
 .style-tab-scope-option:hover {
-  background: rgba(36, 52, 78, 0.4);
-  border-color: rgba(95, 126, 194, 0.35);
+  background: color-mix(in srgb, #1a2230 74%, var(--viewport-tone, #8ea3c8) 26%);
+  border-color: color-mix(in srgb, var(--viewport-tone, #8ea3c8) 42%, #2d3646);
 }
 
 .style-tab-scope-option.active {
-  background: rgba(18, 36, 28, 0.86);
-  border-color: rgba(127, 176, 118, 0.62);
+  background: color-mix(in srgb, #1a2230 62%, var(--viewport-tone, #8ea3c8) 38%);
+  border-color: color-mix(in srgb, var(--viewport-tone, #8ea3c8) 62%, #2d3646);
 }
 
 .style-tab-filter-popover {
@@ -916,20 +968,114 @@ body,
   background: transparent;
   color: #c7d6f3;
   text-align: left;
-  padding: 7px 9px;
+  padding: 7px 9px 7px 19px;
   cursor: pointer;
   font-size: 11px;
   letter-spacing: 0.02em;
+  position: relative;
+}
+
+.style-tab-filter-option::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: var(--status-tone-dot, #9aa6bd);
+  opacity: 0.9;
 }
 
 .style-tab-filter-option:hover {
-  background: rgba(36, 52, 78, 0.4);
-  border-color: rgba(95, 126, 194, 0.35);
+  background: color-mix(in srgb, #1a2230 78%, var(--status-tone-dot, #9aa6bd) 22%);
+  border-color: color-mix(in srgb, var(--status-tone-dot, #9aa6bd) 44%, #2d3646);
 }
 
 .style-tab-filter-option.active {
-  background: rgba(18, 36, 28, 0.86);
-  border-color: rgba(127, 176, 118, 0.62);
+  background: color-mix(in srgb, #1a2230 62%, var(--status-tone-dot, #9aa6bd) 38%);
+  border-color: color-mix(in srgb, var(--status-tone-dot, #9aa6bd) 64%, #2d3646);
+}
+
+.viewport-tone-default {
+  --viewport-tone: var(--viewport-default);
+  --viewport-tone-dot: #9bb0d4;
+  --viewport-tone-text: #d2dcf4;
+  --viewport-tone-border: rgba(112, 140, 192, 0.55);
+  --viewport-tone-bg: rgba(20, 29, 46, 0.92);
+  --viewport-tone-glow: rgba(142, 163, 200, 0.34);
+}
+
+.viewport-tone-mobile {
+  --viewport-tone: var(--viewport-mobile);
+  --viewport-tone-dot: #7ea5ff;
+  --viewport-tone-text: #dbe6ff;
+  --viewport-tone-border: rgba(79, 134, 255, 0.62);
+  --viewport-tone-bg: rgba(17, 26, 51, 0.92);
+  --viewport-tone-glow: rgba(79, 134, 255, 0.38);
+}
+
+.viewport-tone-tablet {
+  --viewport-tone: var(--viewport-tablet);
+  --viewport-tone-dot: #7ee4ba;
+  --viewport-tone-text: #dbfff0;
+  --viewport-tone-border: rgba(67, 211, 154, 0.62);
+  --viewport-tone-bg: rgba(16, 41, 34, 0.92);
+  --viewport-tone-glow: rgba(67, 211, 154, 0.38);
+}
+
+.viewport-tone-desktop {
+  --viewport-tone: var(--viewport-desktop);
+  --viewport-tone-dot: #c7df95;
+  --viewport-tone-text: #efffd7;
+  --viewport-tone-border: rgba(140, 171, 88, 0.58);
+  --viewport-tone-bg: rgba(30, 38, 27, 0.92);
+  --viewport-tone-glow: rgba(185, 211, 127, 0.36);
+}
+
+.viewport-tone-wide {
+  --viewport-tone: var(--viewport-wide);
+  --viewport-tone-dot: #f7d78d;
+  --viewport-tone-text: #fff1cb;
+  --viewport-tone-border: rgba(197, 156, 70, 0.62);
+  --viewport-tone-bg: rgba(44, 33, 18, 0.92);
+  --viewport-tone-glow: rgba(243, 204, 116, 0.38);
+}
+
+.status-tone-all {
+  --status-tone-dot: #8ea3c8;
+  --status-tone-text: #c7d6f3;
+  --status-tone-border: rgba(95, 126, 194, 0.35);
+  --status-tone-bg: rgba(15, 24, 37, 0.9);
+}
+
+.status-tone-override {
+  --status-tone-dot: #e25a64;
+  --status-tone-text: #ffc5ca;
+  --status-tone-border: rgba(226, 90, 100, 0.48);
+  --status-tone-bg: rgba(45, 19, 24, 0.9);
+}
+
+.status-tone-edited {
+  --status-tone-dot: #63d386;
+  --status-tone-text: #c9f3d7;
+  --status-tone-border: rgba(99, 211, 134, 0.46);
+  --status-tone-bg: rgba(18, 40, 27, 0.9);
+}
+
+.status-tone-inherited {
+  --status-tone-dot: #f1c14a;
+  --status-tone-text: #f9e6ae;
+  --status-tone-border: rgba(241, 193, 74, 0.5);
+  --status-tone-bg: rgba(48, 38, 17, 0.9);
+}
+
+.status-tone-uninitialized {
+  --status-tone-dot: #7f8ba1;
+  --status-tone-text: #c2cad9;
+  --status-tone-border: rgba(127, 139, 161, 0.45);
+  --status-tone-bg: rgba(24, 29, 39, 0.9);
 }
 
 .style-mode-notice,
@@ -1307,6 +1453,40 @@ body,
   background: #2a3039;
 }
 
+.builder-icon-btn.viewport-tone-default {
+  border-color: rgba(112, 140, 192, 0.55);
+  color: #d2dcf4;
+}
+
+.builder-icon-btn.viewport-tone-mobile {
+  border-color: rgba(79, 134, 255, 0.62);
+  color: #dbe6ff;
+}
+
+.builder-icon-btn.viewport-tone-tablet {
+  border-color: rgba(67, 211, 154, 0.62);
+  color: #dbfff0;
+}
+
+.builder-icon-btn.viewport-tone-desktop {
+  border-color: rgba(140, 171, 88, 0.58);
+  color: #efffd7;
+}
+
+.builder-icon-btn.viewport-tone-wide {
+  border-color: rgba(197, 156, 70, 0.62);
+  color: #fff1cb;
+}
+
+.builder-icon-btn.viewport-tone-default.active,
+.builder-icon-btn.viewport-tone-mobile.active,
+.builder-icon-btn.viewport-tone-tablet.active,
+.builder-icon-btn.viewport-tone-desktop.active,
+.builder-icon-btn.viewport-tone-wide.active {
+  border-color: currentColor;
+  background: rgba(18, 23, 34, 0.9);
+}
+
 .builder-icon-btn.builder-mode-toggle.edit-mode {
   border-color: #6e5b32;
   background: #2b2418;
@@ -1425,6 +1605,95 @@ body,
 .popover-option.active {
   border-color: var(--accent-strong);
   background: #1f2530;
+}
+
+.popover-option.viewport-option {
+  position: relative;
+  padding-left: 22px;
+  border-color: var(--viewport-option-border, #2f3847);
+  background: var(--viewport-option-bg, #131821);
+  color: var(--viewport-option-text, #d2dcf4);
+}
+
+.popover-option.viewport-option::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: var(--viewport-tone, #8ea3c8);
+  border: 1px solid color-mix(in srgb, var(--viewport-tone, #8ea3c8) 68%, #111722);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--viewport-tone, #8ea3c8) 24%, transparent);
+  opacity: 0.95;
+}
+
+.popover-option.viewport-option.viewport-tone-default {
+  --viewport-tone: var(--viewport-default);
+  --viewport-option-border: rgba(112, 140, 192, 0.45);
+  --viewport-option-bg: rgba(20, 29, 46, 0.45);
+  --viewport-option-text: #d2dcf4;
+  --viewport-option-hover-border: rgba(112, 140, 192, 0.65);
+  --viewport-option-hover-bg: rgba(20, 29, 46, 0.75);
+  --viewport-option-active-border: rgba(112, 140, 192, 0.86);
+  --viewport-option-active-bg: rgba(20, 29, 46, 0.95);
+}
+
+.popover-option.viewport-option.viewport-tone-mobile {
+  --viewport-tone: var(--viewport-mobile);
+  --viewport-option-border: rgba(79, 134, 255, 0.45);
+  --viewport-option-bg: rgba(17, 26, 51, 0.45);
+  --viewport-option-text: #dbe6ff;
+  --viewport-option-hover-border: rgba(79, 134, 255, 0.68);
+  --viewport-option-hover-bg: rgba(17, 26, 51, 0.75);
+  --viewport-option-active-border: rgba(79, 134, 255, 0.88);
+  --viewport-option-active-bg: rgba(17, 26, 51, 0.95);
+}
+
+.popover-option.viewport-option.viewport-tone-tablet {
+  --viewport-tone: var(--viewport-tablet);
+  --viewport-option-border: rgba(67, 211, 154, 0.45);
+  --viewport-option-bg: rgba(16, 41, 34, 0.45);
+  --viewport-option-text: #dbfff0;
+  --viewport-option-hover-border: rgba(67, 211, 154, 0.68);
+  --viewport-option-hover-bg: rgba(16, 41, 34, 0.75);
+  --viewport-option-active-border: rgba(67, 211, 154, 0.88);
+  --viewport-option-active-bg: rgba(16, 41, 34, 0.95);
+}
+
+.popover-option.viewport-option.viewport-tone-desktop {
+  --viewport-tone: var(--viewport-desktop);
+  --viewport-option-border: rgba(140, 171, 88, 0.45);
+  --viewport-option-bg: rgba(30, 38, 27, 0.45);
+  --viewport-option-text: #efffd7;
+  --viewport-option-hover-border: rgba(140, 171, 88, 0.65);
+  --viewport-option-hover-bg: rgba(30, 38, 27, 0.75);
+  --viewport-option-active-border: rgba(140, 171, 88, 0.86);
+  --viewport-option-active-bg: rgba(30, 38, 27, 0.95);
+}
+
+.popover-option.viewport-option.viewport-tone-wide {
+  --viewport-tone: var(--viewport-wide);
+  --viewport-option-border: rgba(197, 156, 70, 0.5);
+  --viewport-option-bg: rgba(44, 33, 18, 0.45);
+  --viewport-option-text: #fff1cb;
+  --viewport-option-hover-border: rgba(197, 156, 70, 0.68);
+  --viewport-option-hover-bg: rgba(44, 33, 18, 0.75);
+  --viewport-option-active-border: rgba(197, 156, 70, 0.88);
+  --viewport-option-active-bg: rgba(44, 33, 18, 0.95);
+}
+
+.popover-option.viewport-option:hover {
+  border-color: var(--viewport-option-hover-border, var(--viewport-option-border, #2f3847));
+  background: var(--viewport-option-hover-bg, var(--viewport-option-bg, #131821));
+}
+
+.popover-option.viewport-option.active {
+  border-color: var(--viewport-option-active-border, var(--viewport-option-border, #2f3847));
+  background: var(--viewport-option-active-bg, var(--viewport-option-bg, #131821));
+  color: var(--viewport-option-text, #d2dcf4);
 }
 
 .popover-field {

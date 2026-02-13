@@ -40,12 +40,28 @@ Definition of done:
 - [x] Add sticky search/filter field at top of Style tab to quickly locate style controls.
 - [x] Ensure all edits are undo/redo compatible.
 - [x] Ensure all style controls render with current dark UI style.
+- [ ] Add Section Style Audit/Inspect Modal (read-only) as a P0.2 extension for style debugging/navigation.
+- [ ] Add `override` source classifier (red) for viewport/state explicit values that override explicit default values.
+- [ ] Add `Override` option to style field filters (Style tab now, inspect modal later).
+- [ ] Define source taxonomy contract for classifier system: `override`, `edited`, `inherited`, `theme`, `block`, `uninitialized`.
+- [ ] Add reusable `StyleJumpService` for jump-to-field navigation (shared infra, not modal-specific).
+- [ ] Add inherited-origin resolution + jump support (`findValueOrigin`) for future UI reuse.
+- [ ] Add stable `styleFieldId` field anchors for robust jump mapping (avoid DOM-order mapping).
+- [ ] Ensure audit modal opens preview target + style field reliably (scroll + pulse in both contexts).
+- [ ] Enforce anti-monolith implementation boundaries for P0.2 extension:
+  - dataset builder,
+  - jump/orchestration service,
+  - modal UI,
+  - pulse/highlight controller.
 
 Definition of done:
 
 - New primitive onboarding defaults to full style control coverage with only optional exclusions.
 - All style controls are consistent and discoverable.
 - Style tab remains navigable under high field counts (search + collapsible groups).
+- Section Style Audit/Inspect modal is read-only and dedicated to discovery + navigation only.
+- Shared jump/origin infrastructure is reusable by audit modal and other UI surfaces.
+- `Override` classification is available and filterable before audit modal rollout.
 
 ### P0.3 Baseline Theme + Block Quality
 
@@ -53,11 +69,13 @@ Definition of done:
 - [ ] Make every block consume theme tokens by default.
 - [ ] Modernize baseline styling for all blocks to “premium” quality.
 - [ ] Ensure mobile responsive behavior for every block type.
+- [ ] Add block provenance metadata for classifier system so preset block defaults can be labeled as `block` source.
 
 Definition of done:
 
 - Every block looks production-grade at first drop.
 - No block breaks in mobile/tablet/desktop preview.
+- Block default source classification can be surfaced without heuristic DOM checks.
 
 ### P0.4 Header Navigation Block
 
@@ -123,11 +141,14 @@ Definition of done:
 - [ ] Add bundled theme packs shipped with app as JSON files.
 - [ ] Add save/export/import theme workflow.
 - [ ] Add manual theme creation and editing page/view.
+- [ ] Add theme provenance metadata so fields resolved from theme are classified as `theme` source.
+- [ ] Surface `theme` source classifier (purple) in Style tab and inspect modal filters once provenance is stable.
 
 Definition of done:
 
 - Theme controls can restyle a whole site quickly and consistently.
 - Theme packs are portable JSON and can be imported/exported reliably.
+- Theme-resolved field source classification is deterministic and filterable.
 
 ### P2.2 Classes System
 
@@ -300,41 +321,48 @@ Definition of done:
 ## Dependency Map
 
 - P0.2 (Master Style System) is prerequisite for P2.2 (Classes) and many P3 styling utilities.
+- P0.2 Style Audit extension (shared `StyleJumpService` + `styleFieldId` mapping + inherited-origin resolver) is prerequisite for reliable cross-UI style jump workflows.
+- P0.2 source taxonomy + `override` classifier is prerequisite for expanding classifier system to `theme` and `block`.
 - P1.1 (Project-scoped content library) is prerequisite for P1.2 image modal workflow.
 - P2.1 (Theme tab) should land before full baseline style modernization pass.
+- P0.3 block provenance is prerequisite for `block` classifier.
+- P2.1 theme provenance is prerequisite for `theme` classifier.
 - AI Agent GUI should integrate after schema and style architecture stabilize (post P0.2 + P2.1).
 
 ## Suggested Execution Sequence (Concrete)
 
 1. P0.1 Drag/drop indicators
 2. P0.2 Master style registry + collapsible style UI
-3. P0.3 Theme token baseline + responsive pass for all blocks
-4. P0.4 Header/navigation block with mobile drawer
-5. P1.1 Project-scoped content library
-6. P1.2 Image modal + undefined SVG placeholder + double-click image edit
-7. P1.3 Media page
-8. P2.1 Theme tab/editor + theme packs/import/export
-9. P2.2 Classes system + style-tab class assignment
-10. P2.3 In-preview quick edit panel
-11. P2.4 Link utility
-12. P3.1 Motion tab
-13. P3.2 Gradient + pattern utilities
-14. P3.3 Border-side utility
-15. P3.4 Structured data + expanded page meta
-16. P3.5 Blog utility
-17. P3.6 Docs/help + tutorials
-18. P3.7 WebP + crop/resize export pipeline
-19. P3.8 Global site settings view (code injection + SEO + crawler/security)
-20. AI Agent GUI hardening + full-context instruction system
-21. Q2 Accessibility compliance during build
-22. Q1 Pre-export validation with manual override
-23. Q5 Preview-to-export parity checks
-24. Q3 Profiling/testing top-level page (Lighthouse + AI-readable outputs)
-25. Q4 SEO suite conceptualization (new standalone PDR task)
+3. P0.2 extension: Section Style Audit/Inspect modal + shared jump/origin infrastructure + `override` classifier
+4. P0.3 Theme token baseline + responsive pass for all blocks (includes block provenance)
+5. P0.4 Header/navigation block with mobile drawer
+6. P1.1 Project-scoped content library
+7. P1.2 Image modal + undefined SVG placeholder + double-click image edit
+8. P1.3 Media page
+9. P2.1 Theme tab/editor + theme packs/import/export (includes theme provenance)
+10. Classifier expansion: add `block` and `theme` source indicators + filters
+11. P2.2 Classes system + style-tab class assignment
+12. P2.3 In-preview quick edit panel
+13. P2.4 Link utility
+14. P3.1 Motion tab
+15. P3.2 Gradient + pattern utilities
+16. P3.3 Border-side utility
+17. P3.4 Structured data + expanded page meta
+18. P3.5 Blog utility
+19. P3.6 Docs/help + tutorials
+20. P3.7 WebP + crop/resize export pipeline
+21. P3.8 Global site settings view (code injection + SEO + crawler/security)
+22. AI Agent GUI hardening + full-context instruction system
+23. Q2 Accessibility compliance during build
+24. Q1 Pre-export validation with manual override
+25. Q5 Preview-to-export parity checks
+26. Q3 Profiling/testing top-level page (Lighthouse + AI-readable outputs)
+27. Q4 SEO suite conceptualization (new standalone PDR task)
 
 ## Risks To Watch
 
 - Style UI scope can become monolithic without strict registry architecture.
+- P0.2 extension work must remain modular (no single multi-purpose script for dataset/jump/modal/pulse).
 - Theme + class precedence needs deterministic rules to avoid user confusion.
 - Image/media workflows must stay project-scoped to prevent broken references.
 - Animation controls can conflict with responsive layout if not constrained.
