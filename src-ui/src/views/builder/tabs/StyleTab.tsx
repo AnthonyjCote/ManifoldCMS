@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 
 import { buildPreviewTreeForBlock } from "../../../features/builder/catalog";
 import { useBuilderStore } from "../../../features/builder/builder-store";
@@ -13,7 +13,8 @@ import {
   type BuilderViewport,
 } from "../../../features/builder/style-scopes";
 import { useBuilderInteractionModeStore } from "../../../state/useBuilderInteractionModeStore";
-import type { PrimitiveNode, PrimitiveType } from "../../../features/builder/types";
+import { useDrawerTabScrollPersistence } from "../../../state/useDrawerTabScrollPersistence";
+import type { PrimitiveNode, PrimitiveType, StyleStateKey } from "../../../features/builder/types";
 import { useBuilderViewportStore } from "../../../state/useBuilderViewportStore";
 
 type BaseSectionStyleKey =
@@ -77,6 +78,20 @@ type StyleGroup<K extends AllStyleKey> = {
   category: StyleCategory;
   fields: MasterStyleField<K>[];
 };
+
+const STYLE_TAB_COLLAPSE_KEY = "manifold.builder.style-tab.collapsed-groups";
+function readCollapsedGroupState(): Record<string, boolean> {
+  try {
+    const raw = window.localStorage.getItem(STYLE_TAB_COLLAPSE_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Record<string, boolean>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 const CATEGORY_ORDER: StyleCategory[] = [
   "Layout",
@@ -311,6 +326,22 @@ const VIEWPORT_LABELS: Record<BuilderViewport, string> = {
   wide: "Retina / Wide / UHD",
 };
 
+const STYLE_STATES: Array<{
+  id: Exclude<StyleStateKey, "default">;
+  label: string;
+  icon: ReactElement;
+}> = [
+  {
+    id: "hover",
+    label: "Hover",
+    icon: (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m6 4 10 7-4 1.2L14.8 20l-2.6 1L9.4 13l-3.4 2Z" />
+      </svg>
+    ),
+  },
+];
+
 function walkPrimitives(nodes: PrimitiveNode[], pathPrefix = ""): PrimitiveEntry[] {
   const out: PrimitiveEntry[] = [];
   nodes.forEach((node, index) => {
@@ -458,8 +489,21 @@ function renderStyleField<K extends AllStyleKey>(opts: {
   value: string;
   placeholder?: string;
   setValue: (value: string) => void;
+  colorFieldId?: string;
+  openColorFieldId?: string | null;
+  onToggleColorField?: (fieldId: string, input: HTMLInputElement | null) => void;
+  onColorInputBlur?: (fieldId: string) => void;
 }) {
-  const { field, value, setValue, placeholder } = opts;
+  const {
+    field,
+    value,
+    setValue,
+    placeholder,
+    colorFieldId,
+    openColorFieldId,
+    onToggleColorField,
+    onColorInputBlur,
+  } = opts;
   if (field.type === "select") {
     return (
       <select
@@ -475,12 +519,30 @@ function renderStyleField<K extends AllStyleKey>(opts: {
     );
   }
   if (field.type === "color") {
+    const fieldId = colorFieldId ?? String(field.key);
+    const isOpen = openColorFieldId === fieldId;
     return (
       <div className="style-color-row">
+        <button
+          type="button"
+          className={`style-color-swatch-btn${isOpen ? " open" : ""}`}
+          style={{ backgroundColor: value || "#000000" }}
+          onClick={(event) => {
+            const row = event.currentTarget.closest(".style-color-row");
+            const input = row?.querySelector<HTMLInputElement>(".style-color-native-input") ?? null;
+            onToggleColorField?.(fieldId, input);
+          }}
+          aria-label={`Toggle ${field.label} color picker`}
+          title={`Toggle ${field.label} color picker`}
+        />
         <input
           type="color"
           value={value || "#000000"}
+          onBlur={() => onColorInputBlur?.(fieldId)}
           onChange={(event) => setValue(event.target.value)}
+          className="style-color-native-input"
+          tabIndex={-1}
+          aria-hidden="true"
         />
         <input
           value={value}
@@ -503,12 +565,21 @@ function renderStyleField<K extends AllStyleKey>(opts: {
 
 export function StyleTab() {
   const builder = useBuilderStore();
+  const scrollRootRef = useDrawerTabScrollPersistence("manifold.builder.drawer-scroll.style");
   const interaction = useBuilderInteractionModeStore();
   const viewport = useBuilderViewportStore();
   const [query, setQuery] = useState("");
-  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() =>
+    readCollapsedGroupState()
+  );
+  const [fieldStates, setFieldStates] = useState<Record<string, StyleStateKey>>({});
+  const [openColorFieldId, setOpenColorFieldId] = useState<string | null>(null);
   const editScope = editScopeFromViewport(viewport.viewport);
   const block = builder.selectedBlock;
+
+  useEffect(() => {
+    window.localStorage.setItem(STYLE_TAB_COLLAPSE_KEY, JSON.stringify(collapsedGroups));
+  }, [collapsedGroups]);
 
   if (!block) {
     if (interaction.mode === "preview") {
@@ -574,8 +645,45 @@ export function StyleTab() {
   const currentGroups = selectedPrimitive ? primitiveStyleGroups : sectionStyleGroups;
   const collapseScope = selectedPrimitive ? `primitive:${selectedPrimitive.type}` : "section";
 
+  const getFieldState = (fieldKey: string): StyleStateKey => {
+    const targetPrefix = selectedPrimitive ? `primitive:${selectedPrimitive.path}` : "section";
+    return fieldStates[`${targetPrefix}:${fieldKey}`] ?? "default";
+  };
+
+  const toggleFieldState = (fieldKey: string, next: Exclude<StyleStateKey, "default">) => {
+    const targetPrefix = selectedPrimitive ? `primitive:${selectedPrimitive.path}` : "section";
+    const stateKey = `${targetPrefix}:${fieldKey}`;
+    setFieldStates((prev) => ({
+      ...prev,
+      [stateKey]: prev[stateKey] === next ? "default" : next,
+    }));
+  };
+
+  const onColorInputBlur = (fieldId: string) => {
+    if (openColorFieldId === fieldId) {
+      setOpenColorFieldId(null);
+    }
+  };
+
+  const toggleColorField = (fieldId: string, input: HTMLInputElement | null) => {
+    if (!input) {
+      return;
+    }
+    if (openColorFieldId === fieldId) {
+      setOpenColorFieldId(null);
+      input.blur();
+      return;
+    }
+    setOpenColorFieldId(fieldId);
+    if ("showPicker" in input && typeof input.showPicker === "function") {
+      input.showPicker();
+    } else {
+      input.click();
+    }
+  };
+
   return (
-    <div className="drawer-stack style-tab-root">
+    <div ref={scrollRootRef} className="drawer-stack style-tab-root">
       <section className="inspector-card-item style-tab-topbar">
         <label className="inspector-field compact">
           <span className="style-tab-topbar-label">Find style field</span>
@@ -593,7 +701,7 @@ export function StyleTab() {
         </div>
       </section>
 
-      <section className="inspector-card-item">
+      <section className="inspector-card-item style-target-card">
         <h4>Target</h4>
         <label className="inspector-field compact">
           <span>
@@ -627,143 +735,221 @@ export function StyleTab() {
           <div className="drawer-panel">Try a different search term.</div>
         </section>
       ) : (
-        currentGroups.map((group) => {
-          const groupKey = `${collapseScope}:${group.category}`;
-          const collapsed = collapsedGroups[groupKey] ?? true;
-          return (
-            <section key={groupKey} className="inspector-card-item style-group-card">
-              <button
-                className="style-group-toggle"
-                onClick={() =>
-                  setCollapsedGroups((prev) => ({
-                    ...prev,
-                    [groupKey]: !collapsed,
-                  }))
-                }
-                aria-expanded={!collapsed}
+        <div className="style-group-list drawer-accordion-list">
+          {currentGroups.map((group) => {
+            const groupKey = `${collapseScope}:${group.category}`;
+            const collapsed = collapsedGroups[groupKey] ?? true;
+            return (
+              <section
+                key={groupKey}
+                className="inspector-card-item style-group-card drawer-accordion-section"
               >
-                <h4>{group.category}</h4>
-                <span>{collapsed ? "+" : "−"}</span>
-              </button>
+                <button
+                  className="style-group-toggle drawer-accordion-toggle"
+                  onClick={() =>
+                    setCollapsedGroups((prev) => ({
+                      ...prev,
+                      [groupKey]: !collapsed,
+                    }))
+                  }
+                  aria-expanded={!collapsed}
+                >
+                  <h4>{group.category}</h4>
+                  <span>{collapsed ? "+" : "−"}</span>
+                </button>
 
-              {!collapsed ? (
-                <div className="inspector-card-grid">
-                  {group.fields.map((field) => {
-                    if (selectedPrimitive) {
-                      const primitiveSelectionTargets =
-                        selectedTargets.length > 0
-                          ? selectedTargets
-                          : selectedPaths.map((path) => ({
-                              blockId: block.id,
-                              primitivePath: path,
-                            }));
-                      const valuesForSelection = primitiveSelectionTargets.map((target) => {
-                        const targetBlock = builder.selectedPage.blocks.find(
-                          (entry) => entry.id === target.blockId
+                {!collapsed ? (
+                  <div className="inspector-card-grid drawer-accordion-content">
+                    {group.fields.map((field) => {
+                      const activeFieldState = getFieldState(String(field.key));
+                      if (selectedPrimitive) {
+                        const primitiveSelectionTargets =
+                          selectedTargets.length > 0
+                            ? selectedTargets
+                            : selectedPaths.map((path) => ({
+                                blockId: block.id,
+                                primitivePath: path,
+                              }));
+                        const valuesForSelection = primitiveSelectionTargets.map((target) => {
+                          const targetBlock = builder.selectedPage.blocks.find(
+                            (entry) => entry.id === target.blockId
+                          );
+                          if (!targetBlock) {
+                            return "";
+                          }
+                          return getExplicitPrimitiveStyleValue(
+                            targetBlock.styleOverrides,
+                            target.primitivePath,
+                            field.key as PrimitiveStyleKey,
+                            editScope,
+                            activeFieldState
+                          );
+                        });
+                        const firstValue = valuesForSelection[0] ?? "";
+                        const value = valuesForSelection.every((entry) => entry === firstValue)
+                          ? firstValue
+                          : "";
+                        const placeholderValues = primitiveSelectionTargets.map((target) => {
+                          const element = findPrimitiveElement(target.blockId, target.primitivePath);
+                          if (!element) {
+                            return "";
+                          }
+                          return readComputedStyleValue(element, field.key as PrimitiveStyleKey);
+                        });
+                        const placeholder =
+                          placeholderValues.length > 0 &&
+                          placeholderValues.every((entry) => entry === placeholderValues[0])
+                            ? placeholderValues[0]
+                            : "Mixed values";
+                        const targetIds = primitiveSelectionTargets.map((target) =>
+                          encodePrimitiveTarget(target.blockId, target.primitivePath)
                         );
-                        if (!targetBlock) {
-                          return "";
-                        }
-                        return getExplicitPrimitiveStyleValue(
-                          targetBlock.styleOverrides,
-                          target.primitivePath,
-                          field.key as PrimitiveStyleKey,
-                          editScope
+                        return (
+                          <div key={field.key} className="inspector-field compact">
+                            <span className="style-field-label-row">
+                              <span className="style-field-label-text">{field.label}</span>
+                              <span className="style-field-state-chips">
+                                {STYLE_STATES.map((stateOption) => (
+                                  <button
+                                    key={stateOption.id}
+                                    type="button"
+                                    aria-pressed={activeFieldState === stateOption.id}
+                                    className={`style-state-chip${
+                                      activeFieldState === stateOption.id ? " active" : ""
+                                    }`}
+                                    onClick={(event) => {
+                                      event.preventDefault();
+                                      event.stopPropagation();
+                                      toggleFieldState(String(field.key), stateOption.id);
+                                    }}
+                                    title={stateOption.label}
+                                    aria-label={stateOption.label}
+                                  >
+                                    {stateOption.icon}
+                                  </button>
+                                ))}
+                              </span>
+                              <small
+                                className={`style-scope-badge${
+                                  activeFieldState !== "default" ? " state-active" : ""
+                                }`}
+                              >
+                                {activeFieldState === "default"
+                                  ? SCOPE_LABELS[editScope]
+                                  : "Hover"}
+                              </small>
+                            </span>
+                            {renderStyleField({
+                              field,
+                              value,
+                              placeholder,
+                              colorFieldId: `primitive:${String(field.key)}`,
+                              openColorFieldId,
+                              onToggleColorField: toggleColorField,
+                              onColorInputBlur,
+                              setValue: (next) =>
+                                builder.setPrimitiveStyleForTargets(
+                                  targetIds,
+                                  field.key as PrimitiveStyleKey,
+                                  next,
+                                  editScope,
+                                  activeFieldState
+                                ),
+                            })}
+                          </div>
                         );
-                      });
-                      const firstValue = valuesForSelection[0] ?? "";
-                      const value = valuesForSelection.every((entry) => entry === firstValue)
+                      }
+
+                      const sectionField = field.key as SectionStyleKey;
+                    const sectionValues = selectedSectionBlocks.map((entry) =>
+                      getExplicitSectionStyleValue(
+                        entry.styleOverrides,
+                        sectionField,
+                        editScope,
+                        activeFieldState
+                      )
+                    );
+                      const firstValue = sectionValues[0] ?? "";
+                      const value = sectionValues.every((entry) => entry === firstValue)
                         ? firstValue
                         : "";
-                      const placeholderValues = primitiveSelectionTargets.map((target) => {
-                        const element = findPrimitiveElement(target.blockId, target.primitivePath);
+                      const placeholderValues = selectedSectionBlockIds.map((blockId) => {
+                        const element = findBlockElement(blockId);
                         if (!element) {
                           return "";
                         }
-                        return readComputedStyleValue(element, field.key as PrimitiveStyleKey);
+                        if (sectionField === "backgroundImage") {
+                          return window.getComputedStyle(element).backgroundImage;
+                        }
+                        return readComputedStyleValue(
+                          element,
+                          sectionField as BaseSectionStyleKey | PrimitiveStyleKey
+                        );
                       });
                       const placeholder =
                         placeholderValues.length > 0 &&
                         placeholderValues.every((entry) => entry === placeholderValues[0])
                           ? placeholderValues[0]
                           : "Mixed values";
-                      const targetIds = primitiveSelectionTargets.map((target) =>
-                        encodePrimitiveTarget(target.blockId, target.primitivePath)
-                      );
                       return (
-                        <label key={field.key} className="inspector-field compact">
-                          <span>
-                            {field.label}
-                            <small className="style-scope-badge">{SCOPE_LABELS[editScope]}</small>
+                        <div key={field.key} className="inspector-field compact">
+                          <span className="style-field-label-row">
+                            <span className="style-field-label-text">{field.label}</span>
+                            <span className="style-field-state-chips">
+                              {STYLE_STATES.map((stateOption) => (
+                                <button
+                                  key={stateOption.id}
+                                  type="button"
+                                  aria-pressed={activeFieldState === stateOption.id}
+                                  className={`style-state-chip${
+                                    activeFieldState === stateOption.id ? " active" : ""
+                                  }`}
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    toggleFieldState(String(field.key), stateOption.id);
+                                  }}
+                                  title={stateOption.label}
+                                  aria-label={stateOption.label}
+                                >
+                                  {stateOption.icon}
+                                </button>
+                              ))}
+                            </span>
+                            <small
+                              className={`style-scope-badge${
+                                activeFieldState !== "default" ? " state-active" : ""
+                              }`}
+                            >
+                              {activeFieldState === "default" ? SCOPE_LABELS[editScope] : "Hover"}
+                            </small>
                           </span>
                           {renderStyleField({
                             field,
                             value,
                             placeholder,
+                            colorFieldId: `section:${String(field.key)}`,
+                            openColorFieldId,
+                            onToggleColorField: toggleColorField,
+                            onColorInputBlur,
                             setValue: (next) =>
-                              builder.setPrimitiveStyleForTargets(
-                                targetIds,
-                                field.key as PrimitiveStyleKey,
+                              builder.setBlockStyleForBlocks(
+                                selectedSectionBlockIds,
+                                sectionField,
                                 next,
-                                editScope
+                                editScope,
+                                activeFieldState
                               ),
                           })}
-                        </label>
+                        </div>
                       );
-                    }
-
-                    const sectionField = field.key as SectionStyleKey;
-                    const sectionValues = selectedSectionBlocks.map((entry) =>
-                      getExplicitSectionStyleValue(entry.styleOverrides, sectionField, editScope)
-                    );
-                    const firstValue = sectionValues[0] ?? "";
-                    const value = sectionValues.every((entry) => entry === firstValue)
-                      ? firstValue
-                      : "";
-                    const placeholderValues = selectedSectionBlockIds.map((blockId) => {
-                      const element = findBlockElement(blockId);
-                      if (!element) {
-                        return "";
-                      }
-                      if (sectionField === "backgroundImage") {
-                        return window.getComputedStyle(element).backgroundImage;
-                      }
-                      return readComputedStyleValue(
-                        element,
-                        sectionField as BaseSectionStyleKey | PrimitiveStyleKey
-                      );
-                    });
-                    const placeholder =
-                      placeholderValues.length > 0 &&
-                      placeholderValues.every((entry) => entry === placeholderValues[0])
-                        ? placeholderValues[0]
-                        : "Mixed values";
-                    return (
-                      <label key={field.key} className="inspector-field compact">
-                        <span>
-                          {field.label}
-                          <small className="style-scope-badge">{SCOPE_LABELS[editScope]}</small>
-                        </span>
-                        {renderStyleField({
-                          field,
-                          value,
-                          placeholder,
-                          setValue: (next) =>
-                            builder.setBlockStyleForBlocks(
-                              selectedSectionBlockIds,
-                              sectionField,
-                              next,
-                              editScope
-                            ),
-                        })}
-                      </label>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </section>
-          );
-        })
+                    })}
+                  </div>
+                ) : null}
+              </section>
+            );
+          })}
+        </div>
       )}
     </div>
   );

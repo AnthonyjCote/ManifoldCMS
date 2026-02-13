@@ -12,6 +12,7 @@ import type {
   BuilderState,
   PrimitiveStyleKey,
   SectionStyleKey,
+  StyleStateKey,
   StyleViewportKey,
 } from "./types";
 
@@ -42,36 +43,46 @@ type BuilderContextValue = {
   setBlockFieldForBlock: (blockId: string, key: string, value: string | number) => void;
   setBlockVisibility: (visibility: "visible" | "hidden") => void;
   setBlockVariant: (variant: string) => void;
-  setBlockStyle: (key: SectionStyleKey, value: string, scope?: StyleViewportKey) => void;
+  setBlockStyle: (
+    key: SectionStyleKey,
+    value: string,
+    scope?: StyleViewportKey,
+    state?: StyleStateKey
+  ) => void;
   setBlockStyleForBlock: (
     blockId: string,
     key: SectionStyleKey,
     value: string,
-    scope?: StyleViewportKey
+    scope?: StyleViewportKey,
+    state?: StyleStateKey
   ) => void;
   setBlockStyleForBlocks: (
     blockIds: string[],
     key: SectionStyleKey,
     value: string,
-    scope?: StyleViewportKey
+    scope?: StyleViewportKey,
+    state?: StyleStateKey
   ) => void;
   setPrimitiveStyle: (
     primitivePath: string,
     key: PrimitiveStyleKey,
     value: string,
-    scope?: StyleViewportKey
+    scope?: StyleViewportKey,
+    state?: StyleStateKey
   ) => void;
   setPrimitiveStyleForPaths: (
     primitivePaths: string[],
     key: PrimitiveStyleKey,
     value: string,
-    scope?: StyleViewportKey
+    scope?: StyleViewportKey,
+    state?: StyleStateKey
   ) => void;
   setPrimitiveStyleForTargets: (
     targets: string[],
     key: PrimitiveStyleKey,
     value: string,
-    scope?: StyleViewportKey
+    scope?: StyleViewportKey,
+    state?: StyleStateKey
   ) => void;
   setPageSeo: (key: "title" | "description", value: string) => void;
   beginStyleDragSession: () => void;
@@ -805,7 +816,7 @@ export function BuilderProvider({
         ),
       }));
     },
-    setBlockStyle: (key, value, scope = "default") => {
+    setBlockStyle: (key, value, scope = "default", styleState = "default") => {
       if (!state.selectedBlockId) {
         return;
       }
@@ -823,7 +834,8 @@ export function BuilderProvider({
                     block.styleOverrides,
                     key,
                     value,
-                    scope
+                    scope,
+                    styleState
                   );
                   return { ...block, styleOverrides };
                 }),
@@ -837,7 +849,7 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setBlockStyleForBlock: (blockId, key, value, scope = "default") => {
+    setBlockStyleForBlock: (blockId, key, value, scope = "default", styleState = "default") => {
       const applyStyle = (prev: BuilderState) => ({
         ...prev,
         pages: prev.pages.map((page) =>
@@ -852,7 +864,8 @@ export function BuilderProvider({
                     block.styleOverrides,
                     key,
                     value,
-                    scope
+                    scope,
+                    styleState
                   );
                   return { ...block, styleOverrides };
                 }),
@@ -868,7 +881,7 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setBlockStyleForBlocks: (blockIds, key, value, scope = "default") => {
+    setBlockStyleForBlocks: (blockIds, key, value, scope = "default", styleState = "default") => {
       if (blockIds.length === 0) {
         return;
       }
@@ -887,7 +900,8 @@ export function BuilderProvider({
                     block.styleOverrides,
                     key,
                     value,
-                    scope
+                    scope,
+                    styleState
                   );
                   return { ...block, styleOverrides };
                 }),
@@ -903,7 +917,13 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setPrimitiveStyle: (primitivePath, key, value, scope = "default") => {
+    setPrimitiveStyle: (
+      primitivePath,
+      key,
+      value,
+      scope = "default",
+      styleState = "default"
+    ) => {
       if (!state.selectedBlockId) {
         return;
       }
@@ -922,7 +942,8 @@ export function BuilderProvider({
                     primitivePath,
                     key,
                     value,
-                    scope
+                    scope,
+                    styleState
                   );
                   return {
                     ...block,
@@ -939,7 +960,13 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setPrimitiveStyleForPaths: (primitivePaths, key, value, scope = "default") => {
+    setPrimitiveStyleForPaths: (
+      primitivePaths,
+      key,
+      value,
+      scope = "default",
+      styleState = "default"
+    ) => {
       if (!state.selectedBlockId || primitivePaths.length === 0) {
         return;
       }
@@ -960,7 +987,8 @@ export function BuilderProvider({
                       primitivePath,
                       key,
                       value,
-                      scope
+                      scope,
+                      styleState
                     );
                   });
                   return {
@@ -978,7 +1006,13 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setPrimitiveStyleForTargets: (targets, key, value, scope = "default") => {
+    setPrimitiveStyleForTargets: (
+      targets,
+      key,
+      value,
+      scope = "default",
+      styleState = "default"
+    ) => {
       if (targets.length === 0) {
         return;
       }
@@ -1013,7 +1047,8 @@ export function BuilderProvider({
                       primitivePath,
                       key,
                       value,
-                      scope
+                      scope,
+                      styleState
                     );
                   });
                   return {
