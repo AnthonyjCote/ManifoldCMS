@@ -103,7 +103,12 @@ export function PreviewBlock({
     backgroundImage
   );
   const style: CSSProperties = {
-    marginTop: getSectionStyleValue(block.styleOverrides, "marginTop", previewScope, sectionStyleState),
+    marginTop: getSectionStyleValue(
+      block.styleOverrides,
+      "marginTop",
+      previewScope,
+      sectionStyleState
+    ),
     marginRight: getSectionStyleValue(
       block.styleOverrides,
       "marginRight",
@@ -116,8 +121,18 @@ export function PreviewBlock({
       previewScope,
       sectionStyleState
     ),
-    marginLeft: getSectionStyleValue(block.styleOverrides, "marginLeft", previewScope, sectionStyleState),
-    paddingTop: getSectionStyleValue(block.styleOverrides, "paddingTop", previewScope, sectionStyleState),
+    marginLeft: getSectionStyleValue(
+      block.styleOverrides,
+      "marginLeft",
+      previewScope,
+      sectionStyleState
+    ),
+    paddingTop: getSectionStyleValue(
+      block.styleOverrides,
+      "paddingTop",
+      previewScope,
+      sectionStyleState
+    ),
     paddingRight: getSectionStyleValue(
       block.styleOverrides,
       "paddingRight",
@@ -130,10 +145,30 @@ export function PreviewBlock({
       previewScope,
       sectionStyleState
     ),
-    paddingLeft: getSectionStyleValue(block.styleOverrides, "paddingLeft", previewScope, sectionStyleState),
-    borderWidth: getSectionStyleValue(block.styleOverrides, "borderWidth", previewScope, sectionStyleState),
-    borderStyle: getSectionStyleValue(block.styleOverrides, "borderStyle", previewScope, sectionStyleState),
-    borderColor: getSectionStyleValue(block.styleOverrides, "borderColor", previewScope, sectionStyleState),
+    paddingLeft: getSectionStyleValue(
+      block.styleOverrides,
+      "paddingLeft",
+      previewScope,
+      sectionStyleState
+    ),
+    borderWidth: getSectionStyleValue(
+      block.styleOverrides,
+      "borderWidth",
+      previewScope,
+      sectionStyleState
+    ),
+    borderStyle: getSectionStyleValue(
+      block.styleOverrides,
+      "borderStyle",
+      previewScope,
+      sectionStyleState
+    ),
+    borderColor: getSectionStyleValue(
+      block.styleOverrides,
+      "borderColor",
+      previewScope,
+      sectionStyleState
+    ),
     borderRadius: getSectionStyleValue(
       block.styleOverrides,
       "borderRadius",
@@ -142,7 +177,12 @@ export function PreviewBlock({
     ),
     background,
     color: getSectionStyleValue(block.styleOverrides, "textColor", previewScope, sectionStyleState),
-    fontSize: getSectionStyleValue(block.styleOverrides, "fontSize", previewScope, sectionStyleState),
+    fontSize: getSectionStyleValue(
+      block.styleOverrides,
+      "fontSize",
+      previewScope,
+      sectionStyleState
+    ),
     transform:
       getSectionStyleValue(block.styleOverrides, "translateX", previewScope, sectionStyleState) ||
       getSectionStyleValue(block.styleOverrides, "translateY", previewScope, sectionStyleState)

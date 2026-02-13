@@ -917,13 +917,7 @@ export function BuilderProvider({
         commit(applyStyle);
       }
     },
-    setPrimitiveStyle: (
-      primitivePath,
-      key,
-      value,
-      scope = "default",
-      styleState = "default"
-    ) => {
+    setPrimitiveStyle: (primitivePath, key, value, scope = "default", styleState = "default") => {
       if (!state.selectedBlockId) {
         return;
       }

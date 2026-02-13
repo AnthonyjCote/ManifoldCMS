@@ -476,7 +476,9 @@ export function PrimitiveRenderer({
   primitiveStateViewportStyles,
   hoverPrimitivePaths = [],
 }: PrimitiveRendererProps) {
-  const styleState: StyleStateKey = hoverPrimitivePaths.includes(primitivePath) ? "hover" : "default";
+  const styleState: StyleStateKey = hoverPrimitivePaths.includes(primitivePath)
+    ? "hover"
+    : "default";
   const style = toPrimitiveStyle({
     primitivePath,
     previewScope,

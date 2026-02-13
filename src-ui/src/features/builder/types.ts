@@ -59,6 +59,8 @@ export type PrimitiveNode = {
 };
 
 export type StyleViewportKey = "default" | "mobile" | "tablet" | "desktop" | "wide";
+export type StyleStateKey = "default" | "hover";
+export type NonDefaultStyleStateKey = Exclude<StyleStateKey, "default">;
 
 export type SectionStyleKey =
   | "marginTop"
@@ -91,6 +93,9 @@ export type PrimitiveStyleKey =
 export type SectionStyleValues = Partial<Record<SectionStyleKey, string>>;
 export type PrimitiveStyleValues = Partial<Record<PrimitiveStyleKey, string>>;
 export type ResponsiveStyleValues<T> = Partial<Record<StyleViewportKey, T>>;
+export type ResponsiveStateStyleValues<T> = Partial<
+  Record<StyleViewportKey, Partial<Record<NonDefaultStyleStateKey, T>>>
+>;
 
 export type BlockInstance = {
   id: string;
@@ -102,6 +107,8 @@ export type BlockInstance = {
     primitiveStyles?: Record<string, PrimitiveStyleValues>;
     viewportStyles?: ResponsiveStyleValues<SectionStyleValues>;
     primitiveViewportStyles?: Record<string, ResponsiveStyleValues<PrimitiveStyleValues>>;
+    stateViewportStyles?: ResponsiveStateStyleValues<SectionStyleValues>;
+    primitiveStateViewportStyles?: Record<string, ResponsiveStateStyleValues<PrimitiveStyleValues>>;
   } & SectionStyleValues;
 };
 

@@ -332,13 +332,7 @@ const VIEWPORT_LABELS: Record<BuilderViewport, string> = {
   wide: "Retina / Wide / UHD",
 };
 
-const VIEWPORT_MENU_ORDER: BuilderViewport[] = [
-  "default",
-  "mobile",
-  "tablet",
-  "desktop",
-  "wide",
-];
+const VIEWPORT_MENU_ORDER: BuilderViewport[] = ["default", "mobile", "tablet", "desktop", "wide"];
 
 const FIELD_FILTER_OPTIONS: Array<{
   value: FieldFilterMode;
@@ -754,8 +748,11 @@ export function StyleTab() {
 
     const nextPreviewState = {
       hoverPrimitiveTargets: primitiveHoverActive ? selectedPrimitiveTargetIds : [],
-      hoverSectionBlockIds:
-        primitiveHoverActive ? [] : sectionHoverActive ? selectedSectionBlockIds : [],
+      hoverSectionBlockIds: primitiveHoverActive
+        ? []
+        : sectionHoverActive
+          ? selectedSectionBlockIds
+          : [],
     };
     stylePreviewState.setState(nextPreviewState);
   }, [
@@ -982,7 +979,10 @@ export function StyleTab() {
             const collapsed = collapsedGroups[groupKey] ?? true;
             const fieldRows = group.fields
               .map((field) => {
-                const activeFieldState = getFieldState(String(field.key), Boolean(selectedPrimitive));
+                const activeFieldState = getFieldState(
+                  String(field.key),
+                  Boolean(selectedPrimitive)
+                );
                 if (selectedPrimitive) {
                   const primitiveSelectionTargets =
                     selectedTargets.length > 0
@@ -1149,7 +1149,9 @@ export function StyleTab() {
                   ? firstValue
                   : "";
                 const explicitFirst = explicitSectionValues[0] ?? "";
-                const explicitValue = explicitSectionValues.every((entry) => entry === explicitFirst)
+                const explicitValue = explicitSectionValues.every(
+                  (entry) => entry === explicitFirst
+                )
                   ? explicitFirst
                   : "";
                 const status = resolveFieldValueStatus(explicitValue, value);

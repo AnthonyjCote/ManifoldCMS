@@ -20,7 +20,9 @@ function normalizeState(input: unknown): BuilderStylePreviewState {
     ? objectInput.hoverSectionBlockIds.filter((entry): entry is string => typeof entry === "string")
     : [];
   const hoverPrimitiveTargets = Array.isArray(objectInput.hoverPrimitiveTargets)
-    ? objectInput.hoverPrimitiveTargets.filter((entry): entry is string => typeof entry === "string")
+    ? objectInput.hoverPrimitiveTargets.filter(
+        (entry): entry is string => typeof entry === "string"
+      )
     : [];
   return {
     hoverSectionBlockIds,

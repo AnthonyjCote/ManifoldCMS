@@ -8,18 +8,32 @@ import {
   beginPointerCatalogDrag,
   type BuilderPointerDragDetail,
 } from "../../../features/builder/dnd";
+import { useDrawerTabScrollPersistence } from "../../../state/useDrawerTabScrollPersistence";
+
+const BLOCKS_TAB_GROUPS_KEY = "manifold.builder.blocks-tab.open-groups";
+
+function readBlocksTabGroupState(): Record<string, boolean> {
+  try {
+    const raw = window.localStorage.getItem(BLOCKS_TAB_GROUPS_KEY);
+    if (!raw) {
+      return {};
+    }
+    const parsed = JSON.parse(raw) as Record<string, boolean>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 export function BlocksTab() {
   const builder = useBuilderStore();
+  const scrollRootRef = useDrawerTabScrollPersistence("manifold.builder.drawer-scroll.blocks");
   const [query, setQuery] = useState("");
   const [draggingBlockType, setDraggingBlockType] = useState<string | null>(null);
   const groups = groupedBlockCatalog();
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    Hero: true,
-    Features: true,
-    Conversion: true,
-    Content: true,
-  });
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
+    readBlocksTabGroupState()
+  );
 
   const filteredGroups = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -60,27 +74,37 @@ export function BlocksTab() {
     };
   }, []);
 
-  return (
-    <div className="drawer-stack">
-      <div className="drawer-inline-controls block-catalog-search">
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search blocks..."
-          aria-label="Search blocks"
-        />
-      </div>
+  useEffect(() => {
+    window.localStorage.setItem(BLOCKS_TAB_GROUPS_KEY, JSON.stringify(openGroups));
+  }, [openGroups]);
 
-      <div className="block-catalog-groups">
+  return (
+    <div ref={scrollRootRef} className="drawer-stack block-tab-root">
+      <section className="inspector-card-item style-tab-topbar block-tab-topbar">
+        <label className="inspector-field compact block-catalog-search">
+          <span className="style-tab-topbar-label">Find block</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search blocks..."
+            aria-label="Search blocks"
+          />
+        </label>
+      </section>
+
+      <div className="block-catalog-groups style-group-list drawer-accordion-list">
         {filteredGroups.length === 0 ? (
           <div className="drawer-panel">No blocks match this search.</div>
         ) : (
           filteredGroups.map((group) => {
-            const isOpen = openGroups[group.category] ?? true;
+            const isOpen = openGroups[group.category] ?? false;
             return (
-              <section key={group.category} className="block-catalog-group">
+              <section
+                key={group.category}
+                className="block-catalog-group style-group-card drawer-accordion-section"
+              >
                 <button
-                  className="block-catalog-group-toggle"
+                  className="block-catalog-group-toggle drawer-accordion-toggle"
                   onClick={() => setOpenGroups((prev) => ({ ...prev, [group.category]: !isOpen }))}
                   aria-expanded={isOpen}
                 >
@@ -88,7 +112,7 @@ export function BlocksTab() {
                   <span>{isOpen ? "−" : "+"}</span>
                 </button>
                 {isOpen ? (
-                  <div className="block-catalog-grid">
+                  <div className="block-catalog-grid drawer-accordion-content">
                     {group.blocks.map((block) => (
                       <div
                         key={block.id}
