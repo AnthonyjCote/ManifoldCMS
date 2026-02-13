@@ -1000,11 +1000,11 @@ body,
 
 .viewport-tone-default {
   --viewport-tone: var(--viewport-default);
-  --viewport-tone-dot: #9bb0d4;
-  --viewport-tone-text: #d2dcf4;
-  --viewport-tone-border: rgba(112, 140, 192, 0.55);
-  --viewport-tone-bg: rgba(20, 29, 46, 0.92);
-  --viewport-tone-glow: rgba(142, 163, 200, 0.34);
+  --viewport-tone-dot: var(--text-muted);
+  --viewport-tone-text: var(--text-primary);
+  --viewport-tone-border: var(--border-strong);
+  --viewport-tone-bg: var(--bg-elev-3);
+  --viewport-tone-glow: rgba(152, 161, 176, 0.2);
 }
 
 .viewport-tone-mobile {
@@ -1044,10 +1044,10 @@ body,
 }
 
 .status-tone-all {
-  --status-tone-dot: #8ea3c8;
-  --status-tone-text: #c7d6f3;
-  --status-tone-border: rgba(95, 126, 194, 0.35);
-  --status-tone-bg: rgba(15, 24, 37, 0.9);
+  --status-tone-dot: var(--text-muted);
+  --status-tone-text: var(--text-primary);
+  --status-tone-border: var(--border-strong);
+  --status-tone-bg: var(--bg-elev-3);
 }
 
 .status-tone-override {
@@ -1454,28 +1454,33 @@ body,
 }
 
 .builder-icon-btn.viewport-tone-default {
-  border-color: rgba(112, 140, 192, 0.55);
-  color: #d2dcf4;
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  background: var(--bg-elev-3);
 }
 
 .builder-icon-btn.viewport-tone-mobile {
   border-color: rgba(79, 134, 255, 0.62);
   color: #dbe6ff;
+  background: rgba(19, 33, 66, 0.92);
 }
 
 .builder-icon-btn.viewport-tone-tablet {
   border-color: rgba(67, 211, 154, 0.62);
   color: #dbfff0;
+  background: rgba(18, 44, 37, 0.92);
 }
 
 .builder-icon-btn.viewport-tone-desktop {
   border-color: rgba(140, 171, 88, 0.58);
   color: #efffd7;
+  background: rgba(34, 45, 24, 0.92);
 }
 
 .builder-icon-btn.viewport-tone-wide {
   border-color: rgba(197, 156, 70, 0.62);
   color: #fff1cb;
+  background: rgba(49, 36, 18, 0.92);
 }
 
 .builder-icon-btn.viewport-tone-default.active,
@@ -1484,7 +1489,12 @@ body,
 .builder-icon-btn.viewport-tone-desktop.active,
 .builder-icon-btn.viewport-tone-wide.active {
   border-color: currentColor;
-  background: rgba(18, 23, 34, 0.9);
+  background: color-mix(in srgb, currentColor 22%, #232b39);
+}
+
+.builder-icon-btn.viewport-tone-default.active {
+  border-color: var(--accent-strong);
+  background: #2a3039;
 }
 
 .builder-icon-btn.builder-mode-toggle.edit-mode {
@@ -1632,13 +1642,13 @@ body,
 
 .popover-option.viewport-option.viewport-tone-default {
   --viewport-tone: var(--viewport-default);
-  --viewport-option-border: rgba(112, 140, 192, 0.45);
-  --viewport-option-bg: rgba(20, 29, 46, 0.45);
-  --viewport-option-text: #d2dcf4;
-  --viewport-option-hover-border: rgba(112, 140, 192, 0.65);
-  --viewport-option-hover-bg: rgba(20, 29, 46, 0.75);
-  --viewport-option-active-border: rgba(112, 140, 192, 0.86);
-  --viewport-option-active-bg: rgba(20, 29, 46, 0.95);
+  --viewport-option-border: var(--border-subtle);
+  --viewport-option-bg: #131821;
+  --viewport-option-text: var(--text-primary);
+  --viewport-option-hover-border: var(--border-strong);
+  --viewport-option-hover-bg: #151c27;
+  --viewport-option-active-border: var(--accent-strong);
+  --viewport-option-active-bg: #1f2530;
 }
 
 .popover-option.viewport-option.viewport-tone-mobile {
