@@ -75,10 +75,13 @@ Reference doc:
 - [ ] Ensure mobile responsive behavior for every block type.
 - [ ] Add block provenance metadata for classifier system so preset block defaults can be labeled as `block` source.
 - [ ] Enforce explicit theme class naming namespace (`theme-*`) for audit clarity vs user-authored classes.
+- [ ] Enforce DRY Theme-tab UI implementation by reusing Style/Blocks tab structure, components, and styling patterns.
 - [ ] Preserve dual workflow goals in P0.3:
   - fast path (`pick/generate theme -> drag/drop -> content -> ship`)
   - advanced path (micro-granular CSS control retained).
 - [ ] Prepare class assignment model so blocks/primitives can later select from theme classes + user classes (future Classes tab integration).
+- [ ] Bundle and ship first V1 Theme Library set (6 baseline themes) for switch/edit testing.
+- [ ] Validate theme switch safety + clone/edit workflow across bundled default vs user-clone versions.
 
 Definition of done:
 

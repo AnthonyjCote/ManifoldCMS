@@ -21,12 +21,15 @@ To support that, primitive and block design quality must come from theme + varia
 
 ## Core Decisions
 
-- Theme is the primary source of design intent.
+- Style tab explicit values are the primary source of truth for user-authored styling.
+- Theme is optional and additive (never mandatory, never breaking for existing projects).
 - Primitives consume theme variants by default.
 - Blocks define layout and default variant choices, not bespoke styling.
 - Output should be class-based and DRY as much as possible.
 - AI should edit theme schema/variant maps, not random per-element style fields.
 - Theme-generated classes should use an explicit `theme-` prefix for auditing clarity (theme vs user-authored values/classes).
+- Theme editor UI must be DRY and reuse existing drawer-tab UI patterns/components from Style and Blocks tabs.
+- When Classes tab ships, user classes become authoritative source of truth alongside explicit Style-tab values.
 
 ---
 
@@ -41,6 +44,8 @@ To support that, primitive and block design quality must come from theme + varia
 5. Class-based style generation strategy
 6. Runtime preview parity with export output
 7. Clear separation between theme classes and future user-authored classes
+8. Safe theme-apply workflow with automatic backup/versioning
+9. Ship bundled V1 theme library for baseline switching/edit testing
 
 ## Out of Scope (for this phase)
 
@@ -175,11 +180,59 @@ Product goal (explicit):
 
 Precedence (high -> low):
 
-1. explicit inline override
-2. selected primitive variant override
-3. block default primitive variant
-4. theme base variant
-5. token fallback
+1. explicit style-tab value (scope/state-specific)
+2. user class assignment (future Classes tab)
+3. selected primitive variant override
+4. block default primitive variant
+5. theme base variant/tokens (additive fallback)
+6. hard fallback token/default
+
+---
+
+## Inheritance + Classifier Contract
+
+To keep style debugging clear, the builder must classify where each resolved field value comes from.
+
+## Source chain (effective value resolution)
+
+For non-state styles:
+
+- `theme` -> `block` -> `default` -> `viewport` (`mobile/tablet/desktop/retina-wide`)
+
+For state styles:
+
+- state values resolve using the same source order within the active scope.
+
+Interpretation:
+
+- Theme provides global/base styling intent.
+- Block provides pre-made section defaults when present.
+- Default provides project/page-level baseline overrides.
+- Viewport scopes provide additive responsive overrides.
+- Explicit Style-tab edits always override upstream sources at the current scope.
+- If no theme is selected, behavior must remain non-breaking and equivalent to manual styling flow.
+
+## Classifier statuses (required)
+
+- `theme` (purple): value resolved from active theme token/variant.
+- `block` (blue): value resolved from the pre-made block defaults.
+- `override` (red): explicit value at current scope overriding lower-precedence source.
+- `inherited` (yellow): value inherited from earlier link in the chain.
+- `edited` (green): explicit value at current scope (when distinct from override handling in UI).
+- `uninitialized` (hollow/low-contrast): no value from any source.
+
+## Notes
+
+- `block` classification is required for fields originating from shipped block defaults
+  (for example section spacing/surface defaults baked into a block template).
+- Source classification must be consistent across:
+  - Style tab field indicators,
+  - filters,
+  - Section Style Audit modal.
+- Theme-resolved values should behave like inherited values in the Style tab.
+- If a user edits a theme-resolved field in Style tab, classify it as `override` (red) at that scope.
+- Keep Style-tab explicit values authoritative for both preview and export output.
+- Add jump-to-theme-source action from the purple `theme` tooltip to open/focus the matching Theme-tab control.
 
 ---
 
@@ -205,6 +258,52 @@ AI must be able to:
 - Preserve source visibility:
   - theme classes = `theme-*`
   - user classes (future classes tab) = `user-*` or equivalent explicit namespace
+- Export source-of-truth contract:
+  - current phase: Style-tab explicit values are authoritative for export.
+  - future Classes tab phase: user class assignments + Style-tab explicit values are authoritative.
+  - theme remains a control/helper layer for unresolved style keys and class keys.
+
+---
+
+## Theme Library + Live Theme Editing UX
+
+## Top-level Theme Library view (left rail)
+
+- Display starter themes in a visual grid.
+- V1 preview contract: each card renders the same canonical hero section only for side-by-side comparison.
+- Card actions (V1): `Apply`.
+- Card actions (near-future): `Preview`, `Duplicate`, `Import`, `Export`.
+- Bundle first V1 theme pack during this phase (minimum 6 baseline themes).
+
+## Builder right drawer Theme tab
+
+- Expose granular theme token controls.
+- Apply edits live to the active site preview.
+- Clearly indicate the active theme being edited.
+- Keep this tab focused on token/variant editing, not library browsing.
+- Reuse the same structure and visual language as existing Style/Blocks tabs:
+  - fixed top search/control bar pattern,
+  - accordion/toggle group pattern,
+  - shared dropdown/popover styles,
+  - shared field row/input patterns.
+
+## Safety requirement (non-negotiable)
+
+- When user applies any library theme, always save a snapshot of current active theme first.
+- Theme apply flow must never destroy unsaved user theme work.
+- Minimum safety behavior:
+  - auto-create backup snapshot/version,
+  - then apply selected library theme,
+  - allow restore/rollback to pre-apply state.
+- Theme apply must open a modal with two explicit options:
+  - `Merge (Recommended)` applies theme additively and preserves explicit local overrides.
+  - `Replace` applies theme broadly and may overwrite local styling intent.
+- `Replace` must require a secondary warning confirmation:
+  - explicit “Are you sure?” step,
+  - clear impact explanation before applying.
+- Optional near-future safety UX:
+  - lightweight confirm dialog summarizing that a backup was created,
+  - version history entry with timestamp + source theme id.
 
 ---
 
@@ -218,6 +317,14 @@ AI must be able to:
 - Theme styles are clearly auditable by class naming (`theme-*`).
 - AI can modify theme + variants without direct source-code editing.
 - Preview matches export for theme + variant styling.
+- Applying library themes auto-preserves prior user theme state before replacement.
+- Theme apply modal supports `Merge` vs `Replace`, with a secondary warning for `Replace`.
+- V1 ships with 6 baseline bundled themes available in Theme Library.
+- Theme switching + clone/edit workflow is testable across:
+  - default/bundled theme instance,
+  - user-cloned editable theme instance.
+- Editing theme-resolved Style-tab values marks those fields as `override` while preserving Style-tab as final authority.
+- Theme-classified fields support jump-to-theme-source navigation.
 
 ---
 
@@ -229,6 +336,7 @@ AI must be able to:
 - [ ] Add required color token fields (`base`, `accent`, `alt`, `link`)
 - [ ] Add typography/spacing/radius/border/shadow tokens
 - [ ] Add responsive token override support
+- [ ] Add theme metadata fields for versioning/snapshot lineage (id, source, createdAt, updatedAt)
 
 2. Variant registry
 
@@ -243,6 +351,8 @@ AI must be able to:
 - [ ] Apply variant classes in preview renderer
 - [ ] Keep variant assignment separate from inline style overrides
 - [ ] Ensure theme-applied classes are always emitted as `theme-*` names
+- [ ] Add right-drawer Theme tab for live token editing with immediate preview updates
+- [ ] Build Theme tab using shared Style/Blocks tab UI primitives (no bespoke one-off theme editor shell)
 
 4. Block integration
 
@@ -270,6 +380,24 @@ AI must be able to:
 - [ ] Accessibility spot-checks for contrast and heading hierarchy
 - [ ] Update `TEMP-Priority-Execution-Plan.md` with completion status
 
+8. Theme library safety workflow
+
+- [ ] Build top-level Theme Library page with canonical sample-preview cards
+- [ ] Implement `Apply` flow that auto-snapshots current theme before apply
+- [ ] Add restore path for last pre-apply snapshot (minimum)
+- [ ] Log theme apply events with source/target IDs for auditability
+- [ ] Bundle first V1 theme set (6 baseline themes) as JSON packs
+- [ ] Validate switch/edit behavior for bundled default vs user-clone versions
+- [ ] Build apply modal with `Merge (Recommended)` and `Replace` options.
+- [ ] Add secondary “Are you sure?” confirmation flow for `Replace`.
+
+9. Style-tab/theme interaction rules
+
+- [ ] Treat theme-resolved fields as inherited-like in the Style tab.
+- [ ] On local edit of theme-resolved fields, classify as `override` at edited scope.
+- [ ] Add jump-to-theme-source action from theme tooltip.
+- [ ] Ensure preview/export continue to use Style-tab explicit values as final authority.
+
 ---
 
 ## Follow-Up (Near Future)
@@ -281,3 +409,63 @@ AI must be able to:
 - Allow both blocks and primitives to select class assignments from:
   - theme class list
   - user class list
+- Add non-destructive full-site theme preview mode on the active project (preview-only apply before confirm).
+
+---
+
+## Pre-Implementation Readiness Checklist
+
+Use this section to lock critical decisions before coding P0.3.
+
+1. Theme schema versioning and migration
+
+- [ ] Add `schemaVersion` to theme JSON.
+- [ ] Define migration path for future token/variant changes.
+
+2. Token fallback contract
+
+- [ ] Define deterministic fallback order for missing theme tokens.
+- [ ] Ensure preview and export share the same fallback resolver.
+
+3. Theme apply safety UX
+
+- [ ] Define apply flow UX with explicit `Merge` vs `Replace` options.
+- [ ] Enforce snapshot-first behavior before any theme apply.
+- [ ] Define restore entry point immediately after apply.
+- [ ] Add secondary warning confirmation for `Replace`.
+
+4. Bundled vs editable theme semantics
+
+- [ ] Keep bundled library themes immutable.
+- [ ] Define user-clone workflow for safe editing.
+
+5. Preview-to-export parity testing
+
+- [ ] Add parity checks for canonical test page across all viewport scopes.
+- [ ] Verify generated classes + token variables match preview output.
+
+6. Performance guardrails
+
+- [ ] Avoid full app rerender on theme switch where possible.
+- [ ] Cache generated CSS from theme+variant model.
+
+7. Accessibility baseline in theme authoring
+
+- [ ] Add contrast checks for text/background and link/background.
+- [ ] Surface warnings for unsafe combinations.
+
+8. Primitive/variant support matrix
+
+- [ ] Define explicit variant support per primitive.
+- [ ] Handle unsupported variant assignments with deterministic fallback.
+
+9. Theme vs local override visibility
+
+- [ ] Show when a style is theme-driven vs locally overridden.
+- [ ] Keep source-of-truth indicators consistent with classifier system.
+- [ ] Include `block` source classification for pre-made block defaults (blue).
+
+10. Baseline theme test fixture
+
+- [ ] Define one canonical sample page for switching/edit tests.
+- [ ] Use fixture for validating bundled 6-theme set and clone behavior.
