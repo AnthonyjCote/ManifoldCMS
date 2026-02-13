@@ -225,10 +225,10 @@ This row id is also used for jump targeting and pulse tracking.
 
 ### Phase 0: Contracts + Ordering (Blockers)
 
-- [ ] Define canonical `styleFieldId` contract (target + viewport + state + fieldKey).
-- [ ] Add helper utility to build/parse `styleFieldId` from shared inputs.
-- [ ] Define shared `StyleJumpService` contract (inputs, outputs, failure states).
-- [ ] Define and document jump execution order as a single orchestrated flow:
+- [x] Define canonical `styleFieldId` contract (target + viewport + state + fieldKey).
+- [x] Add helper utility to build/parse `styleFieldId` from shared inputs.
+- [x] Define shared `StyleJumpService` contract (inputs, outputs, failure states).
+- [x] Define and document jump execution order as a single orchestrated flow:
   1. set viewport,
   2. select preview target,
   3. open drawer,
@@ -238,103 +238,122 @@ This row id is also used for jump targeting and pulse tracking.
   7. expand accordion category,
   8. scroll style field into view,
   9. trigger dual pulse.
-- [ ] Add guard/debounce so repeated row clicks do not stack conflicting jumps.
+- [x] Add guard/debounce so repeated row clicks do not stack conflicting jumps.
 
 ### Phase 0.5: Inheritance Origin Resolution
 
-- [ ] Add resolver utility to find explicit origin for inherited values:
+- [x] Add resolver utility to find explicit origin for inherited values:
   - same target,
   - fallback chain by viewport/state precedence.
-- [ ] Return origin payload compatible with `StyleJumpService`.
-- [ ] Add deterministic “no origin found” result.
+- [x] Return origin payload compatible with `StyleJumpService`.
+- [x] Add deterministic “no origin found” result.
 
 ### Phase 1: Style Tab Targetability
 
-- [ ] Add `data-style-field-id` anchors to every style field row.
-- [ ] Ensure anchors exist for both section rows and primitive rows.
-- [ ] Ensure anchors are deterministic across rerenders.
-- [ ] Add fallback selector lookup by semantic keys when exact ID missing.
-- [ ] Add non-blocking “jump failed” handling path for unmapped fields.
+- [x] Add `data-style-field-id` anchors to every style field row.
+- [x] Ensure anchors exist for both section rows and primitive rows.
+- [x] Ensure anchors are deterministic across rerenders.
+- [x] Add fallback selector lookup by semantic keys when exact ID missing.
+- [x] Add non-blocking “jump failed” handling path for unmapped fields.
 
 ### Phase 2: Modal Shell + Launch
 
-- [ ] Add section-level audit icon button left of section drag handle.
-- [ ] Add modal open/close state tied to selected section context.
-- [ ] Implement near full-screen modal layout and backdrop.
-- [ ] Add sticky modal header with title, counts, filter controls, close button.
-- [ ] Implement `Esc` close behavior.
+- [x] Add section-level audit icon button left of section drag handle.
+- [x] Add modal open/close state tied to selected section context.
+- [x] Implement near full-screen modal layout and backdrop.
+- [x] Add sticky modal header with title, counts, filter controls, close button.
+- [x] Implement `Esc` close behavior.
 
 ### Phase 3: Audit Dataset Builder
 
-- [ ] Build read-only dataset extractor for explicit edits only.
-- [ ] Include section and primitive targets in one normalized row model.
-- [ ] Include viewport/state/category metadata per row.
-- [ ] Include stable preview order index for deterministic sorting.
-- [ ] Memoize dataset build on modal open.
-- [ ] Invalidate dataset only on relevant style data changes.
+- [x] Build read-only dataset extractor for explicit edits only.
+- [x] Include section and primitive targets in one normalized row model.
+- [x] Include viewport/state/category metadata per row.
+- [x] Include stable preview order index for deterministic sorting.
+- [x] Memoize dataset build on modal open.
+- [x] Invalidate dataset only on relevant style data changes.
 
 ### Phase 4: Modal Rendering
 
-- [ ] Render 5 sticky viewport columns (Default/Mobile/Tablet/Desktop/Wide).
-- [ ] Show per-column edit count badges.
-- [ ] Render section edits first, then primitive edits by preview order.
-- [ ] Render state badges (including Hover).
-- [ ] Render graceful “no edits” empty state per column.
+- [x] Render 5 sticky viewport columns (Default/Mobile/Tablet/Desktop/Wide).
+- [x] Show per-column edit count badges.
+- [x] Render section edits first, then primitive edits by preview order.
+- [x] Render state badges (including Hover).
+- [x] Render graceful “no edits” empty state per column.
 
 ### Phase 5: Filtering
 
-- [ ] Add filter popover with multi-select categories:
+- [x] Add filter popover with multi-select categories:
   - Layout, Spacing, Border, Background, Typography, Effects, Transform.
-- [ ] Add target-type filters (Section / Primitive).
-- [ ] Add hover-state include/exclude filter.
-- [ ] Add `Clear filters` action.
-- [ ] Ensure filters update visible rows instantly.
+- [x] Add target-type filters (Section / Primitive).
+- [x] Add hover-state include/exclude filter.
+- [x] Add `Clear filters` action.
+- [x] Ensure filters update visible rows instantly.
 
 ### Phase 6: Jump-to-Field Pipeline
 
-- [ ] Implement click handler per audit row to trigger `StyleJumpService`.
-- [ ] Auto-open right drawer if closed.
-- [ ] Auto-pin right drawer if unpinned.
-- [ ] Force right drawer tab to Style.
-- [ ] Set selected preview target (section or primitive) before style scroll.
-- [ ] Ensure correct viewport is activated, with visible indicator state retained.
-- [ ] Expand matching style accordion category if collapsed.
-- [ ] Scroll style drawer to field anchor.
-- [ ] Scroll preview canvas to target element.
+- [x] Implement click handler per audit row to trigger `StyleJumpService`.
+- [x] Auto-open right drawer if closed.
+- [x] Auto-pin right drawer if unpinned.
+- [x] Force right drawer tab to Style.
+- [x] Set selected preview target (section or primitive) before style scroll.
+- [x] Ensure correct viewport is activated, with visible indicator state retained.
+- [x] Expand matching style accordion category if collapsed.
+- [x] Scroll style drawer to field anchor.
+- [x] Scroll preview canvas to target element.
 
 ### Phase 6.5: Reuse via Inherited Indicator
 
-- [ ] Wire inherited-value indicator click in Style tab to `findValueOrigin(...)`.
-- [ ] If origin exists, jump via `StyleJumpService.jumpToField(...)`.
-- [ ] If origin missing, show non-blocking fallback state.
+- [x] Wire inherited-value indicator click in Style tab to `findValueOrigin(...)`.
+- [x] If origin exists, jump via `StyleJumpService.jumpToField(...)`.
+- [x] If origin missing, show non-blocking fallback state.
 
 ### Phase 7: Dual Pulse Feedback
 
-- [ ] Add transient preview pulse state keyed by target ID.
-- [ ] Add transient style-field pulse state keyed by `styleFieldId`.
-- [ ] Add CSS pulse animation tokens for both contexts.
-- [ ] Auto-clear pulse states after timeout.
-- [ ] Re-trigger pulse on repeated click of same row.
+- [x] Add transient preview pulse state keyed by target ID.
+- [x] Add transient style-field pulse state keyed by `styleFieldId`.
+- [x] Add CSS pulse animation tokens for both contexts.
+- [x] Auto-clear pulse states after timeout.
+- [x] Re-trigger pulse on repeated click of same row.
 
 ### Phase 8: Edge Cases
 
 - [ ] Handle missing/deleted primitive paths gracefully in modal rows.
-- [ ] Handle fields filtered/excluded from current style schema.
+- [x] Handle fields filtered/excluded from current style schema.
 - [ ] Handle state/viewport rows that exist with no current UI control.
 - [ ] Keep jump robust when section selection changes during modal open.
 
 ### Phase 9: QA + Validation
 
-- [ ] Verify jump works for section fields across all 5 viewports.
-- [ ] Verify jump works for primitive fields across nested primitives.
-- [ ] Verify hover-state row jumps correctly.
-- [ ] Verify drawer open/pin/style-tab behavior from all starting states.
-- [ ] Verify filters hide/show rows and empty groups correctly.
+- [x] Verify jump works for section fields across all 5 viewports.
+- [x] Verify jump works for primitive fields across nested primitives.
+- [x] Verify hover-state row jumps correctly.
+- [x] Verify drawer open/pin/style-tab behavior from all starting states.
+- [x] Verify filters hide/show rows and empty groups correctly.
 - [ ] Verify large sections do not cause lag or repeated dataset rebuilds.
-- [ ] Verify no regression in current Style tab editing flows.
+- [x] Verify no regression in current Style tab editing flows.
 
 ### Phase 10: Release Notes / Checklist Updates
 
-- [ ] Add completion notes in this temp PDR.
-- [ ] Add linked subtask reference in `TEMP-Priority-Execution-Plan.md`.
-- [ ] Mark follow-up items (editable audit modal, saved filter presets, modal search) as post-v1 backlog.
+- [x] Add completion notes in this temp PDR.
+- [x] Add linked subtask reference in `TEMP-Priority-Execution-Plan.md`.
+- [x] Mark follow-up items (editable audit modal, saved filter presets, modal search) as post-v1 backlog.
+
+## Completion Notes (Done For Now)
+
+- Implemented V1 Section Style Audit modal with:
+  - section-level launch control,
+  - 5 viewport columns,
+  - grouped/collapsible target sections,
+  - category/target/hover filters,
+  - clear filters,
+  - shared jump orchestration,
+  - dual pulse indicators in preview + style drawer.
+- Implemented inherited-origin jump support through shared mapping/jump infrastructure.
+- Added fallback handling when mapped fields are unavailable in current style schema.
+- Updated pulse UX for stronger visibility and longer duration during jump validation.
+- Post-V1 backlog items retained:
+  - editable audit modal interactions,
+  - saved filter presets,
+  - modal search/keyboard search focus,
+  - additional large-section performance soak testing.

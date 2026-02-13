@@ -876,7 +876,17 @@ export function BuilderView() {
           ) ?? null)
         : null;
       const scrollTarget = primitiveElement ?? blockElement;
-      if (scrollTarget) {
+      const previewHost = previewPageRef.current;
+      if (scrollTarget && previewHost) {
+        const hostRect = previewHost.getBoundingClientRect();
+        const targetRect = scrollTarget.getBoundingClientRect();
+        const delta =
+          targetRect.top - hostRect.top - previewHost.clientHeight / 2 + targetRect.height / 2;
+        previewHost.scrollTo({
+          top: previewHost.scrollTop + delta,
+          behavior: "smooth",
+        });
+      } else if (scrollTarget) {
         scrollTarget.scrollIntoView({ behavior: "smooth", block: "center" });
       }
 
@@ -888,7 +898,7 @@ export function BuilderView() {
       window.setTimeout(() => {
         setJumpPulseBlockId((prev) => (prev === detail.blockId ? null : prev));
         setJumpPulsePrimitiveTarget((prev) => (prev === pulseTarget ? null : prev));
-      }, 1500);
+      }, 5000);
     };
 
     window.addEventListener(BUILDER_STYLE_JUMP_EVENT, onStyleJump);
@@ -1173,6 +1183,8 @@ export function BuilderView() {
                   const hasPrimitiveSelectionInBlock = builder.state.selectedPrimitivePaths.some(
                     (target) => decodePrimitiveTarget(target).blockId === block.id
                   );
+                  const sectionExplicitlySelected =
+                    builder.state.selectedBlockId === block.id && !hasPrimitiveSelectionInBlock;
                   const hoverPrimitivePathsForBlock = stylePreviewState.state.hoverPrimitiveTargets
                     .map((target) => decodePrimitiveTarget(target))
                     .filter((target) => target.blockId === block.id)
@@ -1211,9 +1223,7 @@ export function BuilderView() {
                           builder.selectPrimitivePath(null);
                         }}
                       >
-                        {interactionMode === "edit" &&
-                        builder.state.selectedBlockId === block.id &&
-                        !hasPrimitiveSelectionInBlock ? (
+                        {interactionMode === "edit" ? (
                           <>
                             <button
                               className="site-block-audit-handle"
@@ -1246,45 +1256,48 @@ export function BuilderView() {
                                 <path d="M8 6h8M8 12h8M8 18h8" />
                               </svg>
                             </button>
-                            <div className="site-block-spacing-controls">
-                              <div className="site-block-spacing-guide baseline" />
-                              <div
-                                className="site-block-spacing-guide margin"
-                                style={{
-                                  top: `${-sectionGuide.marginTop}px`,
-                                  right: `${-sectionGuide.marginRight}px`,
-                                  bottom: `${-sectionGuide.marginBottom}px`,
-                                  left: `${-sectionGuide.marginLeft}px`,
-                                }}
-                              />
-                              <div
-                                className="site-block-spacing-guide padding"
-                                style={{
-                                  top: `${sectionGuide.paddingTop}px`,
-                                  right: `${sectionGuide.paddingRight}px`,
-                                  bottom: `${sectionGuide.paddingBottom}px`,
-                                  left: `${sectionGuide.paddingLeft}px`,
-                                }}
-                              />
-                              {SECTION_SPACING_HANDLES.map((handle) => (
-                                <button
-                                  key={`${block.id}-${handle.id}`}
-                                  className={`site-block-spacing-handle ${handle.kind} ${handle.side}`}
-                                  onPointerDown={(event) =>
-                                    startSectionSpacingDrag(event, block, handle)
-                                  }
-                                  title={handle.label}
-                                  aria-label={handle.label}
-                                  type="button"
+                            {sectionExplicitlySelected ? (
+                              <div className="site-block-spacing-controls">
+                                <div className="site-block-spacing-guide baseline" />
+                                <div
+                                  className="site-block-spacing-guide margin"
+                                  style={{
+                                    top: `${-sectionGuide.marginTop}px`,
+                                    right: `${-sectionGuide.marginRight}px`,
+                                    bottom: `${-sectionGuide.marginBottom}px`,
+                                    left: `${-sectionGuide.marginLeft}px`,
+                                  }}
                                 />
-                              ))}
-                              {activeSectionSpacingDrag?.blockId === block.id ? (
-                                <div className="site-block-spacing-readout">
-                                  {activeSectionSpacingDrag.label}: {activeSectionSpacingDrag.value}
-                                  px
-                                </div>
-                              ) : null}
-                            </div>
+                                <div
+                                  className="site-block-spacing-guide padding"
+                                  style={{
+                                    top: `${sectionGuide.paddingTop}px`,
+                                    right: `${sectionGuide.paddingRight}px`,
+                                    bottom: `${sectionGuide.paddingBottom}px`,
+                                    left: `${sectionGuide.paddingLeft}px`,
+                                  }}
+                                />
+                                {SECTION_SPACING_HANDLES.map((handle) => (
+                                  <button
+                                    key={`${block.id}-${handle.id}`}
+                                    className={`site-block-spacing-handle ${handle.kind} ${handle.side}`}
+                                    onPointerDown={(event) =>
+                                      startSectionSpacingDrag(event, block, handle)
+                                    }
+                                    title={handle.label}
+                                    aria-label={handle.label}
+                                    type="button"
+                                  />
+                                ))}
+                                {activeSectionSpacingDrag?.blockId === block.id ? (
+                                  <div className="site-block-spacing-readout">
+                                    {activeSectionSpacingDrag.label}:{" "}
+                                    {activeSectionSpacingDrag.value}
+                                    px
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
                           </>
                         ) : null}
                         <div className="site-block-render">

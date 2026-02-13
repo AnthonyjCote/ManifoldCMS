@@ -882,7 +882,19 @@ export function StyleTab() {
           document.querySelector<HTMLElement>(selector) ??
           document.querySelector<HTMLElement>(fallbackSelector);
         if (fieldNode) {
-          fieldNode.scrollIntoView({ behavior: "smooth", block: "center" });
+          const scrollHost = scrollRootRef.current?.closest(".drawer-tab-body");
+          if (scrollHost instanceof HTMLElement) {
+            const hostRect = scrollHost.getBoundingClientRect();
+            const fieldRect = fieldNode.getBoundingClientRect();
+            const delta =
+              fieldRect.top - hostRect.top - scrollHost.clientHeight / 2 + fieldRect.height / 2;
+            scrollHost.scrollTo({
+              top: scrollHost.scrollTop + delta,
+              behavior: "smooth",
+            });
+          } else {
+            fieldNode.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
           setPulsedStyleFieldId(fieldId);
           setJumpWarning(null);
           if (pulseTimeoutRef.current !== null) {
@@ -891,14 +903,14 @@ export function StyleTab() {
           pulseTimeoutRef.current = window.setTimeout(() => {
             setPulsedStyleFieldId((prev) => (prev === fieldId ? null : prev));
             pulseTimeoutRef.current = null;
-          }, 1500);
+          }, 5000);
         } else {
           setJumpWarning("Jump target unavailable in current style schema.");
         }
         setPendingJump((current) => (current === pendingJump ? null : current));
       });
     });
-  }, [block, pendingJump, selectedPrimitive]);
+  }, [block, pendingJump, scrollRootRef, selectedPrimitive]);
 
   useEffect(
     () => () => {

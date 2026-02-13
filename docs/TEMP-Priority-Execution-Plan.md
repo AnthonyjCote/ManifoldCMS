@@ -40,14 +40,14 @@ Definition of done:
 - [x] Add sticky search/filter field at top of Style tab to quickly locate style controls.
 - [x] Ensure all edits are undo/redo compatible.
 - [x] Ensure all style controls render with current dark UI style.
-- [ ] Add Section Style Audit/Inspect Modal (read-only) as a P0.2 extension for style debugging/navigation.
-- [ ] Add `override` source classifier (red) for viewport/state explicit values that override explicit default values.
-- [ ] Add `Override` option to style field filters (Style tab now, inspect modal later).
+- [x] Add Section Style Audit/Inspect Modal (read-only) as a P0.2 extension for style debugging/navigation.
+- [x] Add `override` source classifier (red) for viewport/state explicit values that override explicit default values.
+- [x] Add `Override` option to style field filters (Style tab now, inspect modal later).
 - [ ] Define source taxonomy contract for classifier system: `override`, `edited`, `inherited`, `theme`, `block`, `uninitialized`.
-- [ ] Add reusable `StyleJumpService` for jump-to-field navigation (shared infra, not modal-specific).
-- [ ] Add inherited-origin resolution + jump support (`findValueOrigin`) for future UI reuse.
-- [ ] Add stable `styleFieldId` field anchors for robust jump mapping (avoid DOM-order mapping).
-- [ ] Ensure audit modal opens preview target + style field reliably (scroll + pulse in both contexts).
+- [x] Add reusable `StyleJumpService` for jump-to-field navigation (shared infra, not modal-specific).
+- [x] Add inherited-origin resolution + jump support (`findValueOrigin`) for future UI reuse.
+- [x] Add stable `styleFieldId` field anchors for robust jump mapping (avoid DOM-order mapping).
+- [x] Ensure audit modal opens preview target + style field reliably (scroll + pulse in both contexts).
 - [ ] Enforce anti-monolith implementation boundaries for P0.2 extension:
   - dataset builder,
   - jump/orchestration service,

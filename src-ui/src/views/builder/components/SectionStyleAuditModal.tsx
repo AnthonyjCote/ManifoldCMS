@@ -450,6 +450,7 @@ export function SectionStyleAuditModal({
                                     if (unavailable) {
                                       return;
                                     }
+                                    onClose();
                                     requestStyleJump({
                                       blockId: row.blockId,
                                       primitivePath: row.primitivePath,
