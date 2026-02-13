@@ -28,6 +28,11 @@ import {
   getSectionStyleValue,
   type BuilderViewport,
 } from "../../features/builder/style-scopes";
+import {
+  buildViewportMenuMetaLabels,
+  VIEWPORT_MENU_ORDER,
+  VIEWPORT_SCOPE_LABELS,
+} from "../../features/builder/viewport-menu";
 import { useActiveProjectSession } from "../../features/project-launcher/session";
 import { useProjectSettings } from "../../features/project-settings/useProjectSettings";
 import { useBuilderInteractionModeStore } from "../../state/useBuilderInteractionModeStore";
@@ -460,6 +465,7 @@ export function BuilderView() {
             ? projectSettings.settings.preview.desktopWidth
             : projectSettings.settings.preview.wideWidth;
   const editScope = editScopeFromViewport(device);
+  const viewportMetaLabels = buildViewportMenuMetaLabels(projectSettings.settings.breakpoints);
   const mobileMaxBreakpoint = projectSettings.settings.breakpoints.mobileMax;
   const tabletMaxBreakpoint = projectSettings.settings.breakpoints.tabletMax;
   const desktopMaxBreakpoint = projectSettings.settings.breakpoints.desktopMax;
@@ -892,38 +898,19 @@ export function BuilderView() {
               <div className="builder-popover align-start">
                 <div className="popover-title">Viewport size</div>
                 <div className="popover-option-list">
-                  {(
-                    [
-                      { id: "default", label: "Default (Base)" },
-                      {
-                        id: "mobile",
-                        label: `Mobile [<= ${projectSettings.settings.breakpoints.mobileMax}px]`,
-                      },
-                      {
-                        id: "tablet",
-                        label: `Tablet [<= ${projectSettings.settings.breakpoints.tabletMax}px]`,
-                      },
-                      {
-                        id: "desktop",
-                        label: `Desktop / Laptop / HD [<= ${projectSettings.settings.breakpoints.desktopMax}px]`,
-                      },
-                      {
-                        id: "wide",
-                        label: `Retina / Wide / UHD [>= ${projectSettings.settings.breakpoints.retinaMin}px]`,
-                      },
-                    ] as const
-                  ).map((mode) => (
+                  {VIEWPORT_MENU_ORDER.map((mode) => (
                     <button
-                      key={mode.id}
-                      className={`popover-option single-line viewport-option ${viewportToneClass(mode.id)}${
-                        mode.id === device ? " active" : ""
+                      key={mode}
+                      className={`popover-option viewport-option ${viewportToneClass(mode)}${
+                        mode === device ? " active" : ""
                       }`}
                       onClick={() => {
-                        viewport.setViewport(mode.id);
+                        viewport.setViewport(mode);
                         setActivePopover(null);
                       }}
                     >
-                      <span>{mode.label}</span>
+                      <span>{VIEWPORT_SCOPE_LABELS[mode]}</span>
+                      <small>{viewportMetaLabels[mode]}</small>
                     </button>
                   ))}
                 </div>

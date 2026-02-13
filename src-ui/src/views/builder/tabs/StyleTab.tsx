@@ -14,6 +14,13 @@ import {
   getSectionStyleValue,
   type BuilderViewport,
 } from "../../../features/builder/style-scopes";
+import {
+  buildViewportMenuMetaLabels,
+  VIEWPORT_MENU_ORDER,
+  VIEWPORT_SCOPE_LABELS,
+} from "../../../features/builder/viewport-menu";
+import { useActiveProjectSession } from "../../../features/project-launcher/session";
+import { useProjectSettings } from "../../../features/project-settings/useProjectSettings";
 import { useBuilderInteractionModeStore } from "../../../state/useBuilderInteractionModeStore";
 import { useBuilderStylePreviewStateStore } from "../../../state/useBuilderStylePreviewStateStore";
 import { useDrawerTabScrollPersistence } from "../../../state/useDrawerTabScrollPersistence";
@@ -316,24 +323,6 @@ const PRIMITIVE_EXCLUDED_KEYS: Record<PrimitiveType, PrimitiveStyleKey[]> = {
   details: ["width", "height", "textColor", "fontSize", "fontWeight", "lineHeight", "textAlign"],
 };
 
-const SCOPE_LABELS: Record<string, string> = {
-  default: "Default",
-  mobile: "Mobile",
-  tablet: "Tablet",
-  desktop: "Desktop",
-  wide: "Retina/Wide",
-};
-
-const VIEWPORT_LABELS: Record<BuilderViewport, string> = {
-  default: "Default (Base)",
-  mobile: "Mobile",
-  tablet: "Tablet",
-  desktop: "Desktop / Laptop / HD",
-  wide: "Retina / Wide / UHD",
-};
-
-const VIEWPORT_MENU_ORDER: BuilderViewport[] = ["default", "mobile", "tablet", "desktop", "wide"];
-
 const FIELD_FILTER_OPTIONS: Array<{
   value: FieldFilterMode;
   label: string;
@@ -617,6 +606,8 @@ function renderStyleField<K extends AllStyleKey>(opts: {
 
 export function StyleTab() {
   const builder = useBuilderStore();
+  const projectSession = useActiveProjectSession();
+  const projectSettings = useProjectSettings(projectSession?.project.path);
   const scrollRootRef = useDrawerTabScrollPersistence("manifold.builder.drawer-scroll.style");
   const interaction = useBuilderInteractionModeStore();
   const stylePreviewState = useBuilderStylePreviewStateStore();
@@ -634,6 +625,10 @@ export function StyleTab() {
   const fieldFilterPopoverRef = useRef<HTMLDivElement | null>(null);
   const editScope = editScopeFromViewport(viewport.viewport);
   const block = builder.selectedBlock;
+  const viewportMetaLabels = useMemo<Record<BuilderViewport, string>>(
+    () => buildViewportMenuMetaLabels(projectSettings.settings.breakpoints),
+    [projectSettings.settings.breakpoints]
+  );
 
   useEffect(() => {
     window.localStorage.setItem(STYLE_TAB_COLLAPSE_KEY, JSON.stringify(collapsedGroups));
@@ -862,8 +857,8 @@ export function StyleTab() {
     }
   };
 
-  const scopeIndicatorText = `${interaction.mode === "edit" ? "Edit" : "Preview"}: ${SCOPE_LABELS[editScope]}`;
-  const fieldScopeLabelPrefix = SCOPE_LABELS[editScope];
+  const scopeIndicatorText = `${interaction.mode === "edit" ? "Edit" : "Preview"}: ${VIEWPORT_SCOPE_LABELS[editScope]}`;
+  const fieldScopeLabelPrefix = VIEWPORT_SCOPE_LABELS[editScope];
 
   return (
     <div ref={scrollRootRef} className="drawer-stack style-tab-root">
@@ -893,25 +888,32 @@ export function StyleTab() {
               <span className="caret">▾</span>
             </button>
             {scopePopoverOpen ? (
-              <div className="style-tab-scope-popover" role="menu" aria-label="Select viewport">
-                {VIEWPORT_MENU_ORDER.map((entry) => (
-                  <button
-                    key={entry}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={viewport.viewport === entry}
-                    className={`style-tab-scope-option ${viewportToneClass(entry)}${
-                      viewport.viewport === entry ? " active" : ""
-                    }`}
-                    onClick={() => {
-                      viewport.setViewport(entry);
-                      setScopePopoverOpen(false);
-                    }}
-                  >
-                    <span className="label">{SCOPE_LABELS[entry]}</span>
-                    <span className="meta">{VIEWPORT_LABELS[entry]}</span>
-                  </button>
-                ))}
+              <div
+                className="builder-popover align-start style-tab-popover"
+                role="menu"
+                aria-label="Select viewport"
+              >
+                <div className="popover-title">Viewport size</div>
+                <div className="popover-option-list">
+                  {VIEWPORT_MENU_ORDER.map((entry) => (
+                    <button
+                      key={entry}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={viewport.viewport === entry}
+                      className={`popover-option viewport-option ${viewportToneClass(entry)}${
+                        viewport.viewport === entry ? " active" : ""
+                      }`}
+                      onClick={() => {
+                        viewport.setViewport(entry);
+                        setScopePopoverOpen(false);
+                      }}
+                    >
+                      <span>{VIEWPORT_SCOPE_LABELS[entry]}</span>
+                      <small>{viewportMetaLabels[entry]}</small>
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : null}
           </div>
@@ -932,24 +934,31 @@ export function StyleTab() {
               <span className="caret">▾</span>
             </button>
             {fieldFilterPopoverOpen ? (
-              <div className="style-tab-filter-popover" role="menu" aria-label="Filter fields">
-                {FIELD_FILTER_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    role="menuitemradio"
-                    aria-checked={fieldFilter === option.value}
-                    className={`style-tab-filter-option ${filterToneClass(option.value)}${
-                      fieldFilter === option.value ? " active" : ""
-                    }`}
-                    onClick={() => {
-                      setFieldFilter(option.value);
-                      setFieldFilterPopoverOpen(false);
-                    }}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              <div
+                className="builder-popover style-tab-popover style-tab-filter-popover"
+                role="menu"
+                aria-label="Filter fields"
+              >
+                <div className="popover-title">Field filter</div>
+                <div className="popover-option-list">
+                  {FIELD_FILTER_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={fieldFilter === option.value}
+                      className={`popover-option single-line filter-option ${filterToneClass(option.value)}${
+                        fieldFilter === option.value ? " active" : ""
+                      }`}
+                      onClick={() => {
+                        setFieldFilter(option.value);
+                        setFieldFilterPopoverOpen(false);
+                      }}
+                    >
+                      <span>{option.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : null}
           </div>
@@ -1099,9 +1108,9 @@ export function StyleTab() {
                           <span className={`style-field-status-dot ${status}`} aria-hidden="true" />
                           <span className="style-field-status-tooltip" role="tooltip">
                             {status === "override"
-                              ? `Override of Default in ${SCOPE_LABELS[editScope]}`
+                              ? `Override of Default in ${VIEWPORT_SCOPE_LABELS[editScope]}`
                               : status === "edited"
-                                ? `Edited in ${SCOPE_LABELS[editScope]}`
+                                ? `Edited in ${VIEWPORT_SCOPE_LABELS[editScope]}`
                                 : status === "inherited"
                                   ? `Inherited from Default`
                                   : `Uninitialized`}
@@ -1141,7 +1150,9 @@ export function StyleTab() {
                             activeFieldState !== "default" ? " state-active" : ""
                           }`}
                         >
-                          {activeFieldState === "default" ? SCOPE_LABELS[editScope] : "Hover"}
+                          {activeFieldState === "default"
+                            ? VIEWPORT_SCOPE_LABELS[editScope]
+                            : "Hover"}
                         </small>
                       </span>
                       {renderStyleField({
@@ -1237,9 +1248,9 @@ export function StyleTab() {
                         <span className={`style-field-status-dot ${status}`} aria-hidden="true" />
                         <span className="style-field-status-tooltip" role="tooltip">
                           {status === "override"
-                            ? `Override of Default in ${SCOPE_LABELS[editScope]}`
+                            ? `Override of Default in ${VIEWPORT_SCOPE_LABELS[editScope]}`
                             : status === "edited"
-                              ? `Edited in ${SCOPE_LABELS[editScope]}`
+                              ? `Edited in ${VIEWPORT_SCOPE_LABELS[editScope]}`
                               : status === "inherited"
                                 ? `Inherited from Default`
                                 : `Uninitialized`}
@@ -1279,7 +1290,9 @@ export function StyleTab() {
                           activeFieldState !== "default" ? " state-active" : ""
                         }`}
                       >
-                        {activeFieldState === "default" ? SCOPE_LABELS[editScope] : "Hover"}
+                        {activeFieldState === "default"
+                          ? VIEWPORT_SCOPE_LABELS[editScope]
+                          : "Hover"}
                       </small>
                     </span>
                     {renderStyleField({

@@ -465,6 +465,7 @@ body,
 .drawer-tab-body {
   padding: 0;
   overflow: auto;
+  overflow-x: hidden;
   scrollbar-width: thin;
   scrollbar-color: #3a424f #121419;
 }
@@ -807,11 +808,12 @@ body,
 }
 
 .style-tab-topbar-controls {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: nowrap;
   min-width: 0;
+  width: 100%;
 }
 
 .style-tab-scope-control {
@@ -824,6 +826,7 @@ body,
   position: relative;
   width: fit-content;
   max-width: 100%;
+  margin-left: auto;
 }
 
 .style-tab-scope-indicator {
@@ -895,107 +898,15 @@ body,
   box-shadow: 0 0 0 3px var(--viewport-tone-glow, rgba(95, 126, 194, 0.18));
 }
 
-.style-tab-scope-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  min-width: 212px;
-  z-index: 20;
-  display: grid;
-  gap: 4px;
-  padding: 6px;
-  border: 1px solid rgba(95, 126, 194, 0.35);
-  border-radius: 10px;
-  background: rgba(10, 15, 24, 0.96);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(8px);
-}
-
-.style-tab-scope-option {
-  display: grid;
-  gap: 2px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--viewport-tone-text, #c7d6f3);
-  text-align: left;
-  padding: 7px 9px;
-  cursor: pointer;
-}
-
-.style-tab-scope-option .label {
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-}
-
-.style-tab-scope-option .meta {
-  font-size: 10px;
-  color: color-mix(in srgb, var(--viewport-tone-text, #95a8ce) 74%, #6e7583);
-}
-
-.style-tab-scope-option:hover {
-  background: color-mix(in srgb, #1a2230 74%, var(--viewport-tone, #8ea3c8) 26%);
-  border-color: color-mix(in srgb, var(--viewport-tone, #8ea3c8) 42%, #2d3646);
-}
-
-.style-tab-scope-option.active {
-  background: color-mix(in srgb, #1a2230 62%, var(--viewport-tone, #8ea3c8) 38%);
-  border-color: color-mix(in srgb, var(--viewport-tone, #8ea3c8) 62%, #2d3646);
+.style-tab-popover {
+  min-width: 0;
+  width: min(260px, calc(var(--right-drawer-width) - 20px));
+  max-width: calc(var(--right-drawer-width) - 20px);
 }
 
 .style-tab-filter-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  min-width: 180px;
-  z-index: 20;
-  display: grid;
-  gap: 4px;
-  padding: 6px;
-  border: 1px solid rgba(95, 126, 194, 0.35);
-  border-radius: 10px;
-  background: rgba(10, 15, 24, 0.96);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(8px);
-}
-
-.style-tab-filter-option {
-  display: block;
-  width: 100%;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  background: transparent;
-  color: #c7d6f3;
-  text-align: left;
-  padding: 7px 9px 7px 19px;
-  cursor: pointer;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-  position: relative;
-}
-
-.style-tab-filter-option::before {
-  content: "";
-  position: absolute;
-  left: 8px;
-  top: 50%;
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  transform: translateY(-50%);
-  background: var(--status-tone-dot, #9aa6bd);
-  opacity: 0.9;
-}
-
-.style-tab-filter-option:hover {
-  background: color-mix(in srgb, #1a2230 78%, var(--status-tone-dot, #9aa6bd) 22%);
-  border-color: color-mix(in srgb, var(--status-tone-dot, #9aa6bd) 44%, #2d3646);
-}
-
-.style-tab-filter-option.active {
-  background: color-mix(in srgb, #1a2230 62%, var(--status-tone-dot, #9aa6bd) 38%);
-  border-color: color-mix(in srgb, var(--status-tone-dot, #9aa6bd) 64%, #2d3646);
+  left: auto;
+  right: 0;
 }
 
 .viewport-tone-default {
@@ -1615,6 +1526,45 @@ body,
 .popover-option.active {
   border-color: var(--accent-strong);
   background: #1f2530;
+}
+
+.popover-option.filter-option {
+  position: relative;
+  padding-left: 19px;
+  border-color: var(--status-tone-border, var(--border-subtle));
+  background: var(--status-tone-bg, #131821);
+  color: var(--status-tone-text, var(--text-primary));
+}
+
+.popover-option.filter-option::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: var(--status-tone-dot, #9aa6bd);
+  opacity: 0.92;
+}
+
+.popover-option.filter-option:hover {
+  border-color: color-mix(in srgb, var(--status-tone-dot, #9aa6bd) 44%, #2d3646);
+  background: color-mix(
+    in srgb,
+    var(--status-tone-bg, #131821) 78%,
+    var(--status-tone-dot, #9aa6bd) 22%
+  );
+}
+
+.popover-option.filter-option.active {
+  border-color: color-mix(in srgb, var(--status-tone-dot, #9aa6bd) 64%, #2d3646);
+  background: color-mix(
+    in srgb,
+    var(--status-tone-bg, #131821) 62%,
+    var(--status-tone-dot, #9aa6bd) 38%
+  );
 }
 
 .popover-option.viewport-option {
