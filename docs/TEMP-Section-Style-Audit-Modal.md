@@ -146,11 +146,27 @@ This row id is also used for jump targeting and pulse tracking.
 
 - Reuse existing master style registry category mapping for category filters.
 - Add stable DOM hooks for style-field jump targeting (for example `data-style-field-id` + target context attributes).
-- Add lightweight event path for “jump to style field” from modal -> Style tab.
+- Implement a reusable shared jump layer (`StyleJumpService`) instead of modal-specific jump logic.
+  - `jumpToField(target, viewport, state, fieldKey)`
+  - `findValueOrigin(target, viewport, state, fieldKey)`
+- Route modal row jumps through shared jump service.
+- Route inherited-value indicator jumps through shared jump service.
 - Maintain pulse states with timeout cleanup:
   - preview pulse target id,
   - style field pulse id.
 - On viewport switch caused by jump, show explicit indicator so scope change is visible.
+
+### Shared Jump Service Requirement
+
+- Jump mapping must be reusable by other UI surfaces (not only this modal).
+- The service should expose:
+  - deterministic field-id resolution,
+  - origin-resolution for inherited values,
+  - jump orchestration (drawer open/pin/tab/expand/scroll/pulse),
+  - structured failure result for fallback UX.
+- Initial consumers:
+  - Section Style Audit Modal row click,
+  - inherited-value indicator click in Style tab.
 
 ---
 
@@ -164,6 +180,7 @@ This row id is also used for jump targeting and pulse tracking.
 - Clicking any row successfully scrolls both:
   - preview canvas to target,
   - style drawer to correct field.
+- Clicking inherited-value indicators can jump to the origin field where inherited value is explicitly set.
 - Right drawer auto-opens and pins if needed.
 - Style tab is activated automatically.
 - Matching accordion opens automatically.
@@ -210,6 +227,7 @@ This row id is also used for jump targeting and pulse tracking.
 
 - [ ] Define canonical `styleFieldId` contract (target + viewport + state + fieldKey).
 - [ ] Add helper utility to build/parse `styleFieldId` from shared inputs.
+- [ ] Define shared `StyleJumpService` contract (inputs, outputs, failure states).
 - [ ] Define and document jump execution order as a single orchestrated flow:
   1. set viewport,
   2. select preview target,
@@ -221,6 +239,14 @@ This row id is also used for jump targeting and pulse tracking.
   8. scroll style field into view,
   9. trigger dual pulse.
 - [ ] Add guard/debounce so repeated row clicks do not stack conflicting jumps.
+
+### Phase 0.5: Inheritance Origin Resolution
+
+- [ ] Add resolver utility to find explicit origin for inherited values:
+  - same target,
+  - fallback chain by viewport/state precedence.
+- [ ] Return origin payload compatible with `StyleJumpService`.
+- [ ] Add deterministic “no origin found” result.
 
 ### Phase 1: Style Tab Targetability
 
@@ -266,7 +292,7 @@ This row id is also used for jump targeting and pulse tracking.
 
 ### Phase 6: Jump-to-Field Pipeline
 
-- [ ] Implement click handler per audit row to trigger orchestrated jump.
+- [ ] Implement click handler per audit row to trigger `StyleJumpService`.
 - [ ] Auto-open right drawer if closed.
 - [ ] Auto-pin right drawer if unpinned.
 - [ ] Force right drawer tab to Style.
@@ -275,6 +301,12 @@ This row id is also used for jump targeting and pulse tracking.
 - [ ] Expand matching style accordion category if collapsed.
 - [ ] Scroll style drawer to field anchor.
 - [ ] Scroll preview canvas to target element.
+
+### Phase 6.5: Reuse via Inherited Indicator
+
+- [ ] Wire inherited-value indicator click in Style tab to `findValueOrigin(...)`.
+- [ ] If origin exists, jump via `StyleJumpService.jumpToField(...)`.
+- [ ] If origin missing, show non-blocking fallback state.
 
 ### Phase 7: Dual Pulse Feedback
 

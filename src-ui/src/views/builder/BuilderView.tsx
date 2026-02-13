@@ -110,9 +110,7 @@ type SectionStyleKey =
   | "paddingTop"
   | "paddingRight"
   | "paddingBottom"
-  | "paddingLeft"
-  | "translateX"
-  | "translateY";
+  | "paddingLeft";
 
 type SectionSpacingHandle = {
   id: string;
@@ -235,27 +233,6 @@ function normalizeSectionSpacingByKey(key: SectionStyleKey, value: number): numb
   return roundPx(value);
 }
 
-function parseTranslateFromComputed(transform: string): { x: number; y: number } {
-  if (!transform || transform === "none") {
-    return { x: 0, y: 0 };
-  }
-  const matrixMatch = transform.match(/matrix\(([^)]+)\)/);
-  if (matrixMatch) {
-    const parts = matrixMatch[1].split(",").map((part) => Number.parseFloat(part.trim()));
-    if (parts.length === 6 && Number.isFinite(parts[4]) && Number.isFinite(parts[5])) {
-      return { x: parts[4], y: parts[5] };
-    }
-  }
-  const matrix3dMatch = transform.match(/matrix3d\(([^)]+)\)/);
-  if (matrix3dMatch) {
-    const parts = matrix3dMatch[1].split(",").map((part) => Number.parseFloat(part.trim()));
-    if (parts.length === 16 && Number.isFinite(parts[12]) && Number.isFinite(parts[13])) {
-      return { x: parts[12], y: parts[13] };
-    }
-  }
-  return { x: 0, y: 0 };
-}
-
 function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
     return false;
@@ -279,8 +256,6 @@ function sectionSpacingFromOverrides(block: BuilderBlock, scope: BuilderViewport
     paddingRight: parsePxValue(getSectionStyleValue(block.styleOverrides, "paddingRight", scope)),
     paddingBottom: parsePxValue(getSectionStyleValue(block.styleOverrides, "paddingBottom", scope)),
     paddingLeft: parsePxValue(getSectionStyleValue(block.styleOverrides, "paddingLeft", scope)),
-    translateX: parsePxValue(getSectionStyleValue(block.styleOverrides, "translateX", scope)),
-    translateY: parsePxValue(getSectionStyleValue(block.styleOverrides, "translateY", scope)),
   };
 }
 
@@ -297,7 +272,9 @@ export function BuilderView() {
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
   const [hoveredPrimitivePath, setHoveredPrimitivePath] = useState<string | null>(null);
   const [previewHoverBlockId, setPreviewHoverBlockId] = useState<string | null>(null);
-  const [previewHoverPrimitiveTarget, setPreviewHoverPrimitiveTarget] = useState<string | null>(null);
+  const [previewHoverPrimitiveTarget, setPreviewHoverPrimitiveTarget] = useState<string | null>(
+    null
+  );
   const device = viewport.viewport;
   const [activePopover, setActivePopover] = useState<"page" | "device" | "route" | null>(null);
   const [routeDraft, setRouteDraft] = useState(builder.selectedPage.route);
@@ -312,7 +289,7 @@ export function BuilderView() {
   const routePopoverRef = useRef<HTMLDivElement | null>(null);
   const endStyleDragSessionRef = useRef(builder.endStyleDragSession);
   const sectionSpacingDragRef = useRef<{
-    handle: SectionSpacingHandle | "transform";
+    handle: SectionSpacingHandle;
     startCoord: number;
     startValue: number;
     onPointerMove: (event: PointerEvent) => void;
@@ -325,11 +302,6 @@ export function BuilderView() {
     blockId: string;
     label: string;
     value: number;
-  } | null>(null);
-  const [activeSectionTransformDrag, setActiveSectionTransformDrag] = useState<{
-    blockId: string;
-    x: number;
-    y: number;
   } | null>(null);
   const [activePointerDrag, setActivePointerDrag] = useState<BuilderPointerDragDetail | null>(null);
 
@@ -566,14 +538,6 @@ export function BuilderView() {
     return parsePxValue(computed.paddingLeft);
   };
 
-  const readSectionTransform = (shell: HTMLElement) => {
-    const section = shell.querySelector<HTMLElement>(".site-block");
-    if (!section) {
-      return { x: 0, y: 0 };
-    }
-    return parseTranslateFromComputed(window.getComputedStyle(section).transform);
-  };
-
   const startSectionSpacingDrag = (
     event: ReactPointerEvent<HTMLButtonElement>,
     block: (typeof builder.selectedPage.blocks)[number],
@@ -656,95 +620,6 @@ export function BuilderView() {
       handle,
       startCoord,
       startValue,
-      onPointerMove,
-      onPointerUp,
-      onPointerCancel,
-      onMouseMove,
-      onMouseUp,
-    };
-    document.addEventListener("pointermove", onPointerMove, true);
-    document.addEventListener("pointerup", onPointerUp, true);
-    document.addEventListener("pointercancel", onPointerCancel, true);
-    document.addEventListener("mousemove", onMouseMove, true);
-    document.addEventListener("mouseup", onMouseUp, true);
-  };
-
-  const startSectionTransformDrag = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-    block: (typeof builder.selectedPage.blocks)[number]
-  ) => {
-    const shell = event.currentTarget.closest(".site-block-shell");
-    if (!(shell instanceof HTMLElement)) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    builder.beginStyleDragSession();
-
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const initial = readSectionTransform(shell);
-    setActiveSectionTransformDrag({ blockId: block.id, x: initial.x, y: initial.y });
-
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
-      const nextX = roundPx(initial.x + deltaX);
-      const nextY = roundPx(initial.y + deltaY);
-      builder.setBlockStyleForBlock(block.id, "translateX", `${nextX}px`, editScope);
-      builder.setBlockStyleForBlock(block.id, "translateY", `${nextY}px`, editScope);
-      setActiveSectionTransformDrag({ blockId: block.id, x: nextX, y: nextY });
-    };
-
-    const cleanup = () => {
-      if (!sectionSpacingDragRef.current) {
-        return;
-      }
-      document.removeEventListener(
-        "pointermove",
-        sectionSpacingDragRef.current.onPointerMove,
-        true
-      );
-      document.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp, true);
-      document.removeEventListener(
-        "pointercancel",
-        sectionSpacingDragRef.current.onPointerCancel,
-        true
-      );
-      document.removeEventListener("mousemove", sectionSpacingDragRef.current.onMouseMove, true);
-      document.removeEventListener("mouseup", sectionSpacingDragRef.current.onMouseUp, true);
-      sectionSpacingDragRef.current = null;
-      setActiveSectionTransformDrag(null);
-      builder.endStyleDragSession();
-    };
-    const onPointerUp = cleanup;
-    const onPointerCancel = cleanup;
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      onPointerMove(moveEvent as unknown as PointerEvent);
-    };
-    const onMouseUp = cleanup;
-
-    if (sectionSpacingDragRef.current) {
-      document.removeEventListener(
-        "pointermove",
-        sectionSpacingDragRef.current.onPointerMove,
-        true
-      );
-      document.removeEventListener("pointerup", sectionSpacingDragRef.current.onPointerUp, true);
-      document.removeEventListener(
-        "pointercancel",
-        sectionSpacingDragRef.current.onPointerCancel,
-        true
-      );
-      document.removeEventListener("mousemove", sectionSpacingDragRef.current.onMouseMove, true);
-      document.removeEventListener("mouseup", sectionSpacingDragRef.current.onMouseUp, true);
-      builder.endStyleDragSession();
-    }
-
-    sectionSpacingDragRef.current = {
-      handle: "transform",
-      startCoord: startX,
-      startValue: initial.x,
       onPointerMove,
       onPointerUp,
       onPointerCancel,
@@ -1313,22 +1188,8 @@ export function BuilderView() {
                                 <path d="M8 6h8M8 12h8M8 18h8" />
                               </svg>
                             </button>
-                            <div
-                              className="site-block-spacing-controls"
-                              style={{
-                                transform:
-                                  sectionGuide.translateX !== 0 || sectionGuide.translateY !== 0
-                                    ? `translate(${sectionGuide.translateX}px, ${sectionGuide.translateY}px)`
-                                    : undefined,
-                              }}
-                            >
+                            <div className="site-block-spacing-controls">
                               <div className="site-block-spacing-guide baseline" />
-                              <div
-                                className="site-block-spacing-guide transform-origin"
-                                style={{
-                                  transform: `translate(${-sectionGuide.translateX}px, ${-sectionGuide.translateY}px)`,
-                                }}
-                              />
                               <div
                                 className="site-block-spacing-guide margin"
                                 style={{
@@ -1359,27 +1220,9 @@ export function BuilderView() {
                                   type="button"
                                 />
                               ))}
-                              <button
-                                className="site-block-transform-handle"
-                                onPointerDown={(event) => startSectionTransformDrag(event, block)}
-                                title="Drag to offset section X and Y"
-                                aria-label="Drag to offset section X and Y"
-                                type="button"
-                              >
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                  <path d="M12 4v16M4 12h16M7 7l-3 5 3 5M17 7l3 5-3 5" />
-                                </svg>
-                              </button>
                               {activeSectionSpacingDrag?.blockId === block.id ? (
                                 <div className="site-block-spacing-readout">
                                   {activeSectionSpacingDrag.label}: {activeSectionSpacingDrag.value}
-                                  px
-                                </div>
-                              ) : null}
-                              {activeSectionTransformDrag?.blockId === block.id ? (
-                                <div className="site-block-transform-readout">
-                                  X: {activeSectionTransformDrag.x}px Y:{" "}
-                                  {activeSectionTransformDrag.y}
                                   px
                                 </div>
                               ) : null}
@@ -1398,8 +1241,8 @@ export function BuilderView() {
                                   ? "hover"
                                   : "default"
                                 : stylePreviewState.state.hoverSectionBlockIds.includes(block.id)
-                                ? "hover"
-                                : "default"
+                                  ? "hover"
+                                  : "default"
                             }
                             hoverPrimitivePaths={
                               interactionMode === "preview"
@@ -1407,8 +1250,12 @@ export function BuilderView() {
                                     if (!previewHoverPrimitiveTarget) {
                                       return [];
                                     }
-                                    const decoded = decodePrimitiveTarget(previewHoverPrimitiveTarget);
-                                    return decoded.blockId === block.id ? [decoded.primitivePath] : [];
+                                    const decoded = decodePrimitiveTarget(
+                                      previewHoverPrimitiveTarget
+                                    );
+                                    return decoded.blockId === block.id
+                                      ? [decoded.primitivePath]
+                                      : [];
                                   })()
                                 : hoverPrimitivePathsForBlock
                             }
