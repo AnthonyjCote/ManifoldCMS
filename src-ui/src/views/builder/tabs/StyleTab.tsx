@@ -2,18 +2,27 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } 
 
 import { buildPreviewTreeForBlock } from "../../../features/builder/catalog";
 import { useBuilderStore } from "../../../features/builder/builder-store";
+import { PRIMITIVE_EXCLUDED_STYLE_KEYS } from "../../../features/builder/style-field-config";
 import {
   decodePrimitiveTarget,
   encodePrimitiveTarget,
 } from "../../../features/builder/primitive-target";
+import { buildStyleFieldId } from "../../../features/builder/style-field-id";
 import {
   editScopeFromViewport,
   getExplicitPrimitiveStyleValue,
   getExplicitSectionStyleValue,
   getPrimitiveStyleValue,
   getSectionStyleValue,
+  resolvePrimitiveStyleOrigin,
+  resolveSectionStyleOrigin,
   type BuilderViewport,
 } from "../../../features/builder/style-scopes";
+import {
+  BUILDER_STYLE_JUMP_EVENT,
+  requestStyleJump,
+  type StyleJumpRequest,
+} from "../../../features/builder/style-jump-service";
 import {
   buildViewportMenuMetaLabels,
   VIEWPORT_MENU_ORDER,
@@ -308,21 +317,6 @@ const PRIMITIVE_SUPPORTED_KEYS: PrimitiveStyleKey[] = [
   "translateY",
 ];
 
-const PRIMITIVE_EXCLUDED_KEYS: Record<PrimitiveType, PrimitiveStyleKey[]> = {
-  heading: ["width", "height", "backgroundColor", "borderWidth", "borderStyle", "borderColor"],
-  text: ["width", "height", "backgroundColor", "borderWidth", "borderStyle", "borderColor"],
-  button: ["lineHeight", "textAlign", "width", "height"],
-  image: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
-  video: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
-  embed: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
-  code: ["width", "height", "textAlign"],
-  spacer: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
-  stack: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "width", "height"],
-  columns: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "width", "height"],
-  cards: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "width", "height"],
-  details: ["width", "height", "textColor", "fontSize", "fontWeight", "lineHeight", "textAlign"],
-};
-
 const FIELD_FILTER_OPTIONS: Array<{
   value: FieldFilterMode;
   label: string;
@@ -357,6 +351,13 @@ const STYLE_STATES: Array<{
     ),
   },
 ];
+
+function safeCssEscape(value: string): string {
+  if ("CSS" in window && typeof window.CSS.escape === "function") {
+    return window.CSS.escape(value);
+  }
+  return value.replace(/([^\w-])/g, "\\$1");
+}
 
 function walkPrimitives(nodes: PrimitiveNode[], pathPrefix = ""): PrimitiveEntry[] {
   const out: PrimitiveEntry[] = [];
@@ -621,6 +622,10 @@ export function StyleTab() {
   );
   const [fieldStates, setFieldStates] = useState<Record<string, StyleStateKey>>({});
   const [openColorFieldId, setOpenColorFieldId] = useState<string | null>(null);
+  const [pendingJump, setPendingJump] = useState<StyleJumpRequest | null>(null);
+  const [pulsedStyleFieldId, setPulsedStyleFieldId] = useState<string | null>(null);
+  const [jumpWarning, setJumpWarning] = useState<string | null>(null);
+  const pulseTimeoutRef = useRef<number | null>(null);
   const scopePopoverRef = useRef<HTMLDivElement | null>(null);
   const fieldFilterPopoverRef = useRef<HTMLDivElement | null>(null);
   const editScope = editScopeFromViewport(viewport.viewport);
@@ -685,6 +690,39 @@ export function StyleTab() {
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [fieldFilterPopoverOpen]);
+
+  useEffect(() => {
+    const onStyleJump = (event: Event) => {
+      const detail = (event as CustomEvent<StyleJumpRequest>).detail;
+      if (!detail) {
+        return;
+      }
+      viewport.setViewport(detail.viewport);
+      builder.selectBlock(detail.blockId);
+      builder.selectPrimitiveTarget(detail.blockId, detail.primitivePath);
+
+      if (detail.state === "hover") {
+        const targetPrefix = detail.primitivePath
+          ? `primitive:${encodePrimitiveTarget(detail.blockId, detail.primitivePath)}`
+          : `section:${detail.blockId}`;
+        const stateKey = `${targetPrefix}:${detail.fieldKey}`;
+        setFieldStates((prev) => ({ ...prev, [stateKey]: "hover" }));
+      }
+
+      setCollapsedGroups((prev) => {
+        const next = { ...prev, [`section:${detail.category}`]: false };
+        for (const primitiveType of Object.keys(PRIMITIVE_EXCLUDED_STYLE_KEYS)) {
+          next[`primitive:${primitiveType}:${detail.category}`] = false;
+        }
+        return next;
+      });
+
+      setJumpWarning(null);
+      setPendingJump(detail);
+    };
+    window.addEventListener(BUILDER_STYLE_JUMP_EVENT, onStyleJump);
+    return () => window.removeEventListener(BUILDER_STYLE_JUMP_EVENT, onStyleJump);
+  }, [builder, viewport]);
 
   const selectedTargets = useMemo(
     () =>
@@ -779,49 +817,23 @@ export function StyleTab() {
     stylePreviewState,
   ]);
 
-  if (!block) {
-    if (interaction.mode === "preview") {
-      return (
-        <div className="drawer-panel style-mode-notice">
-          <span className="builder-empty-pill">
-            <span className="dot" />
-            Preview mode
-          </span>
-          <p>Style editing is disabled while preview mode is active.</p>
-          <button className="style-mode-action" onClick={() => interaction.setMode("edit")}>
-            Switch to Edit Mode
-          </button>
-        </div>
-      );
-    }
-    return (
-      <div className="drawer-panel builder-empty-notice">
-        <span className="builder-empty-pill">
-          <span className="dot" />
-          Style
-        </span>
-        <p>Select a block to style.</p>
-      </div>
-    );
-  }
-
-  const primitiveList = walkPrimitives(buildPreviewTreeForBlock(block));
+  const primitiveList = block ? walkPrimitives(buildPreviewTreeForBlock(block)) : [];
   const selectedPaths = selectedTargets
-    .filter((target) => target.blockId === block.id)
+    .filter((target) => target.blockId === block?.id)
     .map((target) => target.primitivePath);
   const selectedSectionBlocks = selectedSectionBlockIds
     .map((blockId) => builder.selectedPage.blocks.find((entry) => entry.id === blockId))
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
   const selectedPath = selectedPaths[selectedPaths.length - 1] ?? null;
   const selectedPrimitive = selectedPath
-    ? primitiveList.find((entry) => entry.path === selectedPath)
+    ? (primitiveList.find((entry) => entry.path === selectedPath) ?? null)
     : null;
 
   const primitiveStyleGroups = selectedPrimitive
     ? buildStyleGroups(
         PRIMITIVE_SUPPORTED_KEYS,
         query,
-        new Set(PRIMITIVE_EXCLUDED_KEYS[selectedPrimitive.type] ?? [])
+        new Set(PRIMITIVE_EXCLUDED_STYLE_KEYS[selectedPrimitive.type] ?? [])
       )
     : ([] as StyleGroup<PrimitiveStyleKey>[]);
 
@@ -833,6 +845,69 @@ export function StyleTab() {
 
   const currentGroups = selectedPrimitive ? primitiveStyleGroups : sectionStyleGroups;
   const collapseScope = selectedPrimitive ? `primitive:${selectedPrimitive.type}` : "section";
+
+  useEffect(() => {
+    if (!pendingJump || !block) {
+      return;
+    }
+    if (pendingJump.blockId !== block.id) {
+      return;
+    }
+    const selectionMatches =
+      (pendingJump.primitivePath === null && !selectedPrimitive) ||
+      selectedPrimitive?.path === pendingJump.primitivePath;
+    if (!selectionMatches) {
+      return;
+    }
+
+    const fieldId = buildStyleFieldId({
+      blockId: pendingJump.blockId,
+      primitivePath: pendingJump.primitivePath,
+      viewport: pendingJump.viewport,
+      state: pendingJump.state,
+      fieldKey: pendingJump.fieldKey as PrimitiveStyleKey | SectionStyleKey,
+    });
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const selector = `[data-style-field-id="${safeCssEscape(fieldId)}"]`;
+        const fallbackSelector = [
+          `[data-style-block-id="${safeCssEscape(pendingJump.blockId)}"]`,
+          `[data-style-primitive-path="${safeCssEscape(pendingJump.primitivePath ?? "")}"]`,
+          `[data-style-viewport="${safeCssEscape(pendingJump.viewport)}"]`,
+          `[data-style-state="${safeCssEscape(pendingJump.state)}"]`,
+          `[data-style-field-key="${safeCssEscape(String(pendingJump.fieldKey))}"]`,
+        ].join("");
+        const fieldNode =
+          document.querySelector<HTMLElement>(selector) ??
+          document.querySelector<HTMLElement>(fallbackSelector);
+        if (fieldNode) {
+          fieldNode.scrollIntoView({ behavior: "smooth", block: "center" });
+          setPulsedStyleFieldId(fieldId);
+          setJumpWarning(null);
+          if (pulseTimeoutRef.current !== null) {
+            window.clearTimeout(pulseTimeoutRef.current);
+          }
+          pulseTimeoutRef.current = window.setTimeout(() => {
+            setPulsedStyleFieldId((prev) => (prev === fieldId ? null : prev));
+            pulseTimeoutRef.current = null;
+          }, 1500);
+        } else {
+          setJumpWarning("Jump target unavailable in current style schema.");
+        }
+        setPendingJump((current) => (current === pendingJump ? null : current));
+      });
+    });
+  }, [block, pendingJump, selectedPrimitive]);
+
+  useEffect(
+    () => () => {
+      if (pulseTimeoutRef.current !== null) {
+        window.clearTimeout(pulseTimeoutRef.current);
+      }
+    },
+    []
+  );
 
   const onColorInputBlur = (fieldId: string) => {
     if (openColorFieldId === fieldId) {
@@ -859,6 +934,32 @@ export function StyleTab() {
 
   const scopeIndicatorText = `${interaction.mode === "edit" ? "Edit" : "Preview"}: ${VIEWPORT_SCOPE_LABELS[editScope]}`;
   const fieldScopeLabelPrefix = VIEWPORT_SCOPE_LABELS[editScope];
+
+  if (!block) {
+    if (interaction.mode === "preview") {
+      return (
+        <div className="drawer-panel style-mode-notice">
+          <span className="builder-empty-pill">
+            <span className="dot" />
+            Preview mode
+          </span>
+          <p>Style editing is disabled while preview mode is active.</p>
+          <button className="style-mode-action" onClick={() => interaction.setMode("edit")}>
+            Switch to Edit Mode
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="drawer-panel builder-empty-notice">
+        <span className="builder-empty-pill">
+          <span className="dot" />
+          Style
+        </span>
+        <p>Select a block to style.</p>
+      </div>
+    );
+  }
 
   return (
     <div ref={scrollRootRef} className="drawer-stack style-tab-root">
@@ -963,6 +1064,12 @@ export function StyleTab() {
             ) : null}
           </div>
         </div>
+        {jumpWarning ? (
+          <div className="style-jump-warning-pill" role="status" aria-live="polite">
+            <span className="dot" />
+            {jumpWarning}
+          </div>
+        ) : null}
       </section>
 
       <section className="inspector-card-item style-target-card">
@@ -1101,18 +1208,79 @@ export function StyleTab() {
                   const targetIds = primitiveSelectionTargets.map((target) =>
                     encodePrimitiveTarget(target.blockId, target.primitivePath)
                   );
+                  const anchorTarget = primitiveSelectionTargets[0] ?? {
+                    blockId: block.id,
+                    primitivePath: selectedPath ?? "",
+                  };
+                  const fieldId = buildStyleFieldId({
+                    blockId: anchorTarget.blockId,
+                    primitivePath: anchorTarget.primitivePath || null,
+                    viewport: editScope,
+                    state: activeFieldState,
+                    fieldKey: field.key as PrimitiveStyleKey,
+                  });
+                  const inheritedOrigin =
+                    inherited && anchorTarget.primitivePath
+                      ? resolvePrimitiveStyleOrigin(
+                          block.styleOverrides,
+                          anchorTarget.primitivePath,
+                          field.key as PrimitiveStyleKey,
+                          editScope,
+                          activeFieldState
+                        )
+                      : null;
                   return (
-                    <div key={field.key} className="inspector-field compact">
+                    <div
+                      key={field.key}
+                      className={`inspector-field compact${
+                        pulsedStyleFieldId === fieldId ? " style-field-pulse" : ""
+                      }`}
+                      data-style-field-id={fieldId}
+                      data-style-block-id={anchorTarget.blockId}
+                      data-style-primitive-path={anchorTarget.primitivePath || ""}
+                      data-style-viewport={editScope}
+                      data-style-state={activeFieldState}
+                      data-style-field-key={String(field.key)}
+                      data-style-category={group.category}
+                    >
                       <span className="style-field-label-row">
                         <span className="style-field-status-dot-wrap">
-                          <span className={`style-field-status-dot ${status}`} aria-hidden="true" />
+                          {inherited && inheritedOrigin ? (
+                            <button
+                              type="button"
+                              className={`style-field-status-dot ${status}`}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                requestStyleJump({
+                                  blockId: anchorTarget.blockId,
+                                  primitivePath: anchorTarget.primitivePath || null,
+                                  viewport: inheritedOrigin.viewport,
+                                  state: inheritedOrigin.state,
+                                  fieldKey: String(field.key),
+                                  category: group.category,
+                                });
+                              }}
+                              aria-label="Jump to inherited source"
+                              title="Jump to inherited source"
+                            />
+                          ) : (
+                            <span
+                              className={`style-field-status-dot ${status}`}
+                              aria-hidden="true"
+                            />
+                          )}
                           <span className="style-field-status-tooltip" role="tooltip">
                             {status === "override"
                               ? `Override of Default in ${VIEWPORT_SCOPE_LABELS[editScope]}`
                               : status === "edited"
                                 ? `Edited in ${VIEWPORT_SCOPE_LABELS[editScope]}`
                                 : status === "inherited"
-                                  ? `Inherited from Default`
+                                  ? inheritedOrigin
+                                    ? `Inherited from ${VIEWPORT_SCOPE_LABELS[inheritedOrigin.viewport]}${
+                                        inheritedOrigin.state === "hover" ? " (Hover)" : ""
+                                      }`
+                                    : `Inherited from Default`
                                   : `Uninitialized`}
                           </span>
                         </span>
@@ -1241,18 +1409,73 @@ export function StyleTab() {
                   placeholderValues.every((entry) => entry === placeholderValues[0])
                     ? placeholderValues[0]
                     : "Mixed values";
+                const anchorBlockId = selectedSectionBlocks[0]?.id ?? block.id;
+                const fieldId = buildStyleFieldId({
+                  blockId: anchorBlockId,
+                  primitivePath: null,
+                  viewport: editScope,
+                  state: activeFieldState,
+                  fieldKey: field.key as SectionStyleKey,
+                });
+                const originBlock =
+                  selectedSectionBlocks.find((entry) => entry.id === anchorBlockId) ?? block;
+                const inheritedOrigin = inherited
+                  ? resolveSectionStyleOrigin(
+                      originBlock.styleOverrides,
+                      field.key as SectionStyleKey,
+                      editScope,
+                      activeFieldState
+                    )
+                  : null;
                 return (
-                  <div key={field.key} className="inspector-field compact">
+                  <div
+                    key={field.key}
+                    className={`inspector-field compact${
+                      pulsedStyleFieldId === fieldId ? " style-field-pulse" : ""
+                    }`}
+                    data-style-field-id={fieldId}
+                    data-style-block-id={anchorBlockId}
+                    data-style-primitive-path=""
+                    data-style-viewport={editScope}
+                    data-style-state={activeFieldState}
+                    data-style-field-key={String(field.key)}
+                    data-style-category={group.category}
+                  >
                     <span className="style-field-label-row">
                       <span className="style-field-status-dot-wrap">
-                        <span className={`style-field-status-dot ${status}`} aria-hidden="true" />
+                        {inherited && inheritedOrigin ? (
+                          <button
+                            type="button"
+                            className={`style-field-status-dot ${status}`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              requestStyleJump({
+                                blockId: originBlock.id,
+                                primitivePath: null,
+                                viewport: inheritedOrigin.viewport,
+                                state: inheritedOrigin.state,
+                                fieldKey: String(field.key),
+                                category: group.category,
+                              });
+                            }}
+                            aria-label="Jump to inherited source"
+                            title="Jump to inherited source"
+                          />
+                        ) : (
+                          <span className={`style-field-status-dot ${status}`} aria-hidden="true" />
+                        )}
                         <span className="style-field-status-tooltip" role="tooltip">
                           {status === "override"
                             ? `Override of Default in ${VIEWPORT_SCOPE_LABELS[editScope]}`
                             : status === "edited"
                               ? `Edited in ${VIEWPORT_SCOPE_LABELS[editScope]}`
                               : status === "inherited"
-                                ? `Inherited from Default`
+                                ? inheritedOrigin
+                                  ? `Inherited from ${VIEWPORT_SCOPE_LABELS[inheritedOrigin.viewport]}${
+                                      inheritedOrigin.state === "hover" ? " (Hover)" : ""
+                                    }`
+                                  : `Inherited from Default`
                                 : `Uninitialized`}
                         </span>
                       </span>

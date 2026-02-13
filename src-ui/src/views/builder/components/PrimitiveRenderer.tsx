@@ -54,6 +54,7 @@ type PrimitiveRendererProps = {
   primitiveViewportStyles?: BlockInstance["styleOverrides"]["primitiveViewportStyles"];
   primitiveStateViewportStyles?: BlockInstance["styleOverrides"]["primitiveStateViewportStyles"];
   hoverPrimitivePaths?: string[];
+  pulsedPrimitivePath?: string | null;
 };
 
 type SpacingHandle = {
@@ -475,6 +476,7 @@ export function PrimitiveRenderer({
   primitiveViewportStyles,
   primitiveStateViewportStyles,
   hoverPrimitivePaths = [],
+  pulsedPrimitivePath = null,
 }: PrimitiveRendererProps) {
   const styleState: StyleStateKey = hoverPrimitivePaths.includes(primitivePath)
     ? "hover"
@@ -492,7 +494,8 @@ export function PrimitiveRenderer({
   });
   const isSelected = selectionEnabled && selectedPrimitivePaths.includes(primitivePath);
   const isHovered = selectionEnabled && hoveredPrimitivePath === primitivePath;
-  const primitiveClass = `preview-primitive-node${isSelected ? " selected" : ""}${isHovered ? " hovered" : ""}`;
+  const isPulsed = pulsedPrimitivePath === primitivePath;
+  const primitiveClass = `preview-primitive-node${isSelected ? " selected" : ""}${isHovered ? " hovered" : ""}${isPulsed ? " jump-pulse" : ""}`;
   const selectPrimitive = (multi = false) => onSelectPrimitive?.(primitivePath, node.type, multi);
   const primitiveRef = useRef<HTMLElement | null>(null);
   const [overlayHost, setOverlayHost] = useState<HTMLElement | null>(null);
@@ -913,6 +916,7 @@ export function PrimitiveRenderer({
             primitiveViewportStyles={primitiveViewportStyles}
             primitiveStateViewportStyles={primitiveStateViewportStyles}
             hoverPrimitivePaths={hoverPrimitivePaths}
+            pulsedPrimitivePath={pulsedPrimitivePath}
           />
         ))}
       </div>
@@ -952,6 +956,7 @@ export function PrimitiveRenderer({
             primitiveViewportStyles={primitiveViewportStyles}
             primitiveStateViewportStyles={primitiveStateViewportStyles}
             hoverPrimitivePaths={hoverPrimitivePaths}
+            pulsedPrimitivePath={pulsedPrimitivePath}
           />
         ))}
       </div>
@@ -990,6 +995,7 @@ export function PrimitiveRenderer({
             primitiveViewportStyles={primitiveViewportStyles}
             primitiveStateViewportStyles={primitiveStateViewportStyles}
             hoverPrimitivePaths={hoverPrimitivePaths}
+            pulsedPrimitivePath={pulsedPrimitivePath}
           />
         ))}
       </div>

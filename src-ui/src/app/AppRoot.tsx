@@ -2,6 +2,7 @@ import { useEffect } from "react";
 
 import { BuilderProvider } from "../features/builder/builder-store";
 import { FOCUS_INSPECTOR_EVENT } from "../features/builder/events";
+import { BUILDER_STYLE_JUMP_EVENT } from "../features/builder/style-jump-service";
 import { useActiveProjectSession } from "../features/project-launcher/session";
 import { ShellFrame } from "../shell/ShellFrame";
 import { useLayoutStateStore } from "../state/useLayoutStateStore";
@@ -123,6 +124,19 @@ export function AppRoot() {
     };
     window.addEventListener(FOCUS_INSPECTOR_EVENT, onFocusInspector);
     return () => window.removeEventListener(FOCUS_INSPECTOR_EVENT, onFocusInspector);
+  }, [layoutState, viewMode]);
+
+  useEffect(() => {
+    const onStyleJump = () => {
+      if (viewMode !== "builder") {
+        return;
+      }
+      layoutState.setRightOpen(true);
+      layoutState.setRightPinned(true);
+      layoutState.setActiveRightTabId("style");
+    };
+    window.addEventListener(BUILDER_STYLE_JUMP_EVENT, onStyleJump);
+    return () => window.removeEventListener(BUILDER_STYLE_JUMP_EVENT, onStyleJump);
   }, [layoutState, viewMode]);
 
   return (

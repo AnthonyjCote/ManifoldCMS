@@ -12,6 +12,10 @@ import type {
 } from "./types";
 
 export type BuilderViewport = "default" | "mobile" | "tablet" | "desktop" | "wide";
+export type StyleValueOrigin = {
+  viewport: StyleViewportKey;
+  state: StyleStateKey;
+};
 
 export function editScopeFromViewport(viewport: BuilderViewport): StyleViewportKey {
   return viewport;
@@ -22,6 +26,80 @@ function resolvedScopeOrder(scope: BuilderViewport): StyleViewportKey[] {
     return ["default"];
   }
   return ["default", scope];
+}
+
+function hasExplicitValue(value: string | undefined): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+export function resolveSectionStyleOrigin(
+  overrides: BlockInstance["styleOverrides"],
+  key: SectionStyleKey,
+  scope: BuilderViewport,
+  state: StyleStateKey = "default"
+): StyleValueOrigin | null {
+  if (state !== "default") {
+    const order = resolvedScopeOrder(scope);
+    for (let index = 0; index < order.length; index += 1) {
+      const viewport = order[index];
+      const explicit = overrides.stateViewportStyles?.[viewport]?.[state]?.[key];
+      if (hasExplicitValue(explicit)) {
+        return { viewport, state };
+      }
+    }
+  }
+
+  const scopedOrder = resolvedScopeOrder(scope);
+  let origin: StyleValueOrigin | null = hasExplicitValue(overrides[key])
+    ? { viewport: "default", state: "default" }
+    : null;
+  scopedOrder.forEach((viewport) => {
+    if (viewport === "default") {
+      return;
+    }
+    const explicit = overrides.viewportStyles?.[viewport]?.[key];
+    if (hasExplicitValue(explicit)) {
+      origin = { viewport, state: "default" };
+    }
+  });
+  return origin;
+}
+
+export function resolvePrimitiveStyleOrigin(
+  overrides: BlockInstance["styleOverrides"],
+  primitivePath: string,
+  key: PrimitiveStyleKey,
+  scope: BuilderViewport,
+  state: StyleStateKey = "default"
+): StyleValueOrigin | null {
+  if (state !== "default") {
+    const order = resolvedScopeOrder(scope);
+    for (let index = 0; index < order.length; index += 1) {
+      const viewport = order[index];
+      const explicit =
+        overrides.primitiveStateViewportStyles?.[primitivePath]?.[viewport]?.[state]?.[key];
+      if (hasExplicitValue(explicit)) {
+        return { viewport, state };
+      }
+    }
+  }
+
+  const scopedOrder = resolvedScopeOrder(scope);
+  let origin: StyleValueOrigin | null = hasExplicitValue(
+    overrides.primitiveStyles?.[primitivePath]?.[key]
+  )
+    ? { viewport: "default", state: "default" }
+    : null;
+  scopedOrder.forEach((viewport) => {
+    if (viewport === "default") {
+      return;
+    }
+    const explicit = overrides.primitiveViewportStyles?.[primitivePath]?.[viewport]?.[key];
+    if (hasExplicitValue(explicit)) {
+      origin = { viewport, state: "default" };
+    }
+  });
+  return origin;
 }
 
 function cleanupScopedMap<T extends Record<string, string | undefined>>(

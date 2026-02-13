@@ -35,6 +35,7 @@ type PreviewBlockProps = {
   onStyleDragSessionEnd?: () => void;
   sectionStyleState?: StyleStateKey;
   hoverPrimitivePaths?: string[];
+  pulsedPrimitivePath?: string | null;
 };
 
 function normalizeBackgroundImage(value: string | undefined): string | undefined {
@@ -93,6 +94,7 @@ export function PreviewBlock({
   onStyleDragSessionEnd,
   sectionStyleState = "default",
   hoverPrimitivePaths = [],
+  pulsedPrimitivePath = null,
 }: PreviewBlockProps) {
   const tree = buildPreviewTreeForBlock(block);
   const backgroundImage = normalizeBackgroundImage(
@@ -216,6 +218,7 @@ export function PreviewBlock({
           primitiveViewportStyles={block.styleOverrides.primitiveViewportStyles}
           primitiveStateViewportStyles={block.styleOverrides.primitiveStateViewportStyles}
           hoverPrimitivePaths={hoverPrimitivePaths}
+          pulsedPrimitivePath={pulsedPrimitivePath}
         />
       ))}
     </section>

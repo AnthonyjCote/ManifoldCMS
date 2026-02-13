@@ -29,6 +29,10 @@ import {
   type BuilderViewport,
 } from "../../features/builder/style-scopes";
 import {
+  BUILDER_STYLE_JUMP_EVENT,
+  type StyleJumpRequest,
+} from "../../features/builder/style-jump-service";
+import {
   buildViewportMenuMetaLabels,
   VIEWPORT_MENU_ORDER,
   VIEWPORT_SCOPE_LABELS,
@@ -39,6 +43,7 @@ import { useBuilderInteractionModeStore } from "../../state/useBuilderInteractio
 import { useBuilderStylePreviewStateStore } from "../../state/useBuilderStylePreviewStateStore";
 import { useBuilderViewportStore } from "../../state/useBuilderViewportStore";
 import { PreviewBlock } from "./components/PreviewBlock";
+import { SectionStyleAuditModal } from "./components/SectionStyleAuditModal";
 
 type IconButtonProps = {
   label: string;
@@ -313,6 +318,9 @@ export function BuilderView() {
     value: number;
   } | null>(null);
   const [activePointerDrag, setActivePointerDrag] = useState<BuilderPointerDragDetail | null>(null);
+  const [auditBlockId, setAuditBlockId] = useState<string | null>(null);
+  const [jumpPulseBlockId, setJumpPulseBlockId] = useState<string | null>(null);
+  const [jumpPulsePrimitiveTarget, setJumpPulsePrimitiveTarget] = useState<string | null>(null);
 
   useEffect(() => {
     endStyleDragSessionRef.current = builder.endStyleDragSession;
@@ -849,6 +857,44 @@ export function BuilderView() {
     setPreviewRunId((prev) => prev + 1);
   };
 
+  useEffect(() => {
+    const onStyleJump = (event: Event) => {
+      const detail = (event as CustomEvent<StyleJumpRequest>).detail;
+      if (!detail) {
+        return;
+      }
+
+      builder.selectBlock(detail.blockId);
+      builder.selectPrimitiveTarget(detail.blockId, detail.primitivePath);
+
+      const blockElement = previewPageRef.current?.querySelector<HTMLElement>(
+        `.site-block[data-block-id="${detail.blockId}"]`
+      );
+      const primitiveElement = detail.primitivePath
+        ? (blockElement?.querySelector<HTMLElement>(
+            `[data-primitive-path="${detail.primitivePath}"]`
+          ) ?? null)
+        : null;
+      const scrollTarget = primitiveElement ?? blockElement;
+      if (scrollTarget) {
+        scrollTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+
+      const pulseTarget = detail.primitivePath
+        ? encodePrimitiveTarget(detail.blockId, detail.primitivePath)
+        : null;
+      setJumpPulseBlockId(detail.blockId);
+      setJumpPulsePrimitiveTarget(pulseTarget);
+      window.setTimeout(() => {
+        setJumpPulseBlockId((prev) => (prev === detail.blockId ? null : prev));
+        setJumpPulsePrimitiveTarget((prev) => (prev === pulseTarget ? null : prev));
+      }, 1500);
+    };
+
+    window.addEventListener(BUILDER_STYLE_JUMP_EVENT, onStyleJump);
+    return () => window.removeEventListener(BUILDER_STYLE_JUMP_EVENT, onStyleJump);
+  }, [builder]);
+
   return (
     <section className="view-shell builder-view">
       <header className="builder-top-rail" role="toolbar" aria-label="Builder controls">
@@ -1138,7 +1184,7 @@ export function BuilderView() {
                       />
 
                       <div
-                        className={`site-block-shell${interactionMode === "edit" && builder.state.selectedBlockIds.includes(block.id) ? " selected" : ""}${interactionMode === "edit" && hoveredBlockId === block.id ? " hovered" : ""}${block.visibility === "hidden" ? " hidden" : ""}`}
+                        className={`site-block-shell${interactionMode === "edit" && builder.state.selectedBlockIds.includes(block.id) ? " selected" : ""}${interactionMode === "edit" && hoveredBlockId === block.id ? " hovered" : ""}${block.visibility === "hidden" ? " hidden" : ""}${jumpPulseBlockId === block.id ? " jump-pulse" : ""}`}
                         onMouseEnter={() => {
                           setHoveredBlockId(block.id);
                           if (interactionMode === "preview") {
@@ -1169,6 +1215,20 @@ export function BuilderView() {
                         builder.state.selectedBlockId === block.id &&
                         !hasPrimitiveSelectionInBlock ? (
                           <>
+                            <button
+                              className="site-block-audit-handle"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                setAuditBlockId(block.id);
+                              }}
+                              aria-label="Open section style audit"
+                              title="Open section style audit"
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M12 3 3 8l9 5 9-5-9-5zM7 12.5V16h10v-3.5" />
+                              </svg>
+                            </button>
                             <button
                               className="site-block-drag-handle"
                               onPointerDown={(event) => {
@@ -1294,6 +1354,16 @@ export function BuilderView() {
                             }
                             onStyleDragSessionStart={() => builder.beginStyleDragSession()}
                             onStyleDragSessionEnd={() => builder.endStyleDragSession()}
+                            pulsedPrimitivePath={
+                              jumpPulsePrimitiveTarget
+                                ? (() => {
+                                    const decoded = decodePrimitiveTarget(jumpPulsePrimitiveTarget);
+                                    return decoded.blockId === block.id
+                                      ? decoded.primitivePath
+                                      : null;
+                                  })()
+                                : null
+                            }
                           />
                         </div>
                       </div>
@@ -1348,6 +1418,17 @@ export function BuilderView() {
           </span>
         </div>
       ) : null}
+
+      <SectionStyleAuditModal
+        open={Boolean(auditBlockId)}
+        block={
+          auditBlockId
+            ? (builder.selectedPage.blocks.find((entry) => entry.id === auditBlockId) ?? null)
+            : null
+        }
+        settings={projectSettings.settings}
+        onClose={() => setAuditBlockId(null)}
+      />
 
       {newPageModalOpen ? (
         <div className="modal-scrim" role="presentation">
