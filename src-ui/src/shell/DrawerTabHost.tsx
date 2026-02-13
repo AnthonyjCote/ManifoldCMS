@@ -27,6 +27,12 @@ function tabIcon(tabId: string) {
           <path d="M12 3 3 8l9 5 9-5-9-5zM3 16l9 5 9-5" />
         </svg>
       );
+    case "theme_tokens":
+      return (
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3 3 8l9 5 9-5-9-5zM6 14v4l6 3 6-3v-4" />
+        </svg>
+      );
     case "agent":
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">

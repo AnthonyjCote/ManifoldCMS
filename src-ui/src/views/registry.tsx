@@ -10,6 +10,7 @@ import { LintTab } from "./builder/tabs/LintTab";
 import { PageSeoTab } from "./builder/tabs/PageSeoTab";
 import { PublishLogTab } from "./builder/tabs/PublishLogTab";
 import { StyleTab } from "./builder/tabs/StyleTab";
+import { ThemeTab } from "./builder/tabs/ThemeTab";
 import { ValidationTab } from "./builder/tabs/ValidationTab";
 import { ContentView } from "./content/ContentView";
 import { ExportWizardView } from "./export-wizard/ExportWizardView";
@@ -87,6 +88,11 @@ export const VIEW_DEFINITIONS: Record<ViewMode, ViewDefinition> = {
           id: "style",
           label: "Style",
           render: () => <StyleTab />,
+        },
+        {
+          id: "theme_tokens",
+          label: "Theme",
+          render: () => <ThemeTab />,
         },
         {
           id: "agent",

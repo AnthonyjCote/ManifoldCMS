@@ -39,6 +39,8 @@ import {
 } from "../../features/builder/viewport-menu";
 import { useActiveProjectSession } from "../../features/project-launcher/session";
 import { useProjectSettings } from "../../features/project-settings/useProjectSettings";
+import { themeToCssVars } from "../../features/theme/types";
+import { useProjectTheme } from "../../features/theme/useProjectTheme";
 import { useBuilderInteractionModeStore } from "../../state/useBuilderInteractionModeStore";
 import { useBuilderStylePreviewStateStore } from "../../state/useBuilderStylePreviewStateStore";
 import { useBuilderViewportStore } from "../../state/useBuilderViewportStore";
@@ -276,6 +278,7 @@ function sectionSpacingFromOverrides(block: BuilderBlock, scope: BuilderViewport
 export function BuilderView() {
   const builder = useBuilderStore();
   const projectSession = useActiveProjectSession();
+  const theme = useProjectTheme(projectSession?.project.path);
   const projectSettings = useProjectSettings(projectSession?.project.path);
   const viewport = useBuilderViewportStore();
   const interaction = useBuilderInteractionModeStore();
@@ -297,6 +300,7 @@ export function BuilderView() {
   const [newPageSlug, setNewPageSlug] = useState("");
   const [newPageError, setNewPageError] = useState<string | null>(null);
   const previewPageRef = useRef<HTMLDivElement | null>(null);
+  const previewThemeVars = theme.activeTheme ? themeToCssVars(theme.activeTheme.tokens) : undefined;
   const [previewBreakpoint, setPreviewBreakpoint] = useState<BuilderViewport>("default");
   const pagePopoverRef = useRef<HTMLDivElement | null>(null);
   const devicePopoverRef = useRef<HTMLDivElement | null>(null);
@@ -1152,6 +1156,7 @@ export function BuilderView() {
               <div
                 ref={previewPageRef}
                 className={`site-preview-page breakpoint-${previewBreakpoint}${isCatalogDragActive ? " catalog-dragging" : ""}${isCatalogDragOverPreview ? " catalog-drag-over" : ""}`}
+                style={previewThemeVars}
                 onDragOver={interactionMode === "edit" ? handlePreviewDragOver : undefined}
                 onDragOverCapture={interactionMode === "edit" ? handlePreviewDragOver : undefined}
                 onDragLeave={(event) => {
