@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactElement } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from "react";
 
 import { buildPreviewTreeForBlock } from "../../../features/builder/catalog";
 import { useBuilderStore } from "../../../features/builder/builder-store";
@@ -10,9 +10,12 @@ import {
   editScopeFromViewport,
   getExplicitPrimitiveStyleValue,
   getExplicitSectionStyleValue,
+  getPrimitiveStyleValue,
+  getSectionStyleValue,
   type BuilderViewport,
 } from "../../../features/builder/style-scopes";
 import { useBuilderInteractionModeStore } from "../../../state/useBuilderInteractionModeStore";
+import { useBuilderStylePreviewStateStore } from "../../../state/useBuilderStylePreviewStateStore";
 import { useDrawerTabScrollPersistence } from "../../../state/useDrawerTabScrollPersistence";
 import type { PrimitiveNode, PrimitiveType, StyleStateKey } from "../../../features/builder/types";
 import { useBuilderViewportStore } from "../../../state/useBuilderViewportStore";
@@ -78,6 +81,9 @@ type StyleGroup<K extends AllStyleKey> = {
   category: StyleCategory;
   fields: MasterStyleField<K>[];
 };
+
+type FieldValueStatus = "edited" | "inherited" | "uninitialized";
+type FieldFilterMode = "all" | FieldValueStatus;
 
 const STYLE_TAB_COLLAPSE_KEY = "manifold.builder.style-tab.collapsed-groups";
 function readCollapsedGroupState(): Record<string, boolean> {
@@ -326,6 +332,24 @@ const VIEWPORT_LABELS: Record<BuilderViewport, string> = {
   wide: "Retina / Wide / UHD",
 };
 
+const VIEWPORT_MENU_ORDER: BuilderViewport[] = [
+  "default",
+  "mobile",
+  "tablet",
+  "desktop",
+  "wide",
+];
+
+const FIELD_FILTER_OPTIONS: Array<{
+  value: FieldFilterMode;
+  label: string;
+}> = [
+  { value: "all", label: "All fields" },
+  { value: "edited", label: "Edited" },
+  { value: "inherited", label: "Inherited" },
+  { value: "uninitialized", label: "Uninitialized" },
+];
+
 const STYLE_STATES: Array<{
   id: Exclude<StyleStateKey, "default">;
   label: string;
@@ -386,6 +410,20 @@ function buildStyleGroups<K extends AllStyleKey>(
     const fields = groups.get(category) ?? [];
     return { category, fields };
   }).filter((group) => group.fields.length > 0);
+}
+
+function resolveFieldValueStatus(explicitValue: string, resolvedValue: string): FieldValueStatus {
+  if (explicitValue.trim().length > 0) {
+    return "edited";
+  }
+  if (resolvedValue.trim().length > 0) {
+    return "inherited";
+  }
+  return "uninitialized";
+}
+
+function matchesFieldFilter(status: FieldValueStatus, filter: FieldFilterMode): boolean {
+  return filter === "all" || filter === status;
 }
 
 function parseTranslateFromComputed(transform: string | null): { x: number; y: number } {
@@ -488,6 +526,7 @@ function renderStyleField<K extends AllStyleKey>(opts: {
   field: MasterStyleField<K>;
   value: string;
   placeholder?: string;
+  inherited?: boolean;
   setValue: (value: string) => void;
   colorFieldId?: string;
   openColorFieldId?: string | null;
@@ -499,6 +538,7 @@ function renderStyleField<K extends AllStyleKey>(opts: {
     value,
     setValue,
     placeholder,
+    inherited = false,
     colorFieldId,
     openColorFieldId,
     onToggleColorField,
@@ -507,6 +547,7 @@ function renderStyleField<K extends AllStyleKey>(opts: {
   if (field.type === "select") {
     return (
       <select
+        className={inherited ? "inherited" : undefined}
         value={value || (field.options?.[0] ?? "")}
         onChange={(event) => setValue(event.target.value)}
       >
@@ -525,7 +566,7 @@ function renderStyleField<K extends AllStyleKey>(opts: {
       <div className="style-color-row">
         <button
           type="button"
-          className={`style-color-swatch-btn${isOpen ? " open" : ""}`}
+          className={`style-color-swatch-btn${isOpen ? " open" : ""}${inherited ? " inherited" : ""}`}
           style={{ backgroundColor: value || "#000000" }}
           onClick={(event) => {
             const row = event.currentTarget.closest(".style-color-row");
@@ -548,7 +589,7 @@ function renderStyleField<K extends AllStyleKey>(opts: {
           value={value}
           onChange={(event) => setValue(event.target.value)}
           placeholder={placeholder ?? field.placeholder}
-          className="compact-input"
+          className={`compact-input${inherited ? " inherited" : ""}`}
         />
       </div>
     );
@@ -558,7 +599,7 @@ function renderStyleField<K extends AllStyleKey>(opts: {
       value={value}
       onChange={(event) => setValue(event.target.value)}
       placeholder={placeholder ?? field.placeholder}
-      className="compact-input"
+      className={`compact-input${inherited ? " inherited" : ""}`}
     />
   );
 }
@@ -567,19 +608,167 @@ export function StyleTab() {
   const builder = useBuilderStore();
   const scrollRootRef = useDrawerTabScrollPersistence("manifold.builder.drawer-scroll.style");
   const interaction = useBuilderInteractionModeStore();
+  const stylePreviewState = useBuilderStylePreviewStateStore();
   const viewport = useBuilderViewportStore();
   const [query, setQuery] = useState("");
+  const [scopePopoverOpen, setScopePopoverOpen] = useState(false);
+  const [fieldFilterPopoverOpen, setFieldFilterPopoverOpen] = useState(false);
+  const [fieldFilter, setFieldFilter] = useState<FieldFilterMode>("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>(() =>
     readCollapsedGroupState()
   );
   const [fieldStates, setFieldStates] = useState<Record<string, StyleStateKey>>({});
   const [openColorFieldId, setOpenColorFieldId] = useState<string | null>(null);
+  const scopePopoverRef = useRef<HTMLDivElement | null>(null);
+  const fieldFilterPopoverRef = useRef<HTMLDivElement | null>(null);
   const editScope = editScopeFromViewport(viewport.viewport);
   const block = builder.selectedBlock;
 
   useEffect(() => {
     window.localStorage.setItem(STYLE_TAB_COLLAPSE_KEY, JSON.stringify(collapsedGroups));
   }, [collapsedGroups]);
+
+  useEffect(() => {
+    if (!scopePopoverOpen) {
+      return;
+    }
+    const onPointerDown = (event: MouseEvent) => {
+      if (!scopePopoverRef.current) {
+        return;
+      }
+      if (scopePopoverRef.current.contains(event.target as Node)) {
+        return;
+      }
+      setScopePopoverOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setScopePopoverOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [scopePopoverOpen]);
+
+  useEffect(() => {
+    if (!fieldFilterPopoverOpen) {
+      return;
+    }
+    const onPointerDown = (event: MouseEvent) => {
+      if (!fieldFilterPopoverRef.current) {
+        return;
+      }
+      if (fieldFilterPopoverRef.current.contains(event.target as Node)) {
+        return;
+      }
+      setFieldFilterPopoverOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setFieldFilterPopoverOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("mousedown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [fieldFilterPopoverOpen]);
+
+  const selectedTargets = useMemo(
+    () =>
+      builder.state.selectedPrimitivePaths
+        .map((target) => decodePrimitiveTarget(target))
+        .filter((target) => target.blockId.length > 0),
+    [builder.state.selectedPrimitivePaths]
+  );
+  const selectedPrimitiveTargetIds = useMemo(
+    () =>
+      selectedTargets
+        .map((target) => encodePrimitiveTarget(target.blockId, target.primitivePath))
+        .sort(),
+    [selectedTargets]
+  );
+  const primitiveSelectionScopeKey =
+    selectedPrimitiveTargetIds.length > 0
+      ? selectedPrimitiveTargetIds.join("|")
+      : block
+        ? `${block.id}:none`
+        : "none";
+  const selectedSectionBlockIds = useMemo(
+    () =>
+      builder.state.selectedBlockIds.length > 0
+        ? [...builder.state.selectedBlockIds].sort()
+        : block
+          ? [block.id]
+          : [],
+    [block, builder.state.selectedBlockIds]
+  );
+  const sectionSelectionScopeKey =
+    selectedSectionBlockIds.length > 0 ? selectedSectionBlockIds.join("|") : "none";
+
+  const getTargetPrefix = useCallback(
+    (isPrimitiveTarget: boolean): string =>
+      isPrimitiveTarget
+        ? `primitive:${primitiveSelectionScopeKey}`
+        : `section:${sectionSelectionScopeKey}`,
+    [primitiveSelectionScopeKey, sectionSelectionScopeKey]
+  );
+
+  const getFieldState = (fieldKey: string, isPrimitiveTarget: boolean): StyleStateKey => {
+    const targetPrefix = getTargetPrefix(isPrimitiveTarget);
+    return fieldStates[`${targetPrefix}:${fieldKey}`] ?? "default";
+  };
+
+  const toggleFieldState = (
+    fieldKey: string,
+    next: Exclude<StyleStateKey, "default">,
+    isPrimitiveTarget: boolean
+  ) => {
+    const targetPrefix = getTargetPrefix(isPrimitiveTarget);
+    const stateKey = `${targetPrefix}:${fieldKey}`;
+    setFieldStates((prev) => ({
+      ...prev,
+      [stateKey]: prev[stateKey] === next ? "default" : next,
+    }));
+  };
+
+  useEffect(() => {
+    if (!block || interaction.mode !== "edit") {
+      stylePreviewState.clear();
+      return;
+    }
+    const primitivePrefix = getTargetPrefix(true);
+    const sectionPrefix = getTargetPrefix(false);
+    const primitiveHoverActive = Object.entries(fieldStates).some(
+      ([key, state]) => key.startsWith(`${primitivePrefix}:`) && state === "hover"
+    );
+    const sectionHoverActive = Object.entries(fieldStates).some(
+      ([key, state]) => key.startsWith(`${sectionPrefix}:`) && state === "hover"
+    );
+
+    const nextPreviewState = {
+      hoverPrimitiveTargets: primitiveHoverActive ? selectedPrimitiveTargetIds : [],
+      hoverSectionBlockIds:
+        primitiveHoverActive ? [] : sectionHoverActive ? selectedSectionBlockIds : [],
+    };
+    stylePreviewState.setState(nextPreviewState);
+  }, [
+    block,
+    fieldStates,
+    interaction.mode,
+    getTargetPrefix,
+    primitiveSelectionScopeKey,
+    sectionSelectionScopeKey,
+    selectedPrimitiveTargetIds,
+    selectedSectionBlockIds,
+    stylePreviewState,
+  ]);
 
   if (!block) {
     if (interaction.mode === "preview") {
@@ -608,18 +797,9 @@ export function StyleTab() {
   }
 
   const primitiveList = walkPrimitives(buildPreviewTreeForBlock(block));
-  const selectedTargets = builder.state.selectedPrimitivePaths
-    .map((target) => decodePrimitiveTarget(target))
-    .filter((target) => target.blockId.length > 0);
   const selectedPaths = selectedTargets
     .filter((target) => target.blockId === block.id)
     .map((target) => target.primitivePath);
-  const selectedSectionBlockIds =
-    builder.state.selectedBlockIds.length > 0
-      ? builder.state.selectedBlockIds
-      : block
-        ? [block.id]
-        : [];
   const selectedSectionBlocks = selectedSectionBlockIds
     .map((blockId) => builder.selectedPage.blocks.find((entry) => entry.id === blockId))
     .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
@@ -645,20 +825,6 @@ export function StyleTab() {
   const currentGroups = selectedPrimitive ? primitiveStyleGroups : sectionStyleGroups;
   const collapseScope = selectedPrimitive ? `primitive:${selectedPrimitive.type}` : "section";
 
-  const getFieldState = (fieldKey: string): StyleStateKey => {
-    const targetPrefix = selectedPrimitive ? `primitive:${selectedPrimitive.path}` : "section";
-    return fieldStates[`${targetPrefix}:${fieldKey}`] ?? "default";
-  };
-
-  const toggleFieldState = (fieldKey: string, next: Exclude<StyleStateKey, "default">) => {
-    const targetPrefix = selectedPrimitive ? `primitive:${selectedPrimitive.path}` : "section";
-    const stateKey = `${targetPrefix}:${fieldKey}`;
-    setFieldStates((prev) => ({
-      ...prev,
-      [stateKey]: prev[stateKey] === next ? "default" : next,
-    }));
-  };
-
   const onColorInputBlur = (fieldId: string) => {
     if (openColorFieldId === fieldId) {
       setOpenColorFieldId(null);
@@ -682,6 +848,9 @@ export function StyleTab() {
     }
   };
 
+  const scopeIndicatorText = `${interaction.mode === "edit" ? "Edit" : "Preview"}: ${SCOPE_LABELS[editScope]}`;
+  const fieldScopeLabelPrefix = SCOPE_LABELS[editScope];
+
   return (
     <div ref={scrollRootRef} className="drawer-stack style-tab-root">
       <section className="inspector-card-item style-tab-topbar">
@@ -694,10 +863,82 @@ export function StyleTab() {
             className="compact-input"
           />
         </label>
-        <div className="style-tab-scope-indicator" aria-live="polite">
-          <span className="dot" />
-          {SCOPE_LABELS[editScope]}
-          <small>{VIEWPORT_LABELS[viewport.viewport]}</small>
+        <div className="style-tab-topbar-controls">
+          <div ref={scopePopoverRef} className="style-tab-scope-control">
+            <button
+              type="button"
+              className="style-tab-scope-indicator"
+              aria-live="polite"
+              aria-expanded={scopePopoverOpen}
+              aria-haspopup="menu"
+              onClick={() => setScopePopoverOpen((prev) => !prev)}
+              title="Change viewport"
+            >
+              <span className="dot" />
+              {scopeIndicatorText}
+              <span className="caret">▾</span>
+            </button>
+            {scopePopoverOpen ? (
+              <div className="style-tab-scope-popover" role="menu" aria-label="Select viewport">
+                {VIEWPORT_MENU_ORDER.map((entry) => (
+                  <button
+                    key={entry}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={viewport.viewport === entry}
+                    className={`style-tab-scope-option${
+                      viewport.viewport === entry ? " active" : ""
+                    }`}
+                    onClick={() => {
+                      viewport.setViewport(entry);
+                      setScopePopoverOpen(false);
+                    }}
+                  >
+                    <span className="label">{SCOPE_LABELS[entry]}</span>
+                    <span className="meta">{VIEWPORT_LABELS[entry]}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <div ref={fieldFilterPopoverRef} className="style-tab-filter-control">
+            <button
+              type="button"
+              className="style-tab-filter-indicator"
+              aria-expanded={fieldFilterPopoverOpen}
+              aria-haspopup="menu"
+              onClick={() => setFieldFilterPopoverOpen((prev) => !prev)}
+              title="Filter style fields"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6h16l-6 7v5l-4 2v-7z" />
+              </svg>
+              {FIELD_FILTER_OPTIONS.find((entry) => entry.value === fieldFilter)?.label ??
+                "All fields"}
+              <span className="caret">▾</span>
+            </button>
+            {fieldFilterPopoverOpen ? (
+              <div className="style-tab-filter-popover" role="menu" aria-label="Filter fields">
+                {FIELD_FILTER_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={fieldFilter === option.value}
+                    className={`style-tab-filter-option${
+                      fieldFilter === option.value ? " active" : ""
+                    }`}
+                    onClick={() => {
+                      setFieldFilter(option.value);
+                      setFieldFilterPopoverOpen(false);
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
       </section>
 
@@ -739,6 +980,278 @@ export function StyleTab() {
           {currentGroups.map((group) => {
             const groupKey = `${collapseScope}:${group.category}`;
             const collapsed = collapsedGroups[groupKey] ?? true;
+            const fieldRows = group.fields
+              .map((field) => {
+                const activeFieldState = getFieldState(String(field.key), Boolean(selectedPrimitive));
+                if (selectedPrimitive) {
+                  const primitiveSelectionTargets =
+                    selectedTargets.length > 0
+                      ? selectedTargets
+                      : selectedPaths.map((path) => ({
+                          blockId: block.id,
+                          primitivePath: path,
+                        }));
+                  const valuesForSelection = primitiveSelectionTargets.map((target) => {
+                    const targetBlock = builder.selectedPage.blocks.find(
+                      (entry) => entry.id === target.blockId
+                    );
+                    if (!targetBlock) {
+                      return "";
+                    }
+                    return (
+                      getPrimitiveStyleValue(
+                        targetBlock.styleOverrides,
+                        target.primitivePath,
+                        field.key as PrimitiveStyleKey,
+                        editScope,
+                        activeFieldState
+                      ) ?? ""
+                    );
+                  });
+                  const explicitValuesForSelection = primitiveSelectionTargets.map((target) => {
+                    const targetBlock = builder.selectedPage.blocks.find(
+                      (entry) => entry.id === target.blockId
+                    );
+                    if (!targetBlock) {
+                      return "";
+                    }
+                    return getExplicitPrimitiveStyleValue(
+                      targetBlock.styleOverrides,
+                      target.primitivePath,
+                      field.key as PrimitiveStyleKey,
+                      editScope,
+                      activeFieldState
+                    );
+                  });
+                  const firstValue = valuesForSelection[0] ?? "";
+                  const value = valuesForSelection.every((entry) => entry === firstValue)
+                    ? firstValue
+                    : "";
+                  const explicitFirst = explicitValuesForSelection[0] ?? "";
+                  const explicitValue = explicitValuesForSelection.every(
+                    (entry) => entry === explicitFirst
+                  )
+                    ? explicitFirst
+                    : "";
+                  const status = resolveFieldValueStatus(explicitValue, value);
+                  const inherited = status === "inherited";
+                  if (!matchesFieldFilter(status, fieldFilter)) {
+                    return null;
+                  }
+                  const placeholderValues = primitiveSelectionTargets.map((target) => {
+                    const element = findPrimitiveElement(target.blockId, target.primitivePath);
+                    if (!element) {
+                      return "";
+                    }
+                    return readComputedStyleValue(element, field.key as PrimitiveStyleKey);
+                  });
+                  const placeholder =
+                    placeholderValues.length > 0 &&
+                    placeholderValues.every((entry) => entry === placeholderValues[0])
+                      ? placeholderValues[0]
+                      : "Mixed values";
+                  const targetIds = primitiveSelectionTargets.map((target) =>
+                    encodePrimitiveTarget(target.blockId, target.primitivePath)
+                  );
+                  return (
+                    <div key={field.key} className="inspector-field compact">
+                      <span className="style-field-label-row">
+                        <span
+                          className={`style-field-status-dot ${status}`}
+                          title={
+                            status === "edited"
+                              ? `Edited in ${SCOPE_LABELS[editScope]}`
+                              : status === "inherited"
+                                ? `Inherited from Default`
+                                : `Uninitialized`
+                          }
+                          aria-hidden="true"
+                        />
+                        <span className="style-field-label-text">
+                          <span className="style-field-scope-prefix">{fieldScopeLabelPrefix}</span>{" "}
+                          {field.label}
+                        </span>
+                        <span className="style-field-state-chips">
+                          {STYLE_STATES.map((stateOption) => (
+                            <button
+                              key={stateOption.id}
+                              type="button"
+                              aria-pressed={activeFieldState === stateOption.id}
+                              className={`style-state-chip${
+                                activeFieldState === stateOption.id ? " active" : ""
+                              }`}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                toggleFieldState(
+                                  String(field.key),
+                                  stateOption.id,
+                                  Boolean(selectedPrimitive)
+                                );
+                              }}
+                              title={stateOption.label}
+                              aria-label={stateOption.label}
+                            >
+                              {stateOption.icon}
+                            </button>
+                          ))}
+                        </span>
+                        <small
+                          className={`style-scope-badge${
+                            activeFieldState !== "default" ? " state-active" : ""
+                          }`}
+                        >
+                          {activeFieldState === "default" ? SCOPE_LABELS[editScope] : "Hover"}
+                        </small>
+                      </span>
+                      {renderStyleField({
+                        field,
+                        value,
+                        inherited,
+                        placeholder,
+                        colorFieldId: `primitive:${String(field.key)}`,
+                        openColorFieldId,
+                        onToggleColorField: toggleColorField,
+                        onColorInputBlur,
+                        setValue: (next) =>
+                          builder.setPrimitiveStyleForTargets(
+                            targetIds,
+                            field.key as PrimitiveStyleKey,
+                            next,
+                            editScope,
+                            activeFieldState
+                          ),
+                      })}
+                    </div>
+                  );
+                }
+
+                const sectionField = field.key as SectionStyleKey;
+                const sectionValues = selectedSectionBlocks.map(
+                  (entry) =>
+                    getSectionStyleValue(
+                      entry.styleOverrides,
+                      sectionField,
+                      editScope,
+                      activeFieldState
+                    ) ?? ""
+                );
+                const explicitSectionValues = selectedSectionBlocks.map((entry) =>
+                  getExplicitSectionStyleValue(
+                    entry.styleOverrides,
+                    sectionField,
+                    editScope,
+                    activeFieldState
+                  )
+                );
+                const firstValue = sectionValues[0] ?? "";
+                const value = sectionValues.every((entry) => entry === firstValue)
+                  ? firstValue
+                  : "";
+                const explicitFirst = explicitSectionValues[0] ?? "";
+                const explicitValue = explicitSectionValues.every((entry) => entry === explicitFirst)
+                  ? explicitFirst
+                  : "";
+                const status = resolveFieldValueStatus(explicitValue, value);
+                const inherited = status === "inherited";
+                if (!matchesFieldFilter(status, fieldFilter)) {
+                  return null;
+                }
+                const placeholderValues = selectedSectionBlockIds.map((blockId) => {
+                  const element = findBlockElement(blockId);
+                  if (!element) {
+                    return "";
+                  }
+                  if (sectionField === "backgroundImage") {
+                    return window.getComputedStyle(element).backgroundImage;
+                  }
+                  return readComputedStyleValue(
+                    element,
+                    sectionField as BaseSectionStyleKey | PrimitiveStyleKey
+                  );
+                });
+                const placeholder =
+                  placeholderValues.length > 0 &&
+                  placeholderValues.every((entry) => entry === placeholderValues[0])
+                    ? placeholderValues[0]
+                    : "Mixed values";
+                return (
+                  <div key={field.key} className="inspector-field compact">
+                    <span className="style-field-label-row">
+                      <span
+                        className={`style-field-status-dot ${status}`}
+                        title={
+                          status === "edited"
+                            ? `Edited in ${SCOPE_LABELS[editScope]}`
+                            : status === "inherited"
+                              ? `Inherited from Default`
+                              : `Uninitialized`
+                        }
+                        aria-hidden="true"
+                      />
+                      <span className="style-field-label-text">
+                        <span className="style-field-scope-prefix">{fieldScopeLabelPrefix}</span>{" "}
+                        {field.label}
+                      </span>
+                      <span className="style-field-state-chips">
+                        {STYLE_STATES.map((stateOption) => (
+                          <button
+                            key={stateOption.id}
+                            type="button"
+                            aria-pressed={activeFieldState === stateOption.id}
+                            className={`style-state-chip${
+                              activeFieldState === stateOption.id ? " active" : ""
+                            }`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              toggleFieldState(
+                                String(field.key),
+                                stateOption.id,
+                                Boolean(selectedPrimitive)
+                              );
+                            }}
+                            title={stateOption.label}
+                            aria-label={stateOption.label}
+                          >
+                            {stateOption.icon}
+                          </button>
+                        ))}
+                      </span>
+                      <small
+                        className={`style-scope-badge${
+                          activeFieldState !== "default" ? " state-active" : ""
+                        }`}
+                      >
+                        {activeFieldState === "default" ? SCOPE_LABELS[editScope] : "Hover"}
+                      </small>
+                    </span>
+                    {renderStyleField({
+                      field,
+                      value,
+                      inherited,
+                      placeholder,
+                      colorFieldId: `section:${String(field.key)}`,
+                      openColorFieldId,
+                      onToggleColorField: toggleColorField,
+                      onColorInputBlur,
+                      setValue: (next) =>
+                        builder.setBlockStyleForBlocks(
+                          selectedSectionBlockIds,
+                          sectionField,
+                          next,
+                          editScope,
+                          activeFieldState
+                        ),
+                    })}
+                  </div>
+                );
+              })
+              .filter((entry): entry is ReactElement => entry !== null);
+
+            if (fieldRows.length === 0) {
+              return null;
+            }
             return (
               <section
                 key={groupKey}
@@ -759,192 +1272,7 @@ export function StyleTab() {
                 </button>
 
                 {!collapsed ? (
-                  <div className="inspector-card-grid drawer-accordion-content">
-                    {group.fields.map((field) => {
-                      const activeFieldState = getFieldState(String(field.key));
-                      if (selectedPrimitive) {
-                        const primitiveSelectionTargets =
-                          selectedTargets.length > 0
-                            ? selectedTargets
-                            : selectedPaths.map((path) => ({
-                                blockId: block.id,
-                                primitivePath: path,
-                              }));
-                        const valuesForSelection = primitiveSelectionTargets.map((target) => {
-                          const targetBlock = builder.selectedPage.blocks.find(
-                            (entry) => entry.id === target.blockId
-                          );
-                          if (!targetBlock) {
-                            return "";
-                          }
-                          return getExplicitPrimitiveStyleValue(
-                            targetBlock.styleOverrides,
-                            target.primitivePath,
-                            field.key as PrimitiveStyleKey,
-                            editScope,
-                            activeFieldState
-                          );
-                        });
-                        const firstValue = valuesForSelection[0] ?? "";
-                        const value = valuesForSelection.every((entry) => entry === firstValue)
-                          ? firstValue
-                          : "";
-                        const placeholderValues = primitiveSelectionTargets.map((target) => {
-                          const element = findPrimitiveElement(target.blockId, target.primitivePath);
-                          if (!element) {
-                            return "";
-                          }
-                          return readComputedStyleValue(element, field.key as PrimitiveStyleKey);
-                        });
-                        const placeholder =
-                          placeholderValues.length > 0 &&
-                          placeholderValues.every((entry) => entry === placeholderValues[0])
-                            ? placeholderValues[0]
-                            : "Mixed values";
-                        const targetIds = primitiveSelectionTargets.map((target) =>
-                          encodePrimitiveTarget(target.blockId, target.primitivePath)
-                        );
-                        return (
-                          <div key={field.key} className="inspector-field compact">
-                            <span className="style-field-label-row">
-                              <span className="style-field-label-text">{field.label}</span>
-                              <span className="style-field-state-chips">
-                                {STYLE_STATES.map((stateOption) => (
-                                  <button
-                                    key={stateOption.id}
-                                    type="button"
-                                    aria-pressed={activeFieldState === stateOption.id}
-                                    className={`style-state-chip${
-                                      activeFieldState === stateOption.id ? " active" : ""
-                                    }`}
-                                    onClick={(event) => {
-                                      event.preventDefault();
-                                      event.stopPropagation();
-                                      toggleFieldState(String(field.key), stateOption.id);
-                                    }}
-                                    title={stateOption.label}
-                                    aria-label={stateOption.label}
-                                  >
-                                    {stateOption.icon}
-                                  </button>
-                                ))}
-                              </span>
-                              <small
-                                className={`style-scope-badge${
-                                  activeFieldState !== "default" ? " state-active" : ""
-                                }`}
-                              >
-                                {activeFieldState === "default"
-                                  ? SCOPE_LABELS[editScope]
-                                  : "Hover"}
-                              </small>
-                            </span>
-                            {renderStyleField({
-                              field,
-                              value,
-                              placeholder,
-                              colorFieldId: `primitive:${String(field.key)}`,
-                              openColorFieldId,
-                              onToggleColorField: toggleColorField,
-                              onColorInputBlur,
-                              setValue: (next) =>
-                                builder.setPrimitiveStyleForTargets(
-                                  targetIds,
-                                  field.key as PrimitiveStyleKey,
-                                  next,
-                                  editScope,
-                                  activeFieldState
-                                ),
-                            })}
-                          </div>
-                        );
-                      }
-
-                      const sectionField = field.key as SectionStyleKey;
-                    const sectionValues = selectedSectionBlocks.map((entry) =>
-                      getExplicitSectionStyleValue(
-                        entry.styleOverrides,
-                        sectionField,
-                        editScope,
-                        activeFieldState
-                      )
-                    );
-                      const firstValue = sectionValues[0] ?? "";
-                      const value = sectionValues.every((entry) => entry === firstValue)
-                        ? firstValue
-                        : "";
-                      const placeholderValues = selectedSectionBlockIds.map((blockId) => {
-                        const element = findBlockElement(blockId);
-                        if (!element) {
-                          return "";
-                        }
-                        if (sectionField === "backgroundImage") {
-                          return window.getComputedStyle(element).backgroundImage;
-                        }
-                        return readComputedStyleValue(
-                          element,
-                          sectionField as BaseSectionStyleKey | PrimitiveStyleKey
-                        );
-                      });
-                      const placeholder =
-                        placeholderValues.length > 0 &&
-                        placeholderValues.every((entry) => entry === placeholderValues[0])
-                          ? placeholderValues[0]
-                          : "Mixed values";
-                      return (
-                        <div key={field.key} className="inspector-field compact">
-                          <span className="style-field-label-row">
-                            <span className="style-field-label-text">{field.label}</span>
-                            <span className="style-field-state-chips">
-                              {STYLE_STATES.map((stateOption) => (
-                                <button
-                                  key={stateOption.id}
-                                  type="button"
-                                  aria-pressed={activeFieldState === stateOption.id}
-                                  className={`style-state-chip${
-                                    activeFieldState === stateOption.id ? " active" : ""
-                                  }`}
-                                  onClick={(event) => {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    toggleFieldState(String(field.key), stateOption.id);
-                                  }}
-                                  title={stateOption.label}
-                                  aria-label={stateOption.label}
-                                >
-                                  {stateOption.icon}
-                                </button>
-                              ))}
-                            </span>
-                            <small
-                              className={`style-scope-badge${
-                                activeFieldState !== "default" ? " state-active" : ""
-                              }`}
-                            >
-                              {activeFieldState === "default" ? SCOPE_LABELS[editScope] : "Hover"}
-                            </small>
-                          </span>
-                          {renderStyleField({
-                            field,
-                            value,
-                            placeholder,
-                            colorFieldId: `section:${String(field.key)}`,
-                            openColorFieldId,
-                            onToggleColorField: toggleColorField,
-                            onColorInputBlur,
-                            setValue: (next) =>
-                              builder.setBlockStyleForBlocks(
-                                selectedSectionBlockIds,
-                                sectionField,
-                                next,
-                                editScope,
-                                activeFieldState
-                              ),
-                          })}
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <div className="inspector-card-grid drawer-accordion-content">{fieldRows}</div>
                 ) : null}
               </section>
             );

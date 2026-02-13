@@ -31,6 +31,7 @@ import {
 import { useActiveProjectSession } from "../../features/project-launcher/session";
 import { useProjectSettings } from "../../features/project-settings/useProjectSettings";
 import { useBuilderInteractionModeStore } from "../../state/useBuilderInteractionModeStore";
+import { useBuilderStylePreviewStateStore } from "../../state/useBuilderStylePreviewStateStore";
 import { useBuilderViewportStore } from "../../state/useBuilderViewportStore";
 import { PreviewBlock } from "./components/PreviewBlock";
 
@@ -289,11 +290,14 @@ export function BuilderView() {
   const projectSettings = useProjectSettings(projectSession?.project.path);
   const viewport = useBuilderViewportStore();
   const interaction = useBuilderInteractionModeStore();
+  const stylePreviewState = useBuilderStylePreviewStateStore();
   const interactionMode = interaction.mode;
   const [previewRunId, setPreviewRunId] = useState(0);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [hoveredBlockId, setHoveredBlockId] = useState<string | null>(null);
   const [hoveredPrimitivePath, setHoveredPrimitivePath] = useState<string | null>(null);
+  const [previewHoverBlockId, setPreviewHoverBlockId] = useState<string | null>(null);
+  const [previewHoverPrimitiveTarget, setPreviewHoverPrimitiveTarget] = useState<string | null>(null);
   const device = viewport.viewport;
   const [activePopover, setActivePopover] = useState<"page" | "device" | "route" | null>(null);
   const [routeDraft, setRouteDraft] = useState(builder.selectedPage.route);
@@ -1251,6 +1255,10 @@ export function BuilderView() {
                 ) : null}
                 {builder.selectedPage.blocks.map((block, index) => {
                   const sectionGuide = sectionSpacingFromOverrides(block, previewBreakpoint);
+                  const hoverPrimitivePathsForBlock = stylePreviewState.state.hoverPrimitiveTargets
+                    .map((target) => decodePrimitiveTarget(target))
+                    .filter((target) => target.blockId === block.id)
+                    .map((target) => target.primitivePath);
                   return (
                     <div key={block.id} className="canvas-block-shell">
                       <div
@@ -1259,10 +1267,23 @@ export function BuilderView() {
 
                       <div
                         className={`site-block-shell${interactionMode === "edit" && builder.state.selectedBlockIds.includes(block.id) ? " selected" : ""}${interactionMode === "edit" && hoveredBlockId === block.id ? " hovered" : ""}${block.visibility === "hidden" ? " hidden" : ""}`}
-                        onMouseEnter={() => setHoveredBlockId(block.id)}
+                        onMouseEnter={() => {
+                          setHoveredBlockId(block.id);
+                          if (interactionMode === "preview") {
+                            setPreviewHoverBlockId(block.id);
+                          }
+                        }}
                         onMouseLeave={() => {
                           setHoveredBlockId((prev) => (prev === block.id ? null : prev));
                           setHoveredPrimitivePath(null);
+                          setPreviewHoverBlockId((prev) => (prev === block.id ? null : prev));
+                          setPreviewHoverPrimitiveTarget((prev) => {
+                            if (!prev) {
+                              return null;
+                            }
+                            const decoded = decodePrimitiveTarget(prev);
+                            return decoded.blockId === block.id ? null : prev;
+                          });
                         }}
                         onClick={(event) => {
                           if (interactionMode !== "edit") {
@@ -1370,6 +1391,27 @@ export function BuilderView() {
                             key={`${block.id}-${previewRunId}`}
                             block={block}
                             previewScope={previewBreakpoint}
+                            hoverEnabled={interactionMode === "preview"}
+                            sectionStyleState={
+                              interactionMode === "preview"
+                                ? previewHoverBlockId === block.id
+                                  ? "hover"
+                                  : "default"
+                                : stylePreviewState.state.hoverSectionBlockIds.includes(block.id)
+                                ? "hover"
+                                : "default"
+                            }
+                            hoverPrimitivePaths={
+                              interactionMode === "preview"
+                                ? (() => {
+                                    if (!previewHoverPrimitiveTarget) {
+                                      return [];
+                                    }
+                                    const decoded = decodePrimitiveTarget(previewHoverPrimitiveTarget);
+                                    return decoded.blockId === block.id ? [decoded.primitivePath] : [];
+                                  })()
+                                : hoverPrimitivePathsForBlock
+                            }
                             editable={
                               interactionMode === "edit" &&
                               builder.state.selectedBlockId === block.id
@@ -1385,7 +1427,15 @@ export function BuilderView() {
                             hoveredPrimitivePath={
                               hoveredBlockId === block.id ? hoveredPrimitivePath : null
                             }
-                            onHoverPrimitive={(path) => setHoveredPrimitivePath(path)}
+                            onHoverPrimitive={(path) => {
+                              setHoveredPrimitivePath(path);
+                              if (interactionMode === "preview") {
+                                setPreviewHoverBlockId(block.id);
+                                setPreviewHoverPrimitiveTarget(
+                                  path ? encodePrimitiveTarget(block.id, path) : null
+                                );
+                              }
+                            }}
                             onSelectPrimitive={(path, _type, multi) => {
                               builder.selectPrimitiveTarget(block.id, path, { multi });
                             }}

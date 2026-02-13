@@ -16,7 +16,12 @@ import {
   getPrimitiveStyleValue,
   type BuilderViewport,
 } from "../../../features/builder/style-scopes";
-import type { BlockInstance, PrimitiveNode, PrimitiveType } from "../../../features/builder/types";
+import type {
+  BlockInstance,
+  PrimitiveNode,
+  PrimitiveType,
+  StyleStateKey,
+} from "../../../features/builder/types";
 
 type PrimitiveStyleSetKey =
   | "marginTop"
@@ -34,6 +39,7 @@ type PrimitiveRendererProps = {
   node: PrimitiveNode;
   editable?: boolean;
   selectionEnabled?: boolean;
+  hoverEnabled?: boolean;
   onInlineCommit?: (fieldKey: string, value: string) => void;
   primitivePath?: string;
   selectedPrimitivePaths?: string[];
@@ -46,6 +52,8 @@ type PrimitiveRendererProps = {
   previewScope: BuilderViewport;
   primitiveStyles?: BlockInstance["styleOverrides"]["primitiveStyles"];
   primitiveViewportStyles?: BlockInstance["styleOverrides"]["primitiveViewportStyles"];
+  primitiveStateViewportStyles?: BlockInstance["styleOverrides"]["primitiveStateViewportStyles"];
+  hoverPrimitivePaths?: string[];
 };
 
 type SpacingHandle = {
@@ -180,139 +188,163 @@ function toPrimitiveStyle(opts: {
   primitivePath: string;
   styleOverrides: BlockInstance["styleOverrides"];
   previewScope: BuilderViewport;
+  styleState?: StyleStateKey;
 }) {
+  const styleState = opts.styleState ?? "default";
   const style = {
     marginTop: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "marginTop",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     marginRight: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "marginRight",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     marginBottom: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "marginBottom",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     marginLeft: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "marginLeft",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     paddingTop: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "paddingTop",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     paddingRight: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "paddingRight",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     paddingBottom: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "paddingBottom",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     paddingLeft: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "paddingLeft",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     borderWidth: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "borderWidth",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     borderStyle: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "borderStyle",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     borderColor: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "borderColor",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     borderRadius: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "borderRadius",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     backgroundColor: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "backgroundColor",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     textColor: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "textColor",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     fontSize: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "fontSize",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     fontWeight: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "fontWeight",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     lineHeight: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "lineHeight",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     textAlign: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "textAlign",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     width: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "width",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     height: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "height",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     translateX: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "translateX",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
     translateY: getPrimitiveStyleValue(
       opts.styleOverrides,
       opts.primitivePath,
       "translateY",
-      opts.previewScope
+      opts.previewScope,
+      styleState
     ),
   };
   if (!style) {
@@ -428,6 +460,7 @@ export function PrimitiveRenderer({
   node,
   editable = false,
   selectionEnabled = true,
+  hoverEnabled = false,
   onInlineCommit,
   primitivePath = "0",
   selectedPrimitivePaths = [],
@@ -440,14 +473,19 @@ export function PrimitiveRenderer({
   previewScope,
   primitiveStyles,
   primitiveViewportStyles,
+  primitiveStateViewportStyles,
+  hoverPrimitivePaths = [],
 }: PrimitiveRendererProps) {
+  const styleState: StyleStateKey = hoverPrimitivePaths.includes(primitivePath) ? "hover" : "default";
   const style = toPrimitiveStyle({
     primitivePath,
     previewScope,
+    styleState,
     styleOverrides: {
       variant: "default",
       primitiveStyles,
       primitiveViewportStyles,
+      primitiveStateViewportStyles,
     },
   });
   const isSelected = selectionEnabled && selectedPrimitivePaths.includes(primitivePath);
@@ -823,7 +861,7 @@ export function PrimitiveRenderer({
   };
 
   const onPrimitiveMove = (event: MouseEvent<HTMLElement>) => {
-    if (!selectionEnabled) {
+    if (!selectionEnabled && !hoverEnabled) {
       return;
     }
     event.stopPropagation();
@@ -858,6 +896,7 @@ export function PrimitiveRenderer({
             node={child}
             editable={editable}
             selectionEnabled={selectionEnabled}
+            hoverEnabled={hoverEnabled}
             onInlineCommit={onInlineCommit}
             primitivePath={`${primitivePath}.${index}`}
             selectedPrimitivePaths={selectedPrimitivePaths}
@@ -870,6 +909,8 @@ export function PrimitiveRenderer({
             previewScope={previewScope}
             primitiveStyles={primitiveStyles}
             primitiveViewportStyles={primitiveViewportStyles}
+            primitiveStateViewportStyles={primitiveStateViewportStyles}
+            hoverPrimitivePaths={hoverPrimitivePaths}
           />
         ))}
       </div>
@@ -894,6 +935,7 @@ export function PrimitiveRenderer({
             node={child}
             editable={editable}
             selectionEnabled={selectionEnabled}
+            hoverEnabled={hoverEnabled}
             onInlineCommit={onInlineCommit}
             primitivePath={`${primitivePath}.${index}`}
             selectedPrimitivePaths={selectedPrimitivePaths}
@@ -906,6 +948,8 @@ export function PrimitiveRenderer({
             previewScope={previewScope}
             primitiveStyles={primitiveStyles}
             primitiveViewportStyles={primitiveViewportStyles}
+            primitiveStateViewportStyles={primitiveStateViewportStyles}
+            hoverPrimitivePaths={hoverPrimitivePaths}
           />
         ))}
       </div>
@@ -929,6 +973,7 @@ export function PrimitiveRenderer({
             node={child}
             editable={editable}
             selectionEnabled={selectionEnabled}
+            hoverEnabled={hoverEnabled}
             onInlineCommit={onInlineCommit}
             primitivePath={`${primitivePath}.${index}`}
             selectedPrimitivePaths={selectedPrimitivePaths}
@@ -941,6 +986,8 @@ export function PrimitiveRenderer({
             previewScope={previewScope}
             primitiveStyles={primitiveStyles}
             primitiveViewportStyles={primitiveViewportStyles}
+            primitiveStateViewportStyles={primitiveStateViewportStyles}
+            hoverPrimitivePaths={hoverPrimitivePaths}
           />
         ))}
       </div>

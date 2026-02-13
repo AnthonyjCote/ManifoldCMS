@@ -1,10 +1,13 @@
 import type {
   BlockInstance,
+  NonDefaultStyleStateKey,
   PrimitiveStyleKey,
   PrimitiveStyleValues,
   ResponsiveStyleValues,
+  ResponsiveStateStyleValues,
   SectionStyleKey,
   SectionStyleValues,
+  StyleStateKey,
   StyleViewportKey,
 } from "./types";
 
@@ -46,8 +49,21 @@ function cleanupScopedMap<T extends Record<string, string | undefined>>(
 export function getSectionStyleValue(
   overrides: BlockInstance["styleOverrides"],
   key: SectionStyleKey,
-  scope: BuilderViewport
+  scope: BuilderViewport,
+  state: StyleStateKey = "default"
 ): string | undefined {
+  if (state !== "default") {
+    let stateValue: string | undefined;
+    resolvedScopeOrder(scope).forEach((entry) => {
+      const scopedStateValue = overrides.stateViewportStyles?.[entry]?.[state]?.[key];
+      if (typeof scopedStateValue === "string" && scopedStateValue.trim().length > 0) {
+        stateValue = scopedStateValue;
+      }
+    });
+    if (typeof stateValue === "string" && stateValue.trim().length > 0) {
+      return stateValue;
+    }
+  }
   let value: string | undefined = overrides[key];
   const scoped = overrides.viewportStyles;
   resolvedScopeOrder(scope).forEach((entry) => {
@@ -63,8 +79,22 @@ export function getPrimitiveStyleValue(
   overrides: BlockInstance["styleOverrides"],
   primitivePath: string,
   key: PrimitiveStyleKey,
-  scope: BuilderViewport
+  scope: BuilderViewport,
+  state: StyleStateKey = "default"
 ): string | undefined {
+  if (state !== "default") {
+    let stateValue: string | undefined;
+    resolvedScopeOrder(scope).forEach((entry) => {
+      const scopedStateValue =
+        overrides.primitiveStateViewportStyles?.[primitivePath]?.[entry]?.[state]?.[key];
+      if (typeof scopedStateValue === "string" && scopedStateValue.trim().length > 0) {
+        stateValue = scopedStateValue;
+      }
+    });
+    if (typeof stateValue === "string" && stateValue.trim().length > 0) {
+      return stateValue;
+    }
+  }
   let value: string | undefined = overrides.primitiveStyles?.[primitivePath]?.[key];
   const scoped = overrides.primitiveViewportStyles?.[primitivePath];
   resolvedScopeOrder(scope).forEach((entry) => {
@@ -79,8 +109,12 @@ export function getPrimitiveStyleValue(
 export function getExplicitSectionStyleValue(
   overrides: BlockInstance["styleOverrides"],
   key: SectionStyleKey,
-  scope: StyleViewportKey
+  scope: StyleViewportKey,
+  state: StyleStateKey = "default"
 ): string {
+  if (state !== "default") {
+    return String(overrides.stateViewportStyles?.[scope]?.[state]?.[key] ?? "");
+  }
   if (scope === "default") {
     return String(overrides[key] ?? "");
   }
@@ -91,8 +125,14 @@ export function getExplicitPrimitiveStyleValue(
   overrides: BlockInstance["styleOverrides"],
   primitivePath: string,
   key: PrimitiveStyleKey,
-  scope: StyleViewportKey
+  scope: StyleViewportKey,
+  state: StyleStateKey = "default"
 ): string {
+  if (state !== "default") {
+    return String(
+      overrides.primitiveStateViewportStyles?.[primitivePath]?.[scope]?.[state]?.[key] ?? ""
+    );
+  }
   if (scope === "default") {
     return String(overrides.primitiveStyles?.[primitivePath]?.[key] ?? "");
   }
@@ -103,8 +143,44 @@ export function setSectionStyleInOverrides(
   overrides: BlockInstance["styleOverrides"],
   key: SectionStyleKey,
   value: string,
-  scope: StyleViewportKey
+  scope: StyleViewportKey,
+  state: StyleStateKey = "default"
 ): BlockInstance["styleOverrides"] {
+  if (state !== "default") {
+    const nonDefaultState = state as NonDefaultStyleStateKey;
+    const nextScoped = {
+      ...(overrides.stateViewportStyles ?? {}),
+      [scope]: {
+        ...(overrides.stateViewportStyles?.[scope] ?? {}),
+        [nonDefaultState]: {
+          ...(overrides.stateViewportStyles?.[scope]?.[nonDefaultState] ?? {}),
+          [key]: value,
+        },
+      },
+    } as ResponsiveStateStyleValues<SectionStyleValues>;
+
+    if (!value.trim()) {
+      const stateValues = { ...(nextScoped[scope]?.[nonDefaultState] ?? {}) };
+      delete stateValues[key];
+      const scopeStates = { ...(nextScoped[scope] ?? {}) };
+      if (Object.keys(stateValues).length === 0) {
+        delete scopeStates[nonDefaultState];
+      } else {
+        scopeStates[nonDefaultState] = stateValues;
+      }
+      if (Object.keys(scopeStates).length === 0) {
+        delete nextScoped[scope];
+      } else {
+        nextScoped[scope] = scopeStates;
+      }
+    }
+
+    return {
+      ...overrides,
+      stateViewportStyles: Object.keys(nextScoped).length > 0 ? nextScoped : undefined,
+    };
+  }
+
   if (scope === "default") {
     const next = { ...overrides } as BlockInstance["styleOverrides"];
     if (!value.trim()) {
@@ -155,8 +231,54 @@ export function setPrimitiveStyleInOverrides(
   primitivePath: string,
   key: PrimitiveStyleKey,
   value: string,
-  scope: StyleViewportKey
+  scope: StyleViewportKey,
+  state: StyleStateKey = "default"
 ): BlockInstance["styleOverrides"] {
+  if (state !== "default") {
+    const nonDefaultState = state as NonDefaultStyleStateKey;
+    const primitiveStateViewportStyles = { ...(overrides.primitiveStateViewportStyles ?? {}) };
+    const targetScopes = {
+      ...(primitiveStateViewportStyles[primitivePath] ?? {}),
+      [scope]: {
+        ...(primitiveStateViewportStyles[primitivePath]?.[scope] ?? {}),
+        [nonDefaultState]: {
+          ...(primitiveStateViewportStyles[primitivePath]?.[scope]?.[nonDefaultState] ?? {}),
+          [key]: value,
+        },
+      },
+    } as ResponsiveStateStyleValues<PrimitiveStyleValues>;
+
+    if (!value.trim()) {
+      const stateValues = { ...(targetScopes[scope]?.[nonDefaultState] ?? {}) };
+      delete stateValues[key];
+      const scopeStates = { ...(targetScopes[scope] ?? {}) };
+      if (Object.keys(stateValues).length === 0) {
+        delete scopeStates[nonDefaultState];
+      } else {
+        scopeStates[nonDefaultState] = stateValues;
+      }
+      if (Object.keys(scopeStates).length === 0) {
+        delete targetScopes[scope];
+      } else {
+        targetScopes[scope] = scopeStates;
+      }
+    }
+
+    if (Object.keys(targetScopes).length === 0) {
+      delete primitiveStateViewportStyles[primitivePath];
+    } else {
+      primitiveStateViewportStyles[primitivePath] = targetScopes;
+    }
+
+    return {
+      ...overrides,
+      primitiveStateViewportStyles:
+        Object.keys(primitiveStateViewportStyles).length > 0
+          ? primitiveStateViewportStyles
+          : undefined,
+    };
+  }
+
   if (scope === "default") {
     const primitiveStyles = { ...(overrides.primitiveStyles ?? {}) };
     const current = { ...(primitiveStyles[primitivePath] ?? {}) };

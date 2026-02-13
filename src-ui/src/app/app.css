@@ -624,8 +624,34 @@ body,
   min-width: 0;
 }
 
+.style-field-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.style-field-status-dot.edited {
+  background: #63d386;
+  box-shadow: 0 0 0 3px rgba(66, 186, 105, 0.2);
+}
+
+.style-field-status-dot.inherited {
+  background: #f1c14a;
+  box-shadow: 0 0 0 3px rgba(241, 193, 74, 0.2);
+}
+
+.style-field-status-dot.uninitialized {
+  background: transparent;
+  border: 1px solid #788399;
+}
+
 .style-field-label-text {
   white-space: nowrap;
+}
+
+.style-field-scope-prefix {
+  color: #8f96a3;
 }
 
 .style-field-state-chips {
@@ -731,6 +757,26 @@ body,
   color: #94a4c3;
 }
 
+.style-tab-topbar-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+  min-width: 0;
+}
+
+.style-tab-scope-control {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.style-tab-filter-control {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+}
+
 .style-tab-scope-indicator {
   width: fit-content;
   max-width: 100%;
@@ -746,6 +792,47 @@ body,
   letter-spacing: 0.03em;
   text-transform: uppercase;
   backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+.style-tab-scope-indicator .caret {
+  color: #9fb1d6;
+  font-size: 9px;
+  line-height: 1;
+  transform: translateY(-0.5px);
+}
+
+.style-tab-filter-indicator {
+  width: fit-content;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(95, 126, 194, 0.35);
+  background: rgba(15, 24, 37, 0.9);
+  color: #c7d6f3;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+}
+
+.style-tab-filter-indicator svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+}
+
+.style-tab-filter-indicator .caret {
+  color: #9fb1d6;
+  font-size: 9px;
+  line-height: 1;
+  transform: translateY(-0.5px);
 }
 
 .style-tab-scope-indicator .dot {
@@ -756,11 +843,93 @@ body,
   box-shadow: 0 0 0 4px rgba(95, 126, 194, 0.18);
 }
 
-.style-tab-scope-indicator small {
-  color: #9fb1d6;
+.style-tab-scope-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 212px;
+  z-index: 20;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid rgba(95, 126, 194, 0.35);
+  border-radius: 10px;
+  background: rgba(10, 15, 24, 0.96);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.style-tab-scope-option {
+  display: grid;
+  gap: 2px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #c7d6f3;
+  text-align: left;
+  padding: 7px 9px;
+  cursor: pointer;
+}
+
+.style-tab-scope-option .label {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.style-tab-scope-option .meta {
   font-size: 10px;
-  letter-spacing: 0.01em;
-  text-transform: none;
+  color: #95a8ce;
+}
+
+.style-tab-scope-option:hover {
+  background: rgba(36, 52, 78, 0.4);
+  border-color: rgba(95, 126, 194, 0.35);
+}
+
+.style-tab-scope-option.active {
+  background: rgba(18, 36, 28, 0.86);
+  border-color: rgba(127, 176, 118, 0.62);
+}
+
+.style-tab-filter-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 180px;
+  z-index: 20;
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid rgba(95, 126, 194, 0.35);
+  border-radius: 10px;
+  background: rgba(10, 15, 24, 0.96);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+}
+
+.style-tab-filter-option {
+  display: block;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #c7d6f3;
+  text-align: left;
+  padding: 7px 9px;
+  cursor: pointer;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+}
+
+.style-tab-filter-option:hover {
+  background: rgba(36, 52, 78, 0.4);
+  border-color: rgba(95, 126, 194, 0.35);
+}
+
+.style-tab-filter-option.active {
+  background: rgba(18, 36, 28, 0.86);
+  border-color: rgba(127, 176, 118, 0.62);
 }
 
 .style-mode-notice,
@@ -930,6 +1099,10 @@ body,
   box-shadow: inset 0 0 0 1px rgba(241, 193, 74, 0.5);
 }
 
+.style-color-swatch-btn.inherited {
+  opacity: 0.68;
+}
+
 .style-color-native-input {
   position: absolute;
   top: 0;
@@ -943,6 +1116,15 @@ body,
 .view-shell {
   display: grid;
   gap: 16px;
+}
+
+.compact-input.inherited,
+.inspector-field select.inherited {
+  color: #98a1b3;
+}
+
+.compact-input.inherited::placeholder {
+  color: #818a9b;
 }
 
 .view-header h1 {

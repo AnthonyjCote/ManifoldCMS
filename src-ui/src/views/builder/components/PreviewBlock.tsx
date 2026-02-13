@@ -2,7 +2,7 @@ import type { CSSProperties } from "react";
 
 import { buildPreviewTreeForBlock } from "../../../features/builder/catalog";
 import { getSectionStyleValue, type BuilderViewport } from "../../../features/builder/style-scopes";
-import type { BlockInstance, PrimitiveType } from "../../../features/builder/types";
+import type { BlockInstance, PrimitiveType, StyleStateKey } from "../../../features/builder/types";
 import { PrimitiveRenderer } from "./PrimitiveRenderer";
 
 type PreviewBlockProps = {
@@ -10,6 +10,7 @@ type PreviewBlockProps = {
   previewScope: BuilderViewport;
   editable: boolean;
   selectionEnabled?: boolean;
+  hoverEnabled?: boolean;
   onInlineCommit: (fieldKey: string, value: string) => void;
   selectedPrimitivePaths: string[];
   hoveredPrimitivePath: string | null;
@@ -32,6 +33,8 @@ type PreviewBlockProps = {
   ) => void;
   onStyleDragSessionStart?: () => void;
   onStyleDragSessionEnd?: () => void;
+  sectionStyleState?: StyleStateKey;
+  hoverPrimitivePaths?: string[];
 };
 
 function normalizeBackgroundImage(value: string | undefined): string | undefined {
@@ -79,6 +82,7 @@ export function PreviewBlock({
   previewScope,
   editable,
   selectionEnabled = true,
+  hoverEnabled = false,
   onInlineCommit,
   selectedPrimitivePaths,
   hoveredPrimitivePath,
@@ -87,35 +91,62 @@ export function PreviewBlock({
   onPrimitiveStyleSet,
   onStyleDragSessionStart,
   onStyleDragSessionEnd,
+  sectionStyleState = "default",
+  hoverPrimitivePaths = [],
 }: PreviewBlockProps) {
   const tree = buildPreviewTreeForBlock(block);
   const backgroundImage = normalizeBackgroundImage(
-    getSectionStyleValue(block.styleOverrides, "backgroundImage", previewScope)
+    getSectionStyleValue(block.styleOverrides, "backgroundImage", previewScope, sectionStyleState)
   );
   const background = composeBackgroundOverride(
-    getSectionStyleValue(block.styleOverrides, "backgroundColor", previewScope),
+    getSectionStyleValue(block.styleOverrides, "backgroundColor", previewScope, sectionStyleState),
     backgroundImage
   );
   const style: CSSProperties = {
-    marginTop: getSectionStyleValue(block.styleOverrides, "marginTop", previewScope),
-    marginRight: getSectionStyleValue(block.styleOverrides, "marginRight", previewScope),
-    marginBottom: getSectionStyleValue(block.styleOverrides, "marginBottom", previewScope),
-    marginLeft: getSectionStyleValue(block.styleOverrides, "marginLeft", previewScope),
-    paddingTop: getSectionStyleValue(block.styleOverrides, "paddingTop", previewScope),
-    paddingRight: getSectionStyleValue(block.styleOverrides, "paddingRight", previewScope),
-    paddingBottom: getSectionStyleValue(block.styleOverrides, "paddingBottom", previewScope),
-    paddingLeft: getSectionStyleValue(block.styleOverrides, "paddingLeft", previewScope),
-    borderWidth: getSectionStyleValue(block.styleOverrides, "borderWidth", previewScope),
-    borderStyle: getSectionStyleValue(block.styleOverrides, "borderStyle", previewScope),
-    borderColor: getSectionStyleValue(block.styleOverrides, "borderColor", previewScope),
-    borderRadius: getSectionStyleValue(block.styleOverrides, "borderRadius", previewScope),
+    marginTop: getSectionStyleValue(block.styleOverrides, "marginTop", previewScope, sectionStyleState),
+    marginRight: getSectionStyleValue(
+      block.styleOverrides,
+      "marginRight",
+      previewScope,
+      sectionStyleState
+    ),
+    marginBottom: getSectionStyleValue(
+      block.styleOverrides,
+      "marginBottom",
+      previewScope,
+      sectionStyleState
+    ),
+    marginLeft: getSectionStyleValue(block.styleOverrides, "marginLeft", previewScope, sectionStyleState),
+    paddingTop: getSectionStyleValue(block.styleOverrides, "paddingTop", previewScope, sectionStyleState),
+    paddingRight: getSectionStyleValue(
+      block.styleOverrides,
+      "paddingRight",
+      previewScope,
+      sectionStyleState
+    ),
+    paddingBottom: getSectionStyleValue(
+      block.styleOverrides,
+      "paddingBottom",
+      previewScope,
+      sectionStyleState
+    ),
+    paddingLeft: getSectionStyleValue(block.styleOverrides, "paddingLeft", previewScope, sectionStyleState),
+    borderWidth: getSectionStyleValue(block.styleOverrides, "borderWidth", previewScope, sectionStyleState),
+    borderStyle: getSectionStyleValue(block.styleOverrides, "borderStyle", previewScope, sectionStyleState),
+    borderColor: getSectionStyleValue(block.styleOverrides, "borderColor", previewScope, sectionStyleState),
+    borderRadius: getSectionStyleValue(
+      block.styleOverrides,
+      "borderRadius",
+      previewScope,
+      sectionStyleState
+    ),
     background,
-    color: getSectionStyleValue(block.styleOverrides, "textColor", previewScope),
-    fontSize: getSectionStyleValue(block.styleOverrides, "fontSize", previewScope),
+    color: getSectionStyleValue(block.styleOverrides, "textColor", previewScope, sectionStyleState),
+    fontSize: getSectionStyleValue(block.styleOverrides, "fontSize", previewScope, sectionStyleState),
     transform:
-      getSectionStyleValue(block.styleOverrides, "translateX", previewScope) ||
-      getSectionStyleValue(block.styleOverrides, "translateY", previewScope)
-        ? `translate(${getSectionStyleValue(block.styleOverrides, "translateX", previewScope) ?? "0px"}, ${getSectionStyleValue(block.styleOverrides, "translateY", previewScope) ?? "0px"})`
+      getSectionStyleValue(block.styleOverrides, "translateX", previewScope, sectionStyleState) ||
+      getSectionStyleValue(block.styleOverrides, "translateY", previewScope, sectionStyleState)
+        ? `translate(${getSectionStyleValue(block.styleOverrides, "translateX", previewScope, sectionStyleState) ?? "0px"}, ${getSectionStyleValue(block.styleOverrides, "translateY", previewScope, sectionStyleState) ?? "0px"})`
         : undefined,
   };
   return (
@@ -130,6 +161,7 @@ export function PreviewBlock({
           node={node}
           editable={editable}
           selectionEnabled={selectionEnabled}
+          hoverEnabled={hoverEnabled}
           onInlineCommit={onInlineCommit}
           primitivePath={String(index)}
           selectedPrimitivePaths={selectedPrimitivePaths}
@@ -142,6 +174,8 @@ export function PreviewBlock({
           previewScope={previewScope}
           primitiveStyles={block.styleOverrides.primitiveStyles}
           primitiveViewportStyles={block.styleOverrides.primitiveViewportStyles}
+          primitiveStateViewportStyles={block.styleOverrides.primitiveStateViewportStyles}
+          hoverPrimitivePaths={hoverPrimitivePaths}
         />
       ))}
     </section>
