@@ -1130,6 +1130,9 @@ export function BuilderView() {
                 ) : null}
                 {builder.selectedPage.blocks.map((block, index) => {
                   const sectionGuide = sectionSpacingFromOverrides(block, previewBreakpoint);
+                  const hasPrimitiveSelectionInBlock = builder.state.selectedPrimitivePaths.some(
+                    (target) => decodePrimitiveTarget(target).blockId === block.id
+                  );
                   const hoverPrimitivePathsForBlock = stylePreviewState.state.hoverPrimitiveTargets
                     .map((target) => decodePrimitiveTarget(target))
                     .filter((target) => target.blockId === block.id)
@@ -1169,7 +1172,8 @@ export function BuilderView() {
                         }}
                       >
                         {interactionMode === "edit" &&
-                        builder.state.selectedBlockId === block.id ? (
+                        builder.state.selectedBlockId === block.id &&
+                        !hasPrimitiveSelectionInBlock ? (
                           <>
                             <button
                               className="site-block-drag-handle"
