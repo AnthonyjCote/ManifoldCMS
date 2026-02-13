@@ -65,11 +65,20 @@ Definition of done:
 
 ### P0.3 Baseline Theme + Block Quality
 
+Reference doc:
+
+- `docs/TEMP-Theme-Variant-Architecture.md` (source of truth for P0.3 schema, variant model, and implementation steps)
+
 - [ ] Define default v1 theme tokens (type scale, colors, radius, borders, shadows, spacing).
 - [ ] Make every block consume theme tokens by default.
 - [ ] Modernize baseline styling for all blocks to “premium” quality.
 - [ ] Ensure mobile responsive behavior for every block type.
 - [ ] Add block provenance metadata for classifier system so preset block defaults can be labeled as `block` source.
+- [ ] Enforce explicit theme class naming namespace (`theme-*`) for audit clarity vs user-authored classes.
+- [ ] Preserve dual workflow goals in P0.3:
+  - fast path (`pick/generate theme -> drag/drop -> content -> ship`)
+  - advanced path (micro-granular CSS control retained).
+- [ ] Prepare class assignment model so blocks/primitives can later select from theme classes + user classes (future Classes tab integration).
 
 Definition of done:
 
