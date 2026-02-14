@@ -3472,6 +3472,15 @@ textarea:focus-visible {
   background: rgba(14, 20, 32, 0.95);
   color: #dbe4f7;
   font-size: 11px;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   padding: 4px 7px;
   white-space: nowrap;
   pointer-events: none;
@@ -3515,6 +3524,15 @@ textarea:focus-visible {
   background: rgba(31, 23, 12, 0.95);
   color: #f7e8c8;
   font-size: 11px;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   padding: 4px 7px;
   white-space: nowrap;
   pointer-events: none;
@@ -3822,6 +3840,15 @@ textarea:focus-visible {
   background: rgba(14, 20, 32, 0.95);
   color: #dbe4f7;
   font-size: 11px;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   padding: 4px 7px;
   white-space: nowrap;
   pointer-events: none;
@@ -3865,6 +3892,15 @@ textarea:focus-visible {
   background: rgba(31, 23, 12, 0.95);
   color: #f7e8c8;
   font-size: 11px;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   padding: 4px 7px;
   white-space: nowrap;
   pointer-events: none;
