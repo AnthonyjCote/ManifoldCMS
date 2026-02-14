@@ -39,6 +39,7 @@ type BuilderContextValue = {
   moveBlock: (direction: "up" | "down") => void;
   moveBlockToIndex: (blockId: string, targetIndex: number) => void;
   removeBlock: () => void;
+  removeBlockById: (blockId: string) => void;
   setBlockField: (key: string, value: string | number) => void;
   setBlockFieldForBlock: (blockId: string, key: string, value: string | number) => void;
   setBlockVisibility: (visibility: "visible" | "hidden") => void;
@@ -737,6 +738,22 @@ export function BuilderProvider({
         selectedBlockId: null,
         selectedBlockIds: [],
         selectedPrimitivePaths: [],
+      }));
+    },
+    removeBlockById: (blockId) => {
+      commit((prev) => ({
+        ...prev,
+        pages: prev.pages.map((page) =>
+          page.id === prev.selectedPageId
+            ? {
+                ...page,
+                blocks: page.blocks.filter((block) => block.id !== blockId),
+              }
+            : page
+        ),
+        selectedBlockId: prev.selectedBlockId === blockId ? null : prev.selectedBlockId,
+        selectedBlockIds: prev.selectedBlockIds.filter((id) => id !== blockId),
+        selectedPrimitivePaths: prev.selectedBlockId === blockId ? [] : prev.selectedPrimitivePaths,
       }));
     },
     setBlockField: (key, value) => {

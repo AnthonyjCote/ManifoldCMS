@@ -346,6 +346,9 @@ export function BuilderView() {
   } | null>(null);
   const [activePointerDrag, setActivePointerDrag] = useState<BuilderPointerDragDetail | null>(null);
   const [auditBlockId, setAuditBlockId] = useState<string | null>(null);
+  const [deleteBlockTarget, setDeleteBlockTarget] = useState<{ id: string; label: string } | null>(
+    null
+  );
   const [jumpPulseBlockId, setJumpPulseBlockId] = useState<string | null>(null);
   const [jumpPulsePrimitiveTarget, setJumpPulsePrimitiveTarget] = useState<string | null>(null);
 
@@ -376,6 +379,7 @@ export function BuilderView() {
       if (event.key === "Escape") {
         setActivePopover(null);
         setNewPageModalOpen(false);
+        setDeleteBlockTarget(null);
         return;
       }
 
@@ -1178,7 +1182,11 @@ export function BuilderView() {
 
               <div
                 ref={previewPageRef}
-                className={`site-preview-page breakpoint-${previewBreakpoint}${isCatalogDragActive ? " catalog-dragging" : ""}${isCatalogDragOverPreview ? " catalog-drag-over" : ""}`}
+                className={`site-preview-page breakpoint-${previewBreakpoint}${
+                  builder.selectedPage.blocks.length === 0 ? " empty-page" : ""
+                }${isCatalogDragActive ? " catalog-dragging" : ""}${
+                  isCatalogDragOverPreview ? " catalog-drag-over" : ""
+                }`}
                 style={previewThemeVars}
                 onDragOver={interactionMode === "edit" ? handlePreviewDragOver : undefined}
                 onDragOverCapture={interactionMode === "edit" ? handlePreviewDragOver : undefined}
@@ -1253,6 +1261,24 @@ export function BuilderView() {
                       >
                         {interactionMode === "edit" ? (
                           <>
+                            <button
+                              className="site-block-delete-handle"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                const definition = blockDefinitionById(block.type);
+                                setDeleteBlockTarget({
+                                  id: block.id,
+                                  label: definition?.label ?? "section",
+                                });
+                              }}
+                              aria-label="Remove section"
+                              title="Remove section"
+                            >
+                              <svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 7h16M9 7V5h6v2M8 7l1 12h6l1-12" />
+                              </svg>
+                            </button>
                             <button
                               className="site-block-audit-handle"
                               onClick={(event) => {
@@ -1518,6 +1544,37 @@ export function BuilderView() {
               </button>
               <button className="primary-btn" onClick={createNewPageFromModal}>
                 Create Page
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteBlockTarget ? (
+        <div className="modal-scrim" role="presentation">
+          <div
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-block-title"
+          >
+            <h2 id="delete-block-title">Delete section?</h2>
+            <p className="modal-copy">
+              This will remove this <strong>{deleteBlockTarget.label}</strong> block from the page.
+              This action can be undone.
+            </p>
+            <div className="popover-actions">
+              <button className="secondary-btn" onClick={() => setDeleteBlockTarget(null)}>
+                Cancel
+              </button>
+              <button
+                className="danger-btn"
+                onClick={() => {
+                  builder.removeBlockById(deleteBlockTarget.id);
+                  setDeleteBlockTarget(null);
+                }}
+              >
+                Delete Section
               </button>
             </div>
           </div>
