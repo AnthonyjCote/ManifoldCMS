@@ -5,10 +5,22 @@ export type ThemeTokenKey = keyof ThemeTokens;
 export type ThemeTokenField = {
   key: ThemeTokenKey;
   label: string;
-  kind: "color" | "text";
+  kind: "color" | "text" | "select";
+  options?: string[];
   description?: string;
   section?: string;
 };
+
+const FONT_FAMILY_OPTIONS = [
+  '"Manrope", "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif',
+  '"Inter", "Manrope", "Segoe UI", sans-serif',
+  '"Space Grotesk", "Inter", "Segoe UI", sans-serif',
+  '"Sora", "Inter", "Segoe UI", sans-serif',
+  '"Source Serif 4", "Georgia", serif',
+  '"Fraunces", "Source Serif 4", "Georgia", serif',
+  '"IBM Plex Sans", "Inter", "Segoe UI", sans-serif',
+  'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace',
+];
 
 export type ThemeTokenGroup = {
   id: string;
@@ -22,7 +34,13 @@ export const THEME_TOKEN_GROUPS: ThemeTokenGroup[] = [
     label: "Typography",
     fields: [
       { key: "headingColor", label: "Heading Color", kind: "color", section: "Headings" },
-      { key: "fontFamilyHeading", label: "Heading Font Family", kind: "text", section: "Headings" },
+      {
+        key: "fontFamilyHeading",
+        label: "Heading Font Family",
+        kind: "select",
+        options: FONT_FAMILY_OPTIONS,
+        section: "Headings",
+      },
       { key: "fontWeightHeading", label: "Heading Font Weight", kind: "text", section: "Headings" },
       { key: "fontSizeH1", label: "H1 Font Size", kind: "text", section: "Headings" },
       { key: "fontSizeH2", label: "H2 Font Size", kind: "text", section: "Headings" },
@@ -36,8 +54,20 @@ export const THEME_TOKEN_GROUPS: ThemeTokenGroup[] = [
       },
       { key: "textPrimary", label: "Text Primary", kind: "color", section: "Body" },
       { key: "textSecondary", label: "Text Secondary", kind: "color", section: "Body" },
-      { key: "fontFamilyBody", label: "Body Font Family", kind: "text", section: "Body" },
-      { key: "fontFamilyMono", label: "Mono Font Family", kind: "text", section: "Body" },
+      {
+        key: "fontFamilyBody",
+        label: "Body Font Family",
+        kind: "select",
+        options: FONT_FAMILY_OPTIONS,
+        section: "Body",
+      },
+      {
+        key: "fontFamilyMono",
+        label: "Mono Font Family",
+        kind: "select",
+        options: FONT_FAMILY_OPTIONS,
+        section: "Body",
+      },
       { key: "fontWeightBody", label: "Body Font Weight", kind: "text", section: "Body" },
       { key: "fontSizeBody", label: "Body Font Size", kind: "text", section: "Body" },
       { key: "lineHeightBody", label: "Body Line Height", kind: "text", section: "Body" },

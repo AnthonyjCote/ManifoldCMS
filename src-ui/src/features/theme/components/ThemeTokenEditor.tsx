@@ -246,6 +246,21 @@ export function ThemeTokenEditor({
                                   onChange={(event) => onChange(field.key, event.target.value)}
                                 />
                               </div>
+                            ) : field.kind === "select" ? (
+                              <select
+                                className="compact-input"
+                                value={tokens[field.key]}
+                                onChange={(event) => onChange(field.key, event.target.value)}
+                              >
+                                {((field.options ?? []).includes(tokens[field.key])
+                                  ? (field.options ?? [])
+                                  : [tokens[field.key], ...(field.options ?? [])]
+                                ).map((option) => (
+                                  <option key={option} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </select>
                             ) : (
                               <input
                                 className="compact-input"
