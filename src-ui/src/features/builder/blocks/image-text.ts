@@ -97,7 +97,7 @@ export const block: BlockCatalogEntry = {
             value: text(
               instance,
               "copy",
-              "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vestibulum ante ipsum primis in faucibus orci luctus et ultrices posuere cubilia curae; Integer consequat, sapien non volutpat feugiat, nibh sem facilisis erat, vel ultricies neque justo at mauris.\n\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Curabitur nec nisi a justo consequat suscipit, at tincidunt nunc faucibus. Quisque tristique, elit in varius convallis, arcu massa ullamcorper tortor, vitae iaculis urna erat et lorem."
+              "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Integer consequat nibh sem facilisis erat, vel ultricies neque justo at mauris.\n\nUt enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Quisque tristique elit in varius convallis, arcu massa ullamcorper tortor."
             ),
             editorFieldKey: "copy",
           },

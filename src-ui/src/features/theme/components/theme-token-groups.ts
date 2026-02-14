@@ -6,20 +6,44 @@ export type ThemeTokenField = {
   key: ThemeTokenKey;
   label: string;
   kind: "color" | "text" | "select";
-  options?: string[];
+  options?: Array<{ label: string; value: string }>;
   description?: string;
   section?: string;
 };
 
 const FONT_FAMILY_OPTIONS = [
-  '"Manrope", "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif',
-  '"Inter", "Manrope", "Segoe UI", sans-serif',
-  '"Space Grotesk", "Inter", "Segoe UI", sans-serif',
-  '"Sora", "Inter", "Segoe UI", sans-serif',
-  '"Source Serif 4", "Georgia", serif',
-  '"Fraunces", "Source Serif 4", "Georgia", serif',
-  '"IBM Plex Sans", "Inter", "Segoe UI", sans-serif',
-  'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace',
+  {
+    label: "Manrope",
+    value: '"Manrope", "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif',
+  },
+  {
+    label: "Inter",
+    value: '"Inter", "Manrope", "Segoe UI", sans-serif',
+  },
+  {
+    label: "Space Grotesk",
+    value: '"Space Grotesk", "Inter", "Segoe UI", sans-serif',
+  },
+  {
+    label: "Sora",
+    value: '"Sora", "Inter", "Segoe UI", sans-serif',
+  },
+  {
+    label: "Source Serif 4",
+    value: '"Source Serif 4", "Georgia", serif',
+  },
+  {
+    label: "Fraunces",
+    value: '"Fraunces", "Source Serif 4", "Georgia", serif',
+  },
+  {
+    label: "IBM Plex Sans",
+    value: '"IBM Plex Sans", "Inter", "Segoe UI", sans-serif',
+  },
+  {
+    label: "Monospace",
+    value: 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace',
+  },
 ];
 
 export type ThemeTokenGroup = {

@@ -7,6 +7,7 @@ export const block: BlockCatalogEntry = {
   category: "Hero",
   description: "Intro section with headline, copy, CTA, and optional image.",
   fields: [
+    { key: "eyebrow", label: "Eyebrow", type: "text", maxLength: 40 },
     { key: "headline", label: "Headline", type: "text", required: true, maxLength: 90 },
     { key: "subhead", label: "Subhead", type: "textarea", maxLength: 220 },
     { key: "ctaLabel", label: "CTA Label", type: "text", maxLength: 30 },
@@ -21,6 +22,13 @@ export const block: BlockCatalogEntry = {
         {
           type: "stack",
           children: [
+            {
+              type: "text",
+              props: {
+                value: text(instance, "eyebrow", "Hero Section"),
+                editorFieldKey: "eyebrow",
+              },
+            },
             {
               type: "heading",
               props: {

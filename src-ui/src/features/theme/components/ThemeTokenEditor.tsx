@@ -45,6 +45,14 @@ export function ThemeTokenEditor({
   storageKeyPrefix,
   searchEnabled = true,
 }: ThemeTokenEditorProps) {
+  const labelForSelectValue = (value: string): string => {
+    const quoted = value.match(/"([^"]+)"/);
+    if (quoted?.[1]) {
+      return quoted[1];
+    }
+    return value.split(",")[0]?.trim() || value;
+  };
+
   const [query, setQuery] = useState("");
   const rootRef = useRef<HTMLDivElement | null>(null);
   const pulseTimeoutRef = useRef<number | null>(null);
@@ -252,12 +260,20 @@ export function ThemeTokenEditor({
                                 value={tokens[field.key]}
                                 onChange={(event) => onChange(field.key, event.target.value)}
                               >
-                                {((field.options ?? []).includes(tokens[field.key])
+                                {((field.options ?? []).some(
+                                  (option) => option.value === tokens[field.key]
+                                )
                                   ? (field.options ?? [])
-                                  : [tokens[field.key], ...(field.options ?? [])]
+                                  : [
+                                      {
+                                        label: labelForSelectValue(tokens[field.key]),
+                                        value: tokens[field.key],
+                                      },
+                                      ...(field.options ?? []),
+                                    ]
                                 ).map((option) => (
-                                  <option key={option} value={option}>
-                                    {option}
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
                                   </option>
                                 ))}
                               </select>
