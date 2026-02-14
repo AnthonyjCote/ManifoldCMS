@@ -425,8 +425,15 @@ function resolveFieldValueStatus(opts: {
   scope: BuilderViewport;
   themeTokens: ThemeTokens | null;
   themeSourceToken?: keyof ThemeTokens | null;
+  hasThemeFallback?: boolean;
 }): FieldValueStatus {
-  if (opts.scope !== "default" && opts.hasExplicitCurrent && opts.hasExplicitDefault) {
+  const hasThemeSource = Boolean(opts.themeSourceToken);
+  const hasThemeFallback = Boolean(opts.hasThemeFallback);
+  if (
+    opts.hasExplicitCurrent &&
+    ((opts.scope !== "default" && opts.hasExplicitDefault) ||
+      (opts.scope === "default" && (hasThemeSource || hasThemeFallback)))
+  ) {
     return "override";
   }
   if (opts.hasExplicitCurrent) {
@@ -1395,6 +1402,13 @@ export function StyleTab() {
                     undefined,
                     selectedPrimitive?.type
                   );
+                  const hasThemeFallback =
+                    Boolean(activeThemeTokens) &&
+                    getThemeTokenCandidates(
+                      field.key as AllStyleKey,
+                      undefined,
+                      selectedPrimitive?.type
+                    ).length > 0;
                   const status = resolveFieldValueStatus({
                     hasExplicitCurrent,
                     hasExplicitDefault,
@@ -1404,7 +1418,12 @@ export function StyleTab() {
                     scope: editScope,
                     themeTokens: activeThemeTokens,
                     themeSourceToken,
+                    hasThemeFallback,
                   });
+                  const isThemeOverride =
+                    status === "override" &&
+                    editScope === "default" &&
+                    (hasThemeFallback || Boolean(themeSourceToken));
                   const inherited = status === "inherited";
                   if (!matchesFieldFilter(status, fieldFilter)) {
                     return null;
@@ -1495,34 +1514,34 @@ export function StyleTab() {
                             />
                           )}
                           <span className="style-field-status-tooltip" role="tooltip">
-                            {status === "override"
-                              ? `Override of Default in ${VIEWPORT_SCOPE_LABELS[editScope]}`
-                              : status === "edited"
-                                ? `Edited in ${VIEWPORT_SCOPE_LABELS[editScope]}`
-                                : status === "inherited"
-                                  ? inheritedOrigin
-                                    ? `Inherited from ${VIEWPORT_SCOPE_LABELS[inheritedOrigin.viewport]}${
-                                        inheritedOrigin.state === "hover" ? " (Hover)" : ""
-                                      }`
-                                    : `Inherited from Default`
-                                  : status === "theme"
-                                    ? "Resolved from active theme token"
-                                    : status === "block"
-                                      ? "Resolved from block baseline styles"
-                                      : `Uninitialized`}
-                            {status === "theme" && themeSourceToken ? (
-                              <button
-                                type="button"
-                                className="style-field-status-jump-btn"
-                                onClick={(event) => {
-                                  event.preventDefault();
-                                  event.stopPropagation();
-                                  requestThemeTokenJump({ tokenKey: themeSourceToken });
-                                }}
-                              >
-                                Jump to theme source
-                              </button>
-                            ) : null}
+                            {status === "override" ? (
+                              isThemeOverride ? (
+                                "Override of theme value"
+                              ) : (
+                                `Override of Default in ${VIEWPORT_SCOPE_LABELS[editScope]}`
+                              )
+                            ) : status === "edited" ? (
+                              `Edited in ${VIEWPORT_SCOPE_LABELS[editScope]}`
+                            ) : status === "inherited" ? (
+                              inheritedOrigin ? (
+                                `Inherited from ${VIEWPORT_SCOPE_LABELS[inheritedOrigin.viewport]}${
+                                  inheritedOrigin.state === "hover" ? " (Hover)" : ""
+                                }`
+                              ) : (
+                                `Inherited from Default`
+                              )
+                            ) : status === "theme" ? (
+                              <>
+                                <span>Resolved from active theme token.</span>
+                                <span className="style-field-status-theme-hint">
+                                  Click the indicator circle to jump to theme source.
+                                </span>
+                              </>
+                            ) : status === "block" ? (
+                              "Resolved from block baseline styles"
+                            ) : (
+                              `Uninitialized`
+                            )}
                           </span>
                         </span>
                         <span className="style-field-label-text">
@@ -1667,7 +1686,17 @@ export function StyleTab() {
                   scope: editScope,
                   themeTokens: activeThemeTokens,
                   themeSourceToken,
+                  hasThemeFallback:
+                    Boolean(activeThemeTokens) &&
+                    getThemeTokenCandidates(field.key as AllStyleKey, originBlock.type).length > 0,
                 });
+                const hasThemeFallback =
+                  Boolean(activeThemeTokens) &&
+                  getThemeTokenCandidates(field.key as AllStyleKey, originBlock.type).length > 0;
+                const isThemeOverride =
+                  status === "override" &&
+                  editScope === "default" &&
+                  (hasThemeFallback || Boolean(themeSourceToken));
                 const inherited = status === "inherited";
                 if (!matchesFieldFilter(status, fieldFilter)) {
                   return null;
@@ -1746,34 +1775,34 @@ export function StyleTab() {
                           <span className={`style-field-status-dot ${status}`} aria-hidden="true" />
                         )}
                         <span className="style-field-status-tooltip" role="tooltip">
-                          {status === "override"
-                            ? `Override of Default in ${VIEWPORT_SCOPE_LABELS[editScope]}`
-                            : status === "edited"
-                              ? `Edited in ${VIEWPORT_SCOPE_LABELS[editScope]}`
-                              : status === "inherited"
-                                ? inheritedOrigin
-                                  ? `Inherited from ${VIEWPORT_SCOPE_LABELS[inheritedOrigin.viewport]}${
-                                      inheritedOrigin.state === "hover" ? " (Hover)" : ""
-                                    }`
-                                  : `Inherited from Default`
-                                : status === "theme"
-                                  ? "Resolved from active theme token"
-                                  : status === "block"
-                                    ? "Resolved from block baseline styles"
-                                    : `Uninitialized`}
-                          {status === "theme" && themeSourceToken ? (
-                            <button
-                              type="button"
-                              className="style-field-status-jump-btn"
-                              onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                requestThemeTokenJump({ tokenKey: themeSourceToken });
-                              }}
-                            >
-                              Jump to theme source
-                            </button>
-                          ) : null}
+                          {status === "override" ? (
+                            isThemeOverride ? (
+                              "Override of theme value"
+                            ) : (
+                              `Override of Default in ${VIEWPORT_SCOPE_LABELS[editScope]}`
+                            )
+                          ) : status === "edited" ? (
+                            `Edited in ${VIEWPORT_SCOPE_LABELS[editScope]}`
+                          ) : status === "inherited" ? (
+                            inheritedOrigin ? (
+                              `Inherited from ${VIEWPORT_SCOPE_LABELS[inheritedOrigin.viewport]}${
+                                inheritedOrigin.state === "hover" ? " (Hover)" : ""
+                              }`
+                            ) : (
+                              `Inherited from Default`
+                            )
+                          ) : status === "theme" ? (
+                            <>
+                              <span>Resolved from active theme token.</span>
+                              <span className="style-field-status-theme-hint">
+                                Click the indicator circle to jump to theme source.
+                              </span>
+                            </>
+                          ) : status === "block" ? (
+                            "Resolved from block baseline styles"
+                          ) : (
+                            `Uninitialized`
+                          )}
                         </span>
                       </span>
                       <span className="style-field-label-text">

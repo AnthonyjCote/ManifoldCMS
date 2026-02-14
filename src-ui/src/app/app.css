@@ -681,6 +681,10 @@ button.style-field-status-dot {
   backdrop-filter: blur(8px);
 }
 
+.style-field-status-theme-hint {
+  color: #b57aff;
+}
+
 .style-field-status-dot-wrap:hover .style-field-status-tooltip {
   opacity: 1;
   visibility: visible;
