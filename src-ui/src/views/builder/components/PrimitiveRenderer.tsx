@@ -11,6 +11,7 @@ import {
   type ReactElement,
 } from "react";
 import { createPortal } from "react-dom";
+import heroImagePlaceholder from "../../../assets/placeholders/images/camera-corner-placeholder.svg";
 
 import {
   getPrimitiveStyleValue,
@@ -1103,11 +1104,13 @@ export function PrimitiveRenderer({
   if (node.type === "image") {
     const src = String(node.props?.src ?? "");
     const alt = String(node.props?.alt ?? "");
+    const className = String(node.props?.className ?? "").trim();
+    const isHeroImagePlaceholder = className.split(/\s+/).includes("hero-image");
     return src
       ? withOverlay(
           <img
             ref={setPrimitiveRef}
-            className={`${primitiveClass} ${String(node.props?.className ?? "").trim()}`.trim()}
+            className={`${primitiveClass} ${className}`.trim()}
             style={style}
             onClick={onPrimitiveClick}
             onMouseMove={onPrimitiveMove}
@@ -1118,12 +1121,23 @@ export function PrimitiveRenderer({
       : withOverlay(
           <div
             ref={setPrimitiveRef}
-            className={`${primitiveClass} primitive-image-placeholder`}
+            className={`${primitiveClass} primitive-image-placeholder ${className}${
+              isHeroImagePlaceholder ? " hero-image-placeholder-art" : ""
+            }`.trim()}
             style={style}
             onClick={onPrimitiveClick}
             onMouseMove={onPrimitiveMove}
           >
-            Lorem ipsum image placeholder.
+            {isHeroImagePlaceholder ? (
+              <img
+                src={heroImagePlaceholder}
+                alt=""
+                aria-hidden="true"
+                className="hero-image-placeholder-icon"
+              />
+            ) : (
+              "Lorem ipsum image placeholder."
+            )}
           </div>
         );
   }

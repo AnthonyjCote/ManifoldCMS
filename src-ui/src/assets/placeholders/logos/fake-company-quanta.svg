@@ -1,0 +1,7 @@
+<svg width="320" height="120" viewBox="0 0 320 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="26" y="30" width="88" height="60" rx="16"/>
+    <path d="M42 74L56 58L68 68L84 50L98 62"/>
+  </g>
+  <text x="134" y="78" font-family="'Segoe UI', Arial, sans-serif" font-size="39" font-weight="700" fill="currentColor">QUANTA</text>
+</svg>

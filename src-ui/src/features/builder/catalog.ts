@@ -1,4 +1,8 @@
 import type { BlockDefinition, BlockFieldSchema, BlockInstance, PrimitiveNode } from "./types";
+import logoApex from "../../assets/placeholders/logos/fake-company-apex.svg";
+import logoNova from "../../assets/placeholders/logos/fake-company-nova.svg";
+import logoOrbit from "../../assets/placeholders/logos/fake-company-orbit.svg";
+import logoQuanta from "../../assets/placeholders/logos/fake-company-quanta.svg";
 
 type InternalBlockDefinition = BlockDefinition & {
   buildPreviewTree: (block: BlockInstance) => PrimitiveNode[];
@@ -92,6 +96,12 @@ function makeCardFields(
     }
   }
   return fields;
+}
+
+const LOGO_CLOUD_PLACEHOLDERS = [logoApex, logoOrbit, logoNova, logoQuanta];
+
+function logoPlaceholderByIndex(index: number): string {
+  return LOGO_CLOUD_PLACEHOLDERS[index % LOGO_CLOUD_PLACEHOLDERS.length];
 }
 
 function parseCustomSectionPrimitives(raw: string): PrimitiveNode[] {
@@ -583,11 +593,9 @@ export const BLOCK_CATALOG: InternalBlockDefinition[] = [
     description: "Client/partner logos in a simple responsive grid.",
     fields: [
       { key: "sectionTitle", label: "Section Title", type: "text", maxLength: 70 },
+      { key: "copy", label: "Copy", type: "textarea", maxLength: 180 },
       { key: "cardColumns", label: "Columns (1-6)", type: "text" },
-      ...makeCardFields("cardCount", "Card Count (1-16)", 16, [
-        { suffix: "Label", label: "Label", maxLength: 40 },
-      ]),
-      { key: "logos", label: "Legacy Logo labels (one per line)", type: "repeater", maxItems: 16 },
+      { key: "cardCount", label: "Card Count (1-16)", type: "text" },
     ],
     buildPreviewTree: (block) => [
       {
@@ -599,6 +607,21 @@ export const BLOCK_CATALOG: InternalBlockDefinition[] = [
         },
       },
       {
+        type: "text",
+        props: {
+          value: text(
+            block,
+            "copy",
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor."
+          ),
+          editorFieldKey: "copy",
+        },
+      },
+      {
+        type: "spacer",
+        props: { size: 8 },
+      },
+      {
         type: "cards",
         props: { columns: boundedCount(block, "cardColumns", 4, 1, 6) },
         children: Array.from({ length: boundedCount(block, "cardCount", 4, 1, 16) }).map(
@@ -607,10 +630,11 @@ export const BLOCK_CATALOG: InternalBlockDefinition[] = [
             props: { className: "logo-badge" },
             children: [
               {
-                type: "text",
+                type: "image",
                 props: {
-                  value: fieldOrLegacyLine(block, `card${index + 1}Label`, "logos", index, "Lorem"),
-                  editorFieldKey: `card${index + 1}Label`,
+                  src: logoPlaceholderByIndex(index),
+                  alt: "Placeholder company logo",
+                  className: "logo-badge-mark",
                 },
               },
             ],

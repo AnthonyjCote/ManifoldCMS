@@ -1,0 +1,9 @@
+<svg width="320" height="120" viewBox="0 0 320 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="currentColor" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M34 84L70 34L106 84"/>
+    <path d="M52 62H88"/>
+    <path d="M16 60H34"/>
+    <path d="M106 60H124"/>
+  </g>
+  <text x="144" y="78" font-family="'Segoe UI', Arial, sans-serif" font-size="42" font-weight="700" fill="currentColor">NOVA</text>
+</svg>

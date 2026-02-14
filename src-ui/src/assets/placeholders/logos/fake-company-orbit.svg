@@ -1,0 +1,5 @@
+<svg width="320" height="120" viewBox="0 0 320 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="74" cy="60" r="28" stroke="currentColor" stroke-width="10"/>
+  <ellipse cx="74" cy="60" rx="48" ry="16" stroke="currentColor" stroke-width="8"/>
+  <text x="138" y="76" font-family="'Segoe UI', Arial, sans-serif" font-size="42" font-weight="600" fill="currentColor">ORBIT</text>
+</svg>

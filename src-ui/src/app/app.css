@@ -2930,6 +2930,21 @@ button.style-field-status-dot {
   text-align: center;
 }
 
+.logo-badge .logo-badge-mark {
+  width: 100%;
+  max-width: 160px;
+  height: auto;
+  margin: 0 auto;
+  border: 0;
+  background: transparent;
+}
+
+.logo-badge p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .cta-block {
   display: grid;
   gap: 12px;
@@ -3994,14 +4009,33 @@ textarea:focus-visible {
   max-width: 62ch;
 }
 
-.hero-image,
-.hero-layout .primitive-image-placeholder {
+.hero-image {
   width: 100%;
-  min-height: clamp(260px, 34vw, 500px);
+  min-height: 0;
+  height: auto;
   border-radius: 18px;
   border: 1px solid rgba(152, 174, 220, 0.24);
   background: linear-gradient(145deg, rgba(152, 175, 228, 0.16), rgba(96, 120, 176, 0.12));
   object-fit: cover;
+}
+
+.hero-layout .primitive-image-placeholder.hero-image-placeholder-art {
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.hero-layout .hero-image-placeholder-icon {
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0.9;
+  object-fit: contain;
 }
 
 .site-block-feature-grid,
@@ -4013,6 +4047,14 @@ textarea:focus-visible {
 .site-block-custom-section {
   background: var(--theme-surface-bg);
   color: var(--theme-text-primary);
+}
+
+.site-block-feature-grid > .primitive-cards,
+.site-block-services-list > .primitive-cards,
+.site-block-testimonials > .primitive-cards,
+.site-block-pricing > .primitive-cards,
+.site-block-logo-cloud > .primitive-cards {
+  margin-top: 35px;
 }
 
 .site-block-faq {
@@ -4086,6 +4128,22 @@ textarea:focus-visible {
   color: var(--theme-text-secondary);
   font-weight: 600;
   box-shadow: var(--theme-card-shadow);
+}
+
+.logo-badge .logo-badge-mark {
+  width: 100%;
+  max-width: 170px;
+  height: auto;
+  margin: 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--theme-text-secondary);
+}
+
+.logo-badge p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .faq-item {
@@ -4187,6 +4245,13 @@ textarea:focus-visible {
 .site-preview-page.breakpoint-mobile .hero-layout .primitive-image-placeholder {
   min-height: 220px;
   border-radius: 12px;
+}
+
+.site-preview-page.breakpoint-mobile
+  .hero-layout
+  .primitive-image-placeholder.hero-image-placeholder-art {
+  min-height: 0;
+  border-radius: 0;
 }
 
 .site-preview-page.breakpoint-mobile .feature-card {
