@@ -24,20 +24,33 @@ function tabIcon(tabId: string) {
     case "style":
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 3 3 8l9 5 9-5-9-5zM3 16l9 5 9-5" />
+          <path d="m14.5 6.5 3 3M6 18l3.5-.8 8-8a1.6 1.6 0 0 0 0-2.3l-1.4-1.4a1.6 1.6 0 0 0-2.3 0l-8 8L5 17z" />
+          <path d="M4.5 19.5h5" />
         </svg>
       );
     case "theme_tokens":
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 3 3 8l9 5 9-5-9-5zM6 14v4l6 3 6-3v-4" />
+          <path d="M12 4a8 8 0 1 0 8 8c0-1.7-1.4-2.8-3-2.8h-1.5c-.9 0-1.5-.7-1.5-1.5 0-.4.2-.8.5-1.1l1.1-1.1A8 8 0 0 0 12 4Z" />
+          <circle cx="8.5" cy="11" r="1" />
+          <circle cx="10.5" cy="8.2" r="1" />
         </svg>
       );
     case "agent":
       return (
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <rect x="7" y="7" width="10" height="10" rx="2" />
-          <path d="M9 12h6M12 9v6M9 4h6" />
+          <text
+            x="12"
+            y="16.5"
+            textAnchor="middle"
+            fontSize="12.5"
+            fontWeight="700"
+            fill="currentColor"
+            stroke="none"
+            letterSpacing="0.5"
+          >
+            AI
+          </text>
         </svg>
       );
     case "page_meta":

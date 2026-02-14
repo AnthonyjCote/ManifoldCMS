@@ -5,6 +5,7 @@ type FieldDef = {
   key: string;
   label: string;
   type: string;
+  options?: string[];
   required?: boolean;
   maxItems?: number;
   maxLength?: number;
@@ -82,6 +83,18 @@ function renderFieldInput(
         onChange={(event) => setValue(event.target.value)}
         rows={field.type === "repeater" ? 6 : 4}
       />
+    );
+  }
+  if (field.type === "select" && Array.isArray(field.options) && field.options.length > 0) {
+    const normalizedValue = value || field.options[0];
+    return (
+      <select value={normalizedValue} onChange={(event) => setValue(event.target.value)}>
+        {field.options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     );
   }
   return (

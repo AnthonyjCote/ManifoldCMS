@@ -1,5 +1,6 @@
 export type BlockType =
   | "hero"
+  | "image_text"
   | "feature_grid"
   | "services_list"
   | "cta"
@@ -19,12 +20,21 @@ export type BlockCategory =
   | "Navigation"
   | "Custom";
 
-export type BlockFieldType = "text" | "textarea" | "link" | "image" | "repeater" | "embed" | "code";
+export type BlockFieldType =
+  | "text"
+  | "textarea"
+  | "link"
+  | "image"
+  | "repeater"
+  | "embed"
+  | "code"
+  | "select";
 
 export type BlockFieldSchema = {
   key: string;
   label: string;
   type: BlockFieldType;
+  options?: string[];
   required?: boolean;
   maxItems?: number;
   maxLength?: number;

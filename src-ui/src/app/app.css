@@ -3005,6 +3005,10 @@ button.style-field-status-dot {
   opacity: 0.6;
 }
 
+.canvas-block-shell.drag-source-shell {
+  display: none;
+}
+
 .site-block-toolbar {
   background: #eef2fb;
   border-bottom: 1px solid #d8deef;
@@ -3560,6 +3564,10 @@ textarea:focus-visible {
   transition:
     box-shadow 0.14s ease,
     background-color 0.14s ease;
+}
+
+.preview-primitive-node p {
+  white-space: pre-wrap;
 }
 
 .preview-primitive-node.selected {
@@ -4268,6 +4276,7 @@ textarea:focus-visible {
 }
 
 .site-block-feature-grid,
+.site-block-image-text,
 .site-block-services-list,
 .site-block-testimonials,
 .site-block-pricing,

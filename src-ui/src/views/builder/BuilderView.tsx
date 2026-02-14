@@ -297,6 +297,7 @@ export function BuilderView() {
   const [activePopover, setActivePopover] = useState<"page" | "device" | "route" | null>(null);
   const [routeDraft, setRouteDraft] = useState(builder.selectedPage.route);
   const [newPageModalOpen, setNewPageModalOpen] = useState(false);
+  const [deletePageModalOpen, setDeletePageModalOpen] = useState(false);
   const [newPageTitle, setNewPageTitle] = useState("");
   const [newPageSlug, setNewPageSlug] = useState("");
   const [newPageError, setNewPageError] = useState<string | null>(null);
@@ -379,6 +380,7 @@ export function BuilderView() {
       if (event.key === "Escape") {
         setActivePopover(null);
         setNewPageModalOpen(false);
+        setDeletePageModalOpen(false);
         setDeleteBlockTarget(null);
         return;
       }
@@ -550,12 +552,28 @@ export function BuilderView() {
     previewDeviceWidthCap,
   ]);
 
+  const activeDragPayload = activePointerDrag?.payload;
   const draggedCatalogBlock =
-    activePointerDrag?.payload.kind === "catalog"
-      ? blockDefinitionById(activePointerDrag.payload.blockType)
+    activeDragPayload?.kind === "catalog"
+      ? blockDefinitionById(activeDragPayload.blockType)
       : undefined;
-  const isCatalogDragActive = Boolean(draggedCatalogBlock);
-  const isCatalogDragOverPreview = isCatalogDragActive && dropIndex !== null;
+  const draggedCanvasBlock =
+    activeDragPayload?.kind === "canvas"
+      ? builder.selectedPage.blocks.find((entry) => entry.id === activeDragPayload.blockId)
+      : undefined;
+  const draggedCanvasBlockDefinition = draggedCanvasBlock
+    ? blockDefinitionById(draggedCanvasBlock.type)
+    : undefined;
+  const draggedGhostMeta = draggedCatalogBlock
+    ? { label: draggedCatalogBlock.label, category: draggedCatalogBlock.category }
+    : draggedCanvasBlockDefinition
+      ? {
+          label: draggedCanvasBlockDefinition.label,
+          category: draggedCanvasBlockDefinition.category,
+        }
+      : null;
+  const isPointerDragActive = Boolean(activePointerDrag && draggedGhostMeta);
+  const isPointerDragOverPreview = isPointerDragActive && dropIndex !== null;
 
   const readSectionSpacing = (key: SectionStyleKey, shell: HTMLElement): number => {
     const section = shell.querySelector<HTMLElement>(".site-block");
@@ -684,7 +702,9 @@ export function BuilderView() {
 
   const resolveDropIndex = (event: DragEvent<HTMLDivElement>): number => {
     const shells = Array.from(
-      event.currentTarget.querySelectorAll<HTMLElement>(".canvas-block-shell")
+      event.currentTarget.querySelectorAll<HTMLElement>(
+        ".canvas-block-shell:not(.drag-source-shell)"
+      )
     );
     if (shells.length === 0) {
       return 0;
@@ -693,24 +713,28 @@ export function BuilderView() {
     for (let index = 0; index < shells.length; index += 1) {
       const rect = shells[index].getBoundingClientRect();
       if (pointerY < rect.top + rect.height / 2) {
-        return index;
+        const originalIndex = Number.parseInt(shells[index].dataset.blockIndex ?? "", 10);
+        return Number.isNaN(originalIndex) ? index : originalIndex;
       }
     }
-    return shells.length;
+    return builder.selectedPage.blocks.length;
   };
 
   const resolveDropIndexFromContainer = (container: HTMLElement, pointerY: number): number => {
-    const shells = Array.from(container.querySelectorAll<HTMLElement>(".canvas-block-shell"));
+    const shells = Array.from(
+      container.querySelectorAll<HTMLElement>(".canvas-block-shell:not(.drag-source-shell)")
+    );
     if (shells.length === 0) {
       return 0;
     }
     for (let index = 0; index < shells.length; index += 1) {
       const rect = shells[index].getBoundingClientRect();
       if (pointerY < rect.top + rect.height / 2) {
-        return index;
+        const originalIndex = Number.parseInt(shells[index].dataset.blockIndex ?? "", 10);
+        return Number.isNaN(originalIndex) ? index : originalIndex;
       }
     }
-    return shells.length;
+    return builder.selectedPage.blocks.length;
   };
 
   const applyDrop = (event: DragEvent<HTMLDivElement>, index: number) => {
@@ -1115,7 +1139,7 @@ export function BuilderView() {
           <IconButton
             label="Delete Page"
             tone="danger"
-            onClick={() => builder.deletePage()}
+            onClick={() => setDeletePageModalOpen(true)}
             icon={
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 7h16M9 7V5h6v2M8 7l1 12h6l1-12" />
@@ -1184,8 +1208,8 @@ export function BuilderView() {
                 ref={previewPageRef}
                 className={`site-preview-page breakpoint-${previewBreakpoint}${
                   builder.selectedPage.blocks.length === 0 ? " empty-page" : ""
-                }${isCatalogDragActive ? " catalog-dragging" : ""}${
-                  isCatalogDragOverPreview ? " catalog-drag-over" : ""
+                }${isPointerDragActive ? " catalog-dragging" : ""}${
+                  isPointerDragOverPreview ? " catalog-drag-over" : ""
                 }`}
                 style={previewThemeVars}
                 onDragOver={interactionMode === "edit" ? handlePreviewDragOver : undefined}
@@ -1202,20 +1226,27 @@ export function BuilderView() {
                 }}
                 onDropCapture={interactionMode === "edit" ? handlePreviewDrop : undefined}
               >
-                {interactionMode === "edit" && isCatalogDragActive ? (
+                {interactionMode === "edit" && isPointerDragActive ? (
                   <div className="site-preview-drop-hint-layer">
                     <div
-                      className={`site-preview-drop-hint${isCatalogDragOverPreview ? " active" : ""}`}
+                      className={`site-preview-drop-hint${isPointerDragOverPreview ? " active" : ""}`}
                     >
                       <span className="dot" />
-                      {isCatalogDragOverPreview
-                        ? `Release to add ${draggedCatalogBlock?.label ?? "block"}`
-                        : `Drag ${draggedCatalogBlock?.label ?? "block"} into the canvas`}
+                      {isPointerDragOverPreview
+                        ? activePointerDrag?.payload.kind === "canvas"
+                          ? `Release to move ${draggedGhostMeta?.label ?? "section"}`
+                          : `Release to add ${draggedGhostMeta?.label ?? "block"}`
+                        : activePointerDrag?.payload.kind === "canvas"
+                          ? `Drag ${draggedGhostMeta?.label ?? "section"} to reorder`
+                          : `Drag ${draggedGhostMeta?.label ?? "block"} into the canvas`}
                     </div>
                   </div>
                 ) : null}
                 {builder.selectedPage.blocks.map((block, index) => {
                   const sectionGuide = sectionSpacingFromOverrides(block, previewBreakpoint);
+                  const isDraggedCanvasSource =
+                    activePointerDrag?.payload.kind === "canvas" &&
+                    activePointerDrag.payload.blockId === block.id;
                   const hasPrimitiveSelectionInBlock = builder.state.selectedPrimitivePaths.some(
                     (target) => decodePrimitiveTarget(target).blockId === block.id
                   );
@@ -1226,7 +1257,11 @@ export function BuilderView() {
                     .filter((target) => target.blockId === block.id)
                     .map((target) => target.primitivePath);
                   return (
-                    <div key={block.id} className="canvas-block-shell">
+                    <div
+                      key={block.id}
+                      className={`canvas-block-shell${isDraggedCanvasSource ? " drag-source-shell" : ""}`}
+                      data-block-index={index}
+                    >
                       <div
                         className={`canvas-insert-indicator${dropIndex === index ? " active" : ""}`}
                       />
@@ -1464,7 +1499,7 @@ export function BuilderView() {
           </div>
         </div>
       </div>
-      {draggedCatalogBlock && activePointerDrag ? (
+      {draggedGhostMeta && activePointerDrag ? (
         <div
           className="builder-drag-ghost"
           style={{
@@ -1480,8 +1515,8 @@ export function BuilderView() {
             <span />
           </span>
           <span className="builder-drag-ghost-meta">
-            <strong>{draggedCatalogBlock.label}</strong>
-            <small>{draggedCatalogBlock.category}</small>
+            <strong>{draggedGhostMeta.label}</strong>
+            <small>{draggedGhostMeta.category}</small>
           </span>
         </div>
       ) : null}
@@ -1544,6 +1579,37 @@ export function BuilderView() {
               </button>
               <button className="primary-btn" onClick={createNewPageFromModal}>
                 Create Page
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deletePageModalOpen ? (
+        <div className="modal-scrim" role="presentation">
+          <div
+            className="modal-card"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-page-title"
+          >
+            <h2 id="delete-page-title">Delete page?</h2>
+            <p className="modal-copy">
+              This will permanently remove <strong>{builder.selectedPage.title}</strong> from the
+              project.
+            </p>
+            <div className="popover-actions">
+              <button className="secondary-btn" onClick={() => setDeletePageModalOpen(false)}>
+                Cancel
+              </button>
+              <button
+                className="danger-btn"
+                onClick={() => {
+                  builder.deletePage();
+                  setDeletePageModalOpen(false);
+                }}
+              >
+                Delete Page
               </button>
             </div>
           </div>

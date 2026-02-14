@@ -1,6 +1,9 @@
 import type { BlockCatalogEntry } from "./block-entry";
 import { boundedCount, fieldOrLegacySplit, makeCardFields, text } from "./_shared";
 
+const PRICING_PLAN_DEFAULTS = ["Starter", "Growth", "Scale", "Enterprise", "Custom", "Plus"];
+const PRICING_PRICE_DEFAULTS = ["$19/mo", "$49/mo", "$99/mo", "$199/mo", "Contact Us", "$29/mo"];
+
 export const block: BlockCatalogEntry = {
   id: "pricing",
   label: "Pricing",
@@ -25,7 +28,7 @@ export const block: BlockCatalogEntry = {
     {
       type: "heading",
       props: {
-        value: text(instance, "sectionTitle", "Lorem Ipsum"),
+        value: text(instance, "sectionTitle", "Pricing"),
         level: "h2",
         editorFieldKey: "sectionTitle",
       },
@@ -47,7 +50,7 @@ export const block: BlockCatalogEntry = {
                   "plans",
                   index,
                   0,
-                  "Lorem"
+                  PRICING_PLAN_DEFAULTS[index] ?? "Plan"
                 ),
                 level: "h3",
                 editorFieldKey: `card${index + 1}Plan`,
@@ -62,7 +65,7 @@ export const block: BlockCatalogEntry = {
                   "plans",
                   index,
                   1,
-                  "Ipsum"
+                  PRICING_PRICE_DEFAULTS[index] ?? "$0/mo"
                 ),
                 level: "h2",
                 editorFieldKey: `card${index + 1}Price`,

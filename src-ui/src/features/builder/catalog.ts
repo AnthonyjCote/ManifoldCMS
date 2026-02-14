@@ -8,6 +8,7 @@ type BlockModule = {
 
 const BLOCK_ORDER: BlockType[] = [
   "hero",
+  "image_text",
   "feature_grid",
   "services_list",
   "cta",

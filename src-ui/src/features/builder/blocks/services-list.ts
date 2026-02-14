@@ -31,7 +31,7 @@ export const block: BlockCatalogEntry = {
     {
       type: "heading",
       props: {
-        value: text(instance, "sectionTitle", "Lorem Ipsum"),
+        value: text(instance, "sectionTitle", "Services List"),
         level: "h2",
         editorFieldKey: "sectionTitle",
       },
