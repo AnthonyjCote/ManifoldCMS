@@ -19,6 +19,18 @@ export type ThemeTokens = {
   buttonAltText: string;
   cardBackground: string;
   cardBorder: string;
+  fontFamilyBody: string;
+  fontFamilyHeading: string;
+  fontFamilyMono: string;
+  fontWeightBody: string;
+  fontWeightHeading: string;
+  fontSizeBody: string;
+  lineHeightBody: string;
+  fontSizeH1: string;
+  fontSizeH2: string;
+  fontSizeH3: string;
+  lineHeightHeading: string;
+  letterSpacingHeading: string;
 };
 
 export type ThemeRecord = {
@@ -44,6 +56,44 @@ export type ThemeState = {
   snapshots: ThemeSnapshot[];
 };
 
+export const DEFAULT_THEME_TOKENS: ThemeTokens = {
+  baseColor: "#0f1726",
+  accentColor: "#8ea3c8",
+  altColor: "#304669",
+  linkColor: "#a7c4f1",
+  canvasBackground: "#0b0f15",
+  surfaceBackground: "#111825",
+  mutedBackground: "#0e1420",
+  textPrimary: "#e6eaf4",
+  textSecondary: "#b9c5e0",
+  headingColor: "#f5f7ff",
+  buttonBackground: "#0f1726",
+  buttonText: "#f6f9ff",
+  buttonAltBackground: "#f4f8ff",
+  buttonAltText: "#17243a",
+  cardBackground: "#ffffff",
+  cardBorder: "#dce3f2",
+  fontFamilyBody: '"Manrope", "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif',
+  fontFamilyHeading: '"Manrope", "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif',
+  fontFamilyMono: 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace',
+  fontWeightBody: "400",
+  fontWeightHeading: "700",
+  fontSizeBody: "19px",
+  lineHeightBody: "1.6",
+  fontSizeH1: "64px",
+  fontSizeH2: "44px",
+  fontSizeH3: "24px",
+  lineHeightHeading: "1.08",
+  letterSpacingHeading: "-0.02em",
+};
+
+export function normalizeThemeTokens(input: Partial<ThemeTokens> | undefined): ThemeTokens {
+  return {
+    ...DEFAULT_THEME_TOKENS,
+    ...(input ?? {}),
+  };
+}
+
 export function themeToCssVars(tokens: ThemeTokens): CSSProperties {
   return {
     ["--theme-base-color" as string]: tokens.baseColor,
@@ -62,5 +112,17 @@ export function themeToCssVars(tokens: ThemeTokens): CSSProperties {
     ["--theme-button-alt-text" as string]: tokens.buttonAltText,
     ["--theme-card-bg" as string]: tokens.cardBackground,
     ["--theme-card-border" as string]: tokens.cardBorder,
+    ["--theme-font-family-body" as string]: tokens.fontFamilyBody,
+    ["--theme-font-family-heading" as string]: tokens.fontFamilyHeading,
+    ["--theme-font-family-mono" as string]: tokens.fontFamilyMono,
+    ["--theme-font-weight-body" as string]: tokens.fontWeightBody,
+    ["--theme-font-weight-heading" as string]: tokens.fontWeightHeading,
+    ["--theme-font-size-body" as string]: tokens.fontSizeBody,
+    ["--theme-line-height-body" as string]: tokens.lineHeightBody,
+    ["--theme-font-size-h1" as string]: tokens.fontSizeH1,
+    ["--theme-font-size-h2" as string]: tokens.fontSizeH2,
+    ["--theme-font-size-h3" as string]: tokens.fontSizeH3,
+    ["--theme-line-height-heading" as string]: tokens.lineHeightHeading,
+    ["--theme-letter-spacing-heading" as string]: tokens.letterSpacingHeading,
   };
 }

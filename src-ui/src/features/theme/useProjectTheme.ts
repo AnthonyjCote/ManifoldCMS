@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { BUNDLED_THEMES } from "./library";
-import type { ThemeRecord, ThemeState, ThemeTokens } from "./types";
+import { normalizeThemeTokens, type ThemeRecord, type ThemeState, type ThemeTokens } from "./types";
 
 const THEME_STATE_KEY = "manifold.project-theme.v1";
 
@@ -27,14 +27,19 @@ function cloneTheme(
     source,
     createdAt: stamp,
     updatedAt: stamp,
-    tokens: { ...theme.tokens },
+    tokens: normalizeThemeTokens(theme.tokens),
   };
 }
 
 function coerceState(raw: unknown): ThemeState {
   const input = (raw as Partial<ThemeState>) ?? {};
   const existingThemes = Array.isArray(input.themes) ? input.themes : [];
-  const merged = [...BUNDLED_THEMES.map((theme) => ({ ...theme, tokens: { ...theme.tokens } }))];
+  const merged = [
+    ...BUNDLED_THEMES.map((theme) => ({
+      ...theme,
+      tokens: normalizeThemeTokens(theme.tokens),
+    })),
+  ];
   existingThemes.forEach((theme) => {
     if (!theme || typeof theme !== "object") {
       return;
@@ -46,7 +51,7 @@ function coerceState(raw: unknown): ThemeState {
     if (bundledIndex >= 0) {
       return;
     }
-    merged.push({ ...typed, tokens: { ...typed.tokens } });
+    merged.push({ ...typed, tokens: normalizeThemeTokens(typed.tokens) });
   });
 
   const defaultActive = merged[0]?.id ?? "";
@@ -187,7 +192,7 @@ export function useProjectTheme(projectPath: string | undefined): {
           ? {
               ...theme,
               updatedAt: nowIso(),
-              tokens: updater({ ...theme.tokens }),
+              tokens: normalizeThemeTokens(updater({ ...theme.tokens })),
             }
           : theme
       );

@@ -103,22 +103,30 @@ export function ThemeTokenEditor({
                     {group.fields.map((field) => (
                       <label key={field.key} className="inspector-field compact">
                         <span>{field.label}</span>
-                        <div className="style-color-row">
-                          <button
-                            type="button"
-                            className="style-color-swatch-btn"
-                            style={{ background: tokens[field.key] }}
-                            aria-hidden="true"
-                            tabIndex={-1}
-                          >
-                            <span className="style-color-swatch-inner" />
-                          </button>
+                        {field.kind === "color" ? (
+                          <div className="style-color-row">
+                            <button
+                              type="button"
+                              className="style-color-swatch-btn"
+                              style={{ background: tokens[field.key] }}
+                              aria-hidden="true"
+                              tabIndex={-1}
+                            >
+                              <span className="style-color-swatch-inner" />
+                            </button>
+                            <input
+                              className="compact-input"
+                              value={tokens[field.key]}
+                              onChange={(event) => onChange(field.key, event.target.value)}
+                            />
+                          </div>
+                        ) : (
                           <input
                             className="compact-input"
                             value={tokens[field.key]}
                             onChange={(event) => onChange(field.key, event.target.value)}
                           />
-                        </div>
+                        )}
                       </label>
                     ))}
                   </div>
