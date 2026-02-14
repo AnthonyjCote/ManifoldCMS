@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { BUNDLED_THEMES } from "./library";
 import { normalizeThemeTokens, type ThemeRecord, type ThemeState, type ThemeTokens } from "./types";
@@ -102,21 +102,30 @@ export function useProjectTheme(projectPath: string | undefined): {
   duplicateTheme: (themeId: string) => void;
 } {
   const [state, setState] = useState<ThemeState>(() => readThemeState(projectPath));
+  const stateRef = useRef<ThemeState>(state);
 
   useEffect(() => {
-    setState(readThemeState(projectPath));
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    const next = readThemeState(projectPath);
+    stateRef.current = next;
+    queueMicrotask(() => {
+      setState(next);
+    });
   }, [projectPath]);
 
   const hasProject = Boolean(projectPath);
 
   const updateState = (updater: (prev: ThemeState) => ThemeState) => {
-    setState((prev) => {
-      const next = coerceState(updater(prev));
-      if (projectPath) {
-        writeThemeState(projectPath, next);
-      }
-      return next;
-    });
+    const base = stateRef.current;
+    const next = coerceState(updater(base));
+    stateRef.current = next;
+    if (projectPath) {
+      writeThemeState(projectPath, next);
+    }
+    setState(next);
   };
 
   const activeTheme = useMemo(

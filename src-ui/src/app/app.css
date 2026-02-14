@@ -700,6 +700,16 @@ button.style-field-status-dot {
   box-shadow: 0 0 0 3px rgba(241, 193, 74, 0.2);
 }
 
+.style-field-status-dot.theme {
+  background: #b57aff;
+  box-shadow: 0 0 0 3px rgba(181, 122, 255, 0.2);
+}
+
+.style-field-status-dot.block {
+  background: #61a0ff;
+  box-shadow: 0 0 0 3px rgba(97, 160, 255, 0.2);
+}
+
 .style-field-status-dot.uninitialized {
   background: transparent;
   border: 1px solid #788399;
@@ -1159,6 +1169,20 @@ button.style-field-status-dot {
   --status-tone-text: #f9e6ae;
   --status-tone-border: rgba(241, 193, 74, 0.5);
   --status-tone-bg: rgba(48, 38, 17, 0.9);
+}
+
+.status-tone-theme {
+  --status-tone-dot: #b57aff;
+  --status-tone-text: #e5d3ff;
+  --status-tone-border: rgba(181, 122, 255, 0.5);
+  --status-tone-bg: rgba(37, 23, 54, 0.9);
+}
+
+.status-tone-block {
+  --status-tone-dot: #61a0ff;
+  --status-tone-text: #d5e8ff;
+  --status-tone-border: rgba(97, 160, 255, 0.5);
+  --status-tone-bg: rgba(18, 31, 52, 0.9);
 }
 
 .status-tone-uninitialized {
@@ -3793,7 +3817,7 @@ textarea:focus-visible {
   color: var(--theme-text-secondary);
 }
 
-.site-preview-page a {
+.site-preview-page a:not(.hero-cta) {
   color: var(--theme-link-color);
 }
 

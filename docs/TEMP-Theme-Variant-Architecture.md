@@ -333,10 +333,10 @@ AI must be able to:
 1. Theme schema contract
 
 - [ ] Define `theme.json` schema and validation
-- [ ] Add required color token fields (`base`, `accent`, `alt`, `link`)
-- [ ] Add typography/spacing/radius/border/shadow tokens
+- [x] Add required color token fields (`base`, `accent`, `alt`, `link`)
+- [x] Add typography/spacing/radius/border/shadow tokens
 - [ ] Add responsive token override support
-- [ ] Add theme metadata fields for versioning/snapshot lineage (id, source, createdAt, updatedAt)
+- [x] Add theme metadata fields for versioning/snapshot lineage (id, source, createdAt, updatedAt)
 
 2. Variant registry
 
@@ -351,8 +351,8 @@ AI must be able to:
 - [ ] Apply variant classes in preview renderer
 - [ ] Keep variant assignment separate from inline style overrides
 - [ ] Ensure theme-applied classes are always emitted as `theme-*` names
-- [ ] Add right-drawer Theme tab for live token editing with immediate preview updates
-- [ ] Build Theme tab using shared Style/Blocks tab UI primitives (no bespoke one-off theme editor shell)
+- [x] Add right-drawer Theme tab for live token editing with immediate preview updates
+- [x] Build Theme tab using shared Style/Blocks tab UI primitives (no bespoke one-off theme editor shell)
 
 4. Block integration
 
@@ -362,7 +362,7 @@ AI must be able to:
 
 5. Export integration
 
-- [ ] Generate theme CSS variables from tokens
+- [x] Generate theme CSS variables from tokens
 - [ ] Generate variant class rules from registry
 - [ ] Emit minimal inline style overrides only when explicit
 - [ ] Verify preview-to-export parity snapshots
@@ -378,23 +378,23 @@ AI must be able to:
 - [ ] Cross-theme visual QA for all v1 blocks
 - [ ] Responsive QA for all viewport scopes
 - [ ] Accessibility spot-checks for contrast and heading hierarchy
-- [ ] Update `TEMP-Priority-Execution-Plan.md` with completion status
+- [x] Update `TEMP-Priority-Execution-Plan.md` with completion status
 
 8. Theme library safety workflow
 
-- [ ] Build top-level Theme Library page with canonical sample-preview cards
-- [ ] Implement `Apply` flow that auto-snapshots current theme before apply
-- [ ] Add restore path for last pre-apply snapshot (minimum)
+- [x] Build top-level Theme Library page with canonical sample-preview cards
+- [x] Implement `Apply` flow that auto-snapshots current theme before apply
+- [x] Add restore path for last pre-apply snapshot (minimum)
 - [ ] Log theme apply events with source/target IDs for auditability
-- [ ] Bundle first V1 theme set (6 baseline themes) as JSON packs
-- [ ] Validate switch/edit behavior for bundled default vs user-clone versions
-- [ ] Build apply modal with `Merge (Recommended)` and `Replace` options.
-- [ ] Add secondary “Are you sure?” confirmation flow for `Replace`.
+- [x] Bundle first V1 theme set (6 baseline themes) as template modules (auto-discovered in `/features/theme/templates`).
+- [x] Validate switch/edit behavior for bundled default vs user-clone versions
+- [x] Build apply modal with `Merge (Recommended)` and `Replace` options.
+- [x] Add secondary “Are you sure?” confirmation flow for `Replace`.
 
 9. Style-tab/theme interaction rules
 
-- [ ] Treat theme-resolved fields as inherited-like in the Style tab.
-- [ ] On local edit of theme-resolved fields, classify as `override` at edited scope.
+- [x] Treat theme-resolved fields as inherited-like in the Style tab.
+- [x] On local edit of theme-resolved fields, classify as `override` at edited scope.
 - [ ] Add jump-to-theme-source action from theme tooltip.
 - [ ] Ensure preview/export continue to use Style-tab explicit values as final authority.
 

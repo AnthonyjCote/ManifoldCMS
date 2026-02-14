@@ -69,19 +69,19 @@ Reference doc:
 
 - `docs/TEMP-Theme-Variant-Architecture.md` (source of truth for P0.3 schema, variant model, and implementation steps)
 
-- [ ] Define default v1 theme tokens (type scale, colors, radius, borders, shadows, spacing).
-- [ ] Make every block consume theme tokens by default.
+- [x] Define default v1 theme tokens (type scale, colors, radius, borders, shadows, spacing).
+- [x] Make every block consume theme tokens by default.
 - [ ] Modernize baseline styling for all blocks to “premium” quality.
-- [ ] Ensure mobile responsive behavior for every block type.
+- [x] Ensure mobile responsive behavior for every block type.
 - [ ] Add block provenance metadata for classifier system so preset block defaults can be labeled as `block` source.
 - [ ] Enforce explicit theme class naming namespace (`theme-*`) for audit clarity vs user-authored classes.
-- [ ] Enforce DRY Theme-tab UI implementation by reusing Style/Blocks tab structure, components, and styling patterns.
+- [x] Enforce DRY Theme-tab UI implementation by reusing Style/Blocks tab structure, components, and styling patterns.
 - [ ] Preserve dual workflow goals in P0.3:
   - fast path (`pick/generate theme -> drag/drop -> content -> ship`)
   - advanced path (micro-granular CSS control retained).
 - [ ] Prepare class assignment model so blocks/primitives can later select from theme classes + user classes (future Classes tab integration).
-- [ ] Bundle and ship first V1 Theme Library set (6 baseline themes) for switch/edit testing.
-- [ ] Validate theme switch safety + clone/edit workflow across bundled default vs user-clone versions.
+- [x] Bundle and ship first V1 Theme Library set (6 baseline themes) for switch/edit testing.
+- [x] Validate theme switch safety + clone/edit workflow across bundled default vs user-clone versions.
 
 Definition of done:
 
@@ -148,13 +148,13 @@ Definition of done:
 ### P2.1 Theme Tab + Theme Editor
 
 - [ ] Formalize theme JSON schema for storage/import/export.
-- [ ] Add builder right-drawer Theme tab for live theme edits during page building.
-- [ ] Define core theme controls: typography, heading/body scales, color roles, buttons, borders, corners, shadows.
-- [ ] Add bundled theme packs shipped with app as JSON files.
+- [x] Add builder right-drawer Theme tab for live theme edits during page building.
+- [x] Define core theme controls: typography, heading/body scales, color roles, buttons, borders, corners, shadows.
+- [x] Add bundled theme packs shipped with app as template modules (auto-discovered from `/features/theme/templates`).
 - [ ] Add save/export/import theme workflow.
-- [ ] Add manual theme creation and editing page/view.
+- [x] Add manual theme creation and editing page/view.
 - [ ] Add theme provenance metadata so fields resolved from theme are classified as `theme` source.
-- [ ] Surface `theme` source classifier (purple) in Style tab and inspect modal filters once provenance is stable.
+- [x] Surface `theme` source classifier (purple) in Style tab (inspect modal still pending).
 
 Definition of done:
 

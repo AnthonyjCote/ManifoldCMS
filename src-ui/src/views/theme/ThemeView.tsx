@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useActiveProjectSession } from "../../features/project-launcher/session";
 import { themeToCssVars } from "../../features/theme/types";
 import { useProjectTheme, type ThemeApplyMode } from "../../features/theme/useProjectTheme";
+import { useViewModeStore } from "../../state/useViewModeStore";
 
 function ThemePreviewCard({
   name,
@@ -49,6 +50,7 @@ function ThemePreviewCard({
 
 export function ThemeView() {
   const projectSession = useActiveProjectSession();
+  const { setViewMode } = useViewModeStore();
   const { hasProject, state, activeTheme, applyTheme, duplicateTheme, restoreLastSnapshot } =
     useProjectTheme(projectSession?.project.path);
   const [pendingThemeId, setPendingThemeId] = useState<string | null>(null);
@@ -78,6 +80,7 @@ export function ThemeView() {
     applyTheme(pendingThemeId, mode);
     setPendingThemeId(null);
     setReplaceConfirm(false);
+    setViewMode("builder");
   };
 
   return (
