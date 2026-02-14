@@ -99,12 +99,14 @@ export function InspectorTab() {
 
   if (!block) {
     return (
-      <div className="drawer-panel builder-empty-notice">
-        <span className="builder-empty-pill">
-          <span className="dot" />
-          Content
-        </span>
-        <p>Select a block to inspect.</p>
+      <div className="drawer-tab-inner">
+        <div className="drawer-panel builder-empty-notice">
+          <span className="builder-empty-pill">
+            <span className="dot" />
+            Content
+          </span>
+          <p>Select a block to inspect.</p>
+        </div>
       </div>
     );
   }
@@ -148,113 +150,117 @@ export function InspectorTab() {
   const remainingStandardFields = standardFields.filter((field) => !field.key.endsWith("Columns"));
 
   return (
-    <div className="drawer-stack">
-      <div className="drawer-inline-controls">
-        <label>
-          Visibility
-          <select
-            value={block.visibility}
-            onChange={(event) =>
-              builder.setBlockVisibility(event.target.value as "visible" | "hidden")
-            }
-          >
-            <option value="visible">Visible</option>
-            <option value="hidden">Hidden</option>
-          </select>
-        </label>
-        <label>
-          Variant
-          <input
-            value={block.styleOverrides.variant}
-            onChange={(event) => builder.setBlockVariant(event.target.value)}
-          />
-        </label>
-      </div>
-      <div className="drawer-inline-controls">
-        <button className="secondary-btn" onClick={() => builder.moveBlock("up")}>
-          Move Up
-        </button>
-        <button className="secondary-btn" onClick={() => builder.moveBlock("down")}>
-          Move Down
-        </button>
-        <button className="danger-btn" onClick={() => builder.removeBlock()}>
-          Remove
-        </button>
-      </div>
-
-      {columnFields.map((field) => (
-        <label key={field.key} className="inspector-field">
-          <span>
-            {field.label}
-            {field.required ? " *" : ""}
-          </span>
-          {renderFieldInput(field, String(block.props[field.key] ?? ""), (next) =>
-            builder.setBlockField(field.key, next)
-          )}
-          <small>{fieldHint(field.type, field.maxItems, field.maxLength)}</small>
-        </label>
-      ))}
-
-      {cardCountField ? (
-        <label className="inspector-field">
-          <span>
-            {cardCountField.label}
-            {cardCountField.required ? " *" : ""}
-          </span>
-          {renderFieldInput(cardCountField, String(block.props[cardCountField.key] ?? ""), (next) =>
-            builder.setBlockField(cardCountField.key, next)
-          )}
-          <small>
-            {fieldHint(cardCountField.type, cardCountField.maxItems, cardCountField.maxLength)}
-          </small>
-        </label>
-      ) : null}
-
-      {cardCountField && enabledCardCount > 0 ? (
-        <div className="inspector-card-repeater">
-          {Array.from({ length: enabledCardCount }).map((_, index) => {
-            const cardIndex = index + 1;
-            const fields = groupedCardFields.get(cardIndex) ?? [];
-            if (fields.length === 0) {
-              return null;
-            }
-            return (
-              <section key={cardIndex} className="inspector-card-item">
-                <h4>Card {cardIndex}</h4>
-                <div className="inspector-card-grid">
-                  {fields.map((field) => (
-                    <label key={field.key} className="inspector-field compact">
-                      <span>
-                        {field.label.replace(new RegExp(`^Card\\s+${cardIndex}\\s+`), "")}
-                        {field.required ? " *" : ""}
-                      </span>
-                      {renderFieldInput(
-                        field,
-                        String(block.props[field.key] ?? ""),
-                        (next) => builder.setBlockField(field.key, next),
-                        true
-                      )}
-                    </label>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
+    <div className="drawer-tab-inner">
+      <div className="drawer-stack">
+        <div className="drawer-inline-controls">
+          <label>
+            Visibility
+            <select
+              value={block.visibility}
+              onChange={(event) =>
+                builder.setBlockVisibility(event.target.value as "visible" | "hidden")
+              }
+            >
+              <option value="visible">Visible</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </label>
+          <label>
+            Variant
+            <input
+              value={block.styleOverrides.variant}
+              onChange={(event) => builder.setBlockVariant(event.target.value)}
+            />
+          </label>
         </div>
-      ) : null}
+        <div className="drawer-inline-controls">
+          <button className="secondary-btn" onClick={() => builder.moveBlock("up")}>
+            Move Up
+          </button>
+          <button className="secondary-btn" onClick={() => builder.moveBlock("down")}>
+            Move Down
+          </button>
+          <button className="danger-btn" onClick={() => builder.removeBlock()}>
+            Remove
+          </button>
+        </div>
 
-      {remainingStandardFields.map((field) => (
-        <label key={field.key} className="inspector-field">
-          <span>
-            {field.label}
-            {field.required ? " *" : ""}
-          </span>
-          {renderFieldInput(field, String(block.props[field.key] ?? ""), (next) =>
-            builder.setBlockField(field.key, next)
-          )}
-          <small>{fieldHint(field.type, field.maxItems, field.maxLength)}</small>
-        </label>
-      ))}
+        {columnFields.map((field) => (
+          <label key={field.key} className="inspector-field">
+            <span>
+              {field.label}
+              {field.required ? " *" : ""}
+            </span>
+            {renderFieldInput(field, String(block.props[field.key] ?? ""), (next) =>
+              builder.setBlockField(field.key, next)
+            )}
+            <small>{fieldHint(field.type, field.maxItems, field.maxLength)}</small>
+          </label>
+        ))}
+
+        {cardCountField ? (
+          <label className="inspector-field">
+            <span>
+              {cardCountField.label}
+              {cardCountField.required ? " *" : ""}
+            </span>
+            {renderFieldInput(
+              cardCountField,
+              String(block.props[cardCountField.key] ?? ""),
+              (next) => builder.setBlockField(cardCountField.key, next)
+            )}
+            <small>
+              {fieldHint(cardCountField.type, cardCountField.maxItems, cardCountField.maxLength)}
+            </small>
+          </label>
+        ) : null}
+
+        {cardCountField && enabledCardCount > 0 ? (
+          <div className="inspector-card-repeater">
+            {Array.from({ length: enabledCardCount }).map((_, index) => {
+              const cardIndex = index + 1;
+              const fields = groupedCardFields.get(cardIndex) ?? [];
+              if (fields.length === 0) {
+                return null;
+              }
+              return (
+                <section key={cardIndex} className="inspector-card-item">
+                  <h4>Card {cardIndex}</h4>
+                  <div className="inspector-card-grid">
+                    {fields.map((field) => (
+                      <label key={field.key} className="inspector-field compact">
+                        <span>
+                          {field.label.replace(new RegExp(`^Card\\s+${cardIndex}\\s+`), "")}
+                          {field.required ? " *" : ""}
+                        </span>
+                        {renderFieldInput(
+                          field,
+                          String(block.props[field.key] ?? ""),
+                          (next) => builder.setBlockField(field.key, next),
+                          true
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {remainingStandardFields.map((field) => (
+          <label key={field.key} className="inspector-field">
+            <span>
+              {field.label}
+              {field.required ? " *" : ""}
+            </span>
+            {renderFieldInput(field, String(block.props[field.key] ?? ""), (next) =>
+              builder.setBlockField(field.key, next)
+            )}
+            <small>{fieldHint(field.type, field.maxItems, field.maxLength)}</small>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }

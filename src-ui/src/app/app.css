@@ -470,6 +470,10 @@ body,
   scrollbar-color: #3a424f #121419;
 }
 
+.drawer-tab-inner {
+  padding: 12px;
+}
+
 .drawer-panel {
   border: 1px dashed #4d5664;
   border-radius: 10px;
