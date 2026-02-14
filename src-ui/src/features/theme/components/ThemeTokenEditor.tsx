@@ -194,60 +194,69 @@ export function ThemeTokenEditor({
               {!collapsed ? (
                 <div className="drawer-accordion-content">
                   <div className="inspector-card-grid">
-                    {group.fields.map((field) => (
-                      <label
-                        key={field.key}
-                        className={`inspector-field compact${
-                          pulsedTokenKey === field.key ? " theme-token-pulse" : ""
-                        }`}
-                        data-theme-token-key={field.key}
-                      >
-                        <span>{field.label}</span>
-                        {field.kind === "color" ? (
-                          <div className="style-color-row">
-                            <button
-                              type="button"
-                              className={`style-color-swatch-btn${
-                                openColorFieldId === `theme:${String(field.key)}` ? " open" : ""
-                              }`}
-                              style={{ background: tokens[field.key] }}
-                              onClick={(event) => {
-                                const row = event.currentTarget.closest(".style-color-row");
-                                const input =
-                                  row?.querySelector<HTMLInputElement>(
-                                    ".style-color-native-input"
-                                  ) ?? null;
-                                toggleColorField(`theme:${String(field.key)}`, input);
-                              }}
-                              aria-label={`Toggle ${field.label} color picker`}
-                              title={`Toggle ${field.label} color picker`}
-                            >
-                              <span className="style-color-swatch-inner" />
-                            </button>
-                            <input
-                              type="color"
-                              value={tokens[field.key]}
-                              onBlur={() => onColorInputBlur(`theme:${String(field.key)}`)}
-                              onChange={(event) => onChange(field.key, event.target.value)}
-                              className="style-color-native-input"
-                              tabIndex={-1}
-                              aria-hidden="true"
-                            />
-                            <input
-                              className="compact-input"
-                              value={tokens[field.key]}
-                              onChange={(event) => onChange(field.key, event.target.value)}
-                            />
-                          </div>
-                        ) : (
-                          <input
-                            className="compact-input"
-                            value={tokens[field.key]}
-                            onChange={(event) => onChange(field.key, event.target.value)}
-                          />
-                        )}
-                      </label>
-                    ))}
+                    {group.fields.map((field, index) => {
+                      const showSectionHeading =
+                        Boolean(field.section) &&
+                        (index === 0 || group.fields[index - 1]?.section !== field.section);
+                      return (
+                        <div key={field.key} className="theme-token-field-wrap">
+                          {showSectionHeading ? (
+                            <div className="theme-token-subheading">{field.section}</div>
+                          ) : null}
+                          <label
+                            className={`inspector-field compact${
+                              pulsedTokenKey === field.key ? " theme-token-pulse" : ""
+                            }`}
+                            data-theme-token-key={field.key}
+                          >
+                            <span>{field.label}</span>
+                            {field.kind === "color" ? (
+                              <div className="style-color-row">
+                                <button
+                                  type="button"
+                                  className={`style-color-swatch-btn${
+                                    openColorFieldId === `theme:${String(field.key)}` ? " open" : ""
+                                  }`}
+                                  style={{ background: tokens[field.key] }}
+                                  onClick={(event) => {
+                                    const row = event.currentTarget.closest(".style-color-row");
+                                    const input =
+                                      row?.querySelector<HTMLInputElement>(
+                                        ".style-color-native-input"
+                                      ) ?? null;
+                                    toggleColorField(`theme:${String(field.key)}`, input);
+                                  }}
+                                  aria-label={`Toggle ${field.label} color picker`}
+                                  title={`Toggle ${field.label} color picker`}
+                                >
+                                  <span className="style-color-swatch-inner" />
+                                </button>
+                                <input
+                                  type="color"
+                                  value={tokens[field.key]}
+                                  onBlur={() => onColorInputBlur(`theme:${String(field.key)}`)}
+                                  onChange={(event) => onChange(field.key, event.target.value)}
+                                  className="style-color-native-input"
+                                  tabIndex={-1}
+                                  aria-hidden="true"
+                                />
+                                <input
+                                  className="compact-input"
+                                  value={tokens[field.key]}
+                                  onChange={(event) => onChange(field.key, event.target.value)}
+                                />
+                              </div>
+                            ) : (
+                              <input
+                                className="compact-input"
+                                value={tokens[field.key]}
+                                onChange={(event) => onChange(field.key, event.target.value)}
+                              />
+                            )}
+                          </label>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}

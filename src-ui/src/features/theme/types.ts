@@ -17,8 +17,29 @@ export type ThemeTokens = {
   buttonText: string;
   buttonAltBackground: string;
   buttonAltText: string;
+  buttonRadius: string;
+  buttonPaddingX: string;
+  buttonPaddingY: string;
+  buttonPrimaryBorderColor: string;
+  buttonPrimaryBorderWidth: string;
+  buttonPrimaryBorderStyle: string;
+  buttonPrimaryShadow: string;
+  buttonSecondaryBorderColor: string;
+  buttonSecondaryBorderWidth: string;
+  buttonSecondaryBorderStyle: string;
+  buttonSecondaryShadow: string;
+  buttonGhostBackground: string;
+  buttonGhostText: string;
+  buttonGhostBorderColor: string;
+  buttonGhostBorderWidth: string;
+  buttonGhostBorderStyle: string;
+  buttonGhostShadow: string;
   cardBackground: string;
   cardBorder: string;
+  cardBorderWidth: string;
+  cardBorderStyle: string;
+  cardRadius: string;
+  cardShadow: string;
   fontFamilyBody: string;
   fontFamilyHeading: string;
   fontFamilyMono: string;
@@ -71,8 +92,29 @@ export const DEFAULT_THEME_TOKENS: ThemeTokens = {
   buttonText: "#f6f9ff",
   buttonAltBackground: "#f4f8ff",
   buttonAltText: "#17243a",
+  buttonRadius: "999px",
+  buttonPaddingX: "18px",
+  buttonPaddingY: "11px",
+  buttonPrimaryBorderColor: "transparent",
+  buttonPrimaryBorderWidth: "1px",
+  buttonPrimaryBorderStyle: "solid",
+  buttonPrimaryShadow: "none",
+  buttonSecondaryBorderColor: "transparent",
+  buttonSecondaryBorderWidth: "1px",
+  buttonSecondaryBorderStyle: "solid",
+  buttonSecondaryShadow: "none",
+  buttonGhostBackground: "transparent",
+  buttonGhostText: "#f6f9ff",
+  buttonGhostBorderColor: "#dce3f2",
+  buttonGhostBorderWidth: "1px",
+  buttonGhostBorderStyle: "solid",
+  buttonGhostShadow: "none",
   cardBackground: "#ffffff",
   cardBorder: "#dce3f2",
+  cardBorderWidth: "1px",
+  cardBorderStyle: "solid",
+  cardRadius: "14px",
+  cardShadow: "0 8px 24px rgba(16, 24, 40, 0.06)",
   fontFamilyBody: '"Manrope", "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif',
   fontFamilyHeading: '"Manrope", "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif',
   fontFamilyMono: 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace',
@@ -110,8 +152,29 @@ export function themeToCssVars(tokens: ThemeTokens): CSSProperties {
     ["--theme-button-text" as string]: tokens.buttonText,
     ["--theme-button-alt-bg" as string]: tokens.buttonAltBackground,
     ["--theme-button-alt-text" as string]: tokens.buttonAltText,
+    ["--theme-button-radius" as string]: tokens.buttonRadius,
+    ["--theme-button-px" as string]: tokens.buttonPaddingX,
+    ["--theme-button-py" as string]: tokens.buttonPaddingY,
+    ["--theme-button-primary-border-color" as string]: tokens.buttonPrimaryBorderColor,
+    ["--theme-button-primary-border-width" as string]: tokens.buttonPrimaryBorderWidth,
+    ["--theme-button-primary-border-style" as string]: tokens.buttonPrimaryBorderStyle,
+    ["--theme-button-primary-shadow" as string]: tokens.buttonPrimaryShadow,
+    ["--theme-button-secondary-border-color" as string]: tokens.buttonSecondaryBorderColor,
+    ["--theme-button-secondary-border-width" as string]: tokens.buttonSecondaryBorderWidth,
+    ["--theme-button-secondary-border-style" as string]: tokens.buttonSecondaryBorderStyle,
+    ["--theme-button-secondary-shadow" as string]: tokens.buttonSecondaryShadow,
+    ["--theme-button-ghost-bg" as string]: tokens.buttonGhostBackground,
+    ["--theme-button-ghost-text" as string]: tokens.buttonGhostText,
+    ["--theme-button-ghost-border-color" as string]: tokens.buttonGhostBorderColor,
+    ["--theme-button-ghost-border-width" as string]: tokens.buttonGhostBorderWidth,
+    ["--theme-button-ghost-border-style" as string]: tokens.buttonGhostBorderStyle,
+    ["--theme-button-ghost-shadow" as string]: tokens.buttonGhostShadow,
     ["--theme-card-bg" as string]: tokens.cardBackground,
     ["--theme-card-border" as string]: tokens.cardBorder,
+    ["--theme-card-border-width" as string]: tokens.cardBorderWidth,
+    ["--theme-card-border-style" as string]: tokens.cardBorderStyle,
+    ["--theme-card-radius" as string]: tokens.cardRadius,
+    ["--theme-card-shadow" as string]: tokens.cardShadow,
     ["--theme-font-family-body" as string]: tokens.fontFamilyBody,
     ["--theme-font-family-heading" as string]: tokens.fontFamilyHeading,
     ["--theme-font-family-mono" as string]: tokens.fontFamilyMono,

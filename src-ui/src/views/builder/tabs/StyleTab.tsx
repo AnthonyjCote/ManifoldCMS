@@ -100,6 +100,7 @@ type PrimitiveEntry = {
   path: string;
   type: PrimitiveType;
   label: string;
+  className?: string;
 };
 
 type StyleGroup<K extends AllStyleKey> = {
@@ -374,16 +375,29 @@ function walkPrimitives(nodes: PrimitiveNode[], pathPrefix = ""): PrimitiveEntry
   const out: PrimitiveEntry[] = [];
   nodes.forEach((node, index) => {
     const path = pathPrefix ? `${pathPrefix}.${index}` : String(index);
+    const className =
+      typeof node.props?.className === "string" && node.props.className.trim().length > 0
+        ? node.props.className.trim()
+        : undefined;
     out.push({
       path,
       type: node.type,
       label: `${node.type} ${index + 1}`,
+      className,
     });
     if (node.children && node.children.length > 0) {
       out.push(...walkPrimitives(node.children, path));
     }
   });
   return out;
+}
+
+function isCardLikePrimitive(primitiveType?: PrimitiveType, primitiveClassName?: string): boolean {
+  if (primitiveType !== "stack" || !primitiveClassName) {
+    return false;
+  }
+  const classNames = primitiveClassName.split(/\s+/).filter(Boolean);
+  return classNames.some((entry) => entry === "feature-card" || entry === "logo-badge");
 }
 
 function buildStyleGroups<K extends AllStyleKey>(
@@ -494,9 +508,21 @@ function matchesAnyComputedValue(
 function isThemeFieldResolved(
   fieldKey: AllStyleKey,
   computedValue: string,
-  themeTokens: ThemeTokens | null
+  themeTokens: ThemeTokens | null,
+  blockType?: BlockType,
+  primitiveType?: PrimitiveType,
+  primitiveClassName?: string
 ): boolean {
-  return resolveThemeTokenSource(fieldKey, computedValue, themeTokens) !== null;
+  return (
+    resolveThemeTokenSource(
+      fieldKey,
+      computedValue,
+      themeTokens,
+      blockType,
+      primitiveType,
+      primitiveClassName
+    ) !== null
+  );
 }
 
 function isBlockFieldResolved(fieldKey: AllStyleKey, computedValue: string): boolean {
@@ -519,6 +545,11 @@ function isBlockFieldResolved(fieldKey: AllStyleKey, computedValue: string): boo
     case "translateY":
     case "borderWidth":
     case "borderRadius":
+    case "fontSize":
+    case "fontWeight":
+    case "lineHeight":
+    case "width":
+    case "height":
       return (
         normalized !== "0" && normalized !== "0px" && normalized !== "none" && normalized !== "auto"
       );
@@ -545,11 +576,16 @@ function resolveThemeSectionBackgroundToken(blockType: BlockType): keyof ThemeTo
 function getThemeTokenCandidates(
   fieldKey: AllStyleKey,
   blockType?: BlockType,
-  primitiveType?: PrimitiveType
+  primitiveType?: PrimitiveType,
+  primitiveClassName?: string
 ): Array<keyof ThemeTokens> {
+  const isCardPrimitive = isCardLikePrimitive(primitiveType, primitiveClassName);
   switch (fieldKey) {
     case "backgroundColor": {
       const ordered: Array<keyof ThemeTokens> = [];
+      if (isCardPrimitive) {
+        ordered.push("cardBackground");
+      }
       if (primitiveType === "button") {
         ordered.push("buttonBackground", "buttonAltBackground");
       }
@@ -560,9 +596,10 @@ function getThemeTokenCandidates(
         "canvasBackground",
         "surfaceBackground",
         "mutedBackground",
-        "cardBackground",
+        ...(isCardPrimitive ? [] : (["cardBackground"] as Array<keyof ThemeTokens>)),
         "buttonBackground",
         "buttonAltBackground",
+        "buttonGhostBackground",
         "baseColor",
         "accentColor",
         "altColor"
@@ -570,12 +607,33 @@ function getThemeTokenCandidates(
       return Array.from(new Set(ordered));
     }
     case "borderColor":
-      return ["cardBorder", "accentColor", "altColor"];
+      return Array.from(
+        new Set([
+          ...(isCardPrimitive ? (["cardBorder"] as Array<keyof ThemeTokens>) : []),
+          "cardBorder",
+          "buttonPrimaryBorderColor",
+          "buttonSecondaryBorderColor",
+          "buttonGhostBorderColor",
+          "accentColor",
+          "altColor",
+        ])
+      );
     case "textColor":
+      if (isCardPrimitive) {
+        return [
+          "textPrimary",
+          "textSecondary",
+          "headingColor",
+          "linkColor",
+          "buttonText",
+          "buttonAltText",
+        ];
+      }
       if (primitiveType === "button") {
         return [
           "buttonText",
           "buttonAltText",
+          "buttonGhostText",
           "textPrimary",
           "textSecondary",
           "headingColor",
@@ -606,6 +664,40 @@ function getThemeTokenCandidates(
       return ["fontWeightBody", "fontWeightHeading"];
     case "lineHeight":
       return ["lineHeightBody", "lineHeightHeading"];
+    case "borderWidth":
+      return Array.from(
+        new Set([
+          ...(isCardPrimitive ? (["cardBorderWidth"] as Array<keyof ThemeTokens>) : []),
+          "cardBorderWidth",
+          "buttonPrimaryBorderWidth",
+          "buttonSecondaryBorderWidth",
+          "buttonGhostBorderWidth",
+        ])
+      );
+    case "borderStyle":
+      return Array.from(
+        new Set([
+          ...(isCardPrimitive ? (["cardBorderStyle"] as Array<keyof ThemeTokens>) : []),
+          "cardBorderStyle",
+          "buttonPrimaryBorderStyle",
+          "buttonSecondaryBorderStyle",
+          "buttonGhostBorderStyle",
+        ])
+      );
+    case "borderRadius":
+      return Array.from(
+        new Set([
+          ...(isCardPrimitive ? (["cardRadius"] as Array<keyof ThemeTokens>) : []),
+          "cardRadius",
+          "buttonRadius",
+        ])
+      );
+    case "paddingLeft":
+    case "paddingRight":
+      return primitiveType === "button" ? ["buttonPaddingX"] : [];
+    case "paddingTop":
+    case "paddingBottom":
+      return primitiveType === "button" ? ["buttonPaddingY"] : [];
     default:
       return [];
   }
@@ -616,12 +708,18 @@ function resolveThemeTokenSource(
   computedValue: string,
   themeTokens: ThemeTokens | null,
   blockType?: BlockType,
-  primitiveType?: PrimitiveType
+  primitiveType?: PrimitiveType,
+  primitiveClassName?: string
 ): keyof ThemeTokens | null {
   if (!themeTokens || !computedValue.trim() || computedValue === "Mixed values") {
     return null;
   }
-  const candidates = getThemeTokenCandidates(fieldKey, blockType, primitiveType);
+  const candidates = getThemeTokenCandidates(
+    fieldKey,
+    blockType,
+    primitiveType,
+    primitiveClassName
+  );
   const isColorField =
     fieldKey === "backgroundColor" || fieldKey === "borderColor" || fieldKey === "textColor";
   for (const tokenKey of candidates) {
@@ -1395,19 +1493,40 @@ export function StyleTab() {
                     placeholderValues.every((entry) => entry === placeholderValues[0])
                       ? placeholderValues[0]
                       : "Mixed values";
-                  const themeSourceToken = resolveThemeTokenSource(
+                  let themeSourceToken = resolveThemeTokenSource(
                     field.key as AllStyleKey,
                     placeholder,
                     activeThemeTokens,
-                    undefined,
-                    selectedPrimitive?.type
+                    block.type,
+                    selectedPrimitive?.type,
+                    selectedPrimitive?.className
                   );
+                  if (
+                    !themeSourceToken &&
+                    !hasExplicitCurrent &&
+                    value.trim().length === 0 &&
+                    activeThemeTokens &&
+                    isCardLikePrimitive(selectedPrimitive?.type, selectedPrimitive?.className)
+                  ) {
+                    if (field.key === "backgroundColor") {
+                      themeSourceToken = "cardBackground";
+                    } else if (field.key === "borderColor") {
+                      themeSourceToken = "cardBorder";
+                    } else if (field.key === "borderWidth") {
+                      themeSourceToken = "cardBorderWidth";
+                    } else if (field.key === "borderStyle") {
+                      themeSourceToken = "cardBorderStyle";
+                    } else if (field.key === "borderRadius") {
+                      themeSourceToken = "cardRadius";
+                    }
+                  }
                   const hasThemeFallback =
                     Boolean(activeThemeTokens) &&
                     getThemeTokenCandidates(
                       field.key as AllStyleKey,
-                      undefined,
-                      selectedPrimitive?.type
+                      block.type,
+                      selectedPrimitive?.type,
+                      selectedPrimitive?.className
                     ).length > 0;
                   const status = resolveFieldValueStatus({
                     hasExplicitCurrent,

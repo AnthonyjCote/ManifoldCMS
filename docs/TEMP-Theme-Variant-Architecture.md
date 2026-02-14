@@ -287,6 +287,27 @@ AI must be able to:
   - shared dropdown/popover styles,
   - shared field row/input patterns.
 
+## Review Notes Locked (Pre-Implementation)
+
+- Reorganize Theme tab fields by target domain (not flat token type):
+  - example top-level groups: `Buttons`, `Cards`, `Typography`, `Surfaces`, `Palette`.
+- Add sub-headers inside expanded accordion bodies where needed:
+  - `Typography` group should include distinct sub-sections for `Headings` and `Body`.
+- Add explicit top-level `Cards` settings group.
+- Button naming/semantics update:
+  - rename ambiguous button fields to `Primary Button` and `Secondary Button`.
+  - add `Ghost Button` token set.
+- Expand button styling controls for stronger theme distinctiveness:
+  - shape/roundedness, size/padding, border controls, and related visual style knobs.
+- Keep section radius out of theme scope:
+  - section-level radius should stay effectively `0` (not theme-driven).
+- Keep theme UX novice-friendly for this phase:
+  - do **not** add hover/state chips to Theme tab right now.
+- Defer density/accent usage multipliers:
+  - capture as future idea only; no implementation in current scope.
+- Link treatment:
+  - keep/link color support; no extra decoration system added in this phase until clarified.
+
 ## Safety requirement (non-negotiable)
 
 - When user applies any library theme, always save a snapshot of current active theme first.
@@ -325,6 +346,42 @@ AI must be able to:
   - user-cloned editable theme instance.
 - Editing theme-resolved Style-tab values marks those fields as `override` while preserving Style-tab as final authority.
 - Theme-classified fields support jump-to-theme-source navigation.
+
+---
+
+## Current Token Coverage Notes (Reference)
+
+This section is informational only (not a checklist). It captures current theme-token coverage relative to the Style tab field model.
+
+### Tokens currently not direct Style-tab field mappings
+
+These tokens are active in preview/theme CSS, but there is no first-class Style-tab field for them yet:
+
+- `buttonPrimaryShadow`
+- `buttonSecondaryShadow`
+- `buttonGhostShadow`
+- `cardShadow`
+- `fontFamilyBody`
+- `fontFamilyHeading`
+- `fontFamilyMono`
+- `letterSpacingHeading`
+
+### Tokens with indirect/conditional Style-tab visibility
+
+These can resolve correctly in preview, but Style-tab indication depends on element type/context or derived CSS usage:
+
+- `baseColor` (often used in blended/derived surfaces)
+- `accentColor` (often used in blended/derived surfaces)
+- `altColor` (often used in blended/derived surfaces)
+- `linkColor` (visible when selected target renders link text)
+
+### Mapping intent
+
+- During the planned CSS field expansion pass, add explicit Style-tab fields for:
+  - `box-shadow`,
+  - `font-family`,
+  - `letter-spacing`,
+    so these tokens can become fully direct-mapped/classified in the same way as current color/border/spacing tokens.
 
 ---
 
@@ -399,6 +456,18 @@ AI must be able to:
 - [x] Ensure preview/export continue to use Style-tab explicit values as final authority.
 - [x] Ensure Theme-tab token edits update Style-tab resolved values and live preview immediately.
 - [x] Track Theme-tab token edits in undo/redo history.
+
+10. Theme tab visual reorganization + scope controls (new)
+
+- [ ] Reorganize Theme tab into target-based accordion groups (`Buttons`, `Cards`, `Typography`, `Surfaces`, `Palette`).
+- [ ] Add sub-headers inside group bodies where appropriate (minimum: `Typography -> Headings`, `Typography -> Body`).
+- [ ] Add top-level `Cards` token group and wire tokens to existing card UI surfaces.
+- [ ] Rename button labels/tokens in UI to `Primary Button` and `Secondary Button`.
+- [ ] Add `Ghost Button` token set and map to preview/export button class contract.
+- [ ] Expand button token controls (radius, size/padding, border, shadow) for stronger theme variety.
+- [ ] Explicitly keep section radius out of theme-token scope for this phase.
+- [ ] Keep Theme tab state model simple (no hover chips/state editing in Theme tab for this phase).
+- [ ] Defer density/accent multipliers to backlog (do not implement in this pass).
 
 ---
 
