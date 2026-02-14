@@ -63,6 +63,7 @@ export const PRIMITIVE_EXCLUDED_STYLE_KEYS: Record<PrimitiveType, PrimitiveStyle
   video: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
   embed: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
   code: ["width", "height", "textAlign"],
+  contact_form: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign"],
   stack: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign"],
   columns: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign"],
   cards: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "width", "height"],

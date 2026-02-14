@@ -45,6 +45,7 @@ export type PrimitiveType =
   | "video"
   | "embed"
   | "code"
+  | "contact_form"
   | "button"
   | "spacer"
   | "stack"

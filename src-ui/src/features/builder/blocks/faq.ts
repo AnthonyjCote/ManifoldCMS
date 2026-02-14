@@ -8,6 +8,7 @@ export const block: BlockCatalogEntry = {
   description: "Expandable question and answer list.",
   fields: [
     { key: "sectionTitle", label: "Section Title", type: "text", maxLength: 70 },
+    { key: "sectionBody", label: "Section Body", type: "textarea", maxLength: 180 },
     {
       key: "items",
       label: "FAQ Items (Question|Answer per line)",
@@ -24,19 +25,34 @@ export const block: BlockCatalogEntry = {
         editorFieldKey: "sectionTitle",
       },
     },
-    ...splitRows(
-      lines(instance, "items", [
-        "Lorem ipsum dolor sit amet?|Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.",
-        "Ut enim ad minim veniam?|Quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-      ])
-    ).map(([question, answer]) => ({
-      type: "details" as const,
+    {
+      type: "text",
       props: {
-        summary: question || "Lorem ipsum dolor sit amet?",
-        body:
-          answer ||
-          "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.",
+        value: text(
+          instance,
+          "sectionBody",
+          "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor."
+        ),
+        editorFieldKey: "sectionBody",
       },
-    })),
+    },
+    {
+      type: "stack",
+      props: { className: "faq-list" },
+      children: splitRows(
+        lines(instance, "items", [
+          "Lorem ipsum dolor sit amet?|Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.",
+          "Ut enim ad minim veniam?|Quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+        ])
+      ).map(([question, answer]) => ({
+        type: "details" as const,
+        props: {
+          summary: question || "Lorem ipsum dolor sit amet?",
+          body:
+            answer ||
+            "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor.",
+        },
+      })),
+    },
   ],
 };

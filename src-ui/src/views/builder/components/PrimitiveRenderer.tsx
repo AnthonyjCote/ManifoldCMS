@@ -1185,6 +1185,36 @@ export function PrimitiveRenderer({
     );
   }
 
+  if (node.type === "contact_form") {
+    const submitLabel = String(node.props?.submitLabel ?? "Submit");
+    return withOverlay(
+      <form
+        ref={setPrimitiveRef}
+        className={`${primitiveClass} primitive-contact-form`}
+        style={style}
+        onClick={onPrimitiveClick}
+        onMouseMove={onPrimitiveMove}
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <label className="primitive-contact-form-field">
+          <span>Name</span>
+          <input type="text" placeholder="Your name" readOnly tabIndex={-1} />
+        </label>
+        <label className="primitive-contact-form-field">
+          <span>Email</span>
+          <input type="email" placeholder="you@example.com" readOnly tabIndex={-1} />
+        </label>
+        <label className="primitive-contact-form-field">
+          <span>Phone</span>
+          <input type="tel" placeholder="(555) 123-4567" readOnly tabIndex={-1} />
+        </label>
+        <button type="submit" className="primitive-contact-form-submit" tabIndex={-1}>
+          {submitLabel}
+        </button>
+      </form>
+    );
+  }
+
   if (node.type === "button") {
     const editorFieldKey =
       typeof node.props?.editorFieldKey === "string" ? node.props.editorFieldKey : null;

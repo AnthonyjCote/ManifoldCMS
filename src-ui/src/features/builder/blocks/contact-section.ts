@@ -5,11 +5,10 @@ export const block: BlockCatalogEntry = {
   id: "contact_section",
   label: "Contact Section",
   category: "Conversion",
-  description: "Contact callout with embed placeholder and CTA.",
+  description: "Contact callout with form and CTA.",
   fields: [
     { key: "sectionTitle", label: "Section Title", type: "text", maxLength: 70 },
     { key: "copy", label: "Copy", type: "textarea", maxLength: 180 },
-    { key: "embed", label: "Embed Snippet/URL", type: "embed" },
     { key: "ctaLabel", label: "CTA Label", type: "text", maxLength: 30 },
     { key: "ctaUrl", label: "CTA URL", type: "link" },
   ],
@@ -40,19 +39,13 @@ export const block: BlockCatalogEntry = {
                 editorFieldKey: "copy",
               },
             },
-            {
-              type: "button",
-              props: {
-                label: text(instance, "ctaLabel", "Lorem Ipsum"),
-                href: text(instance, "ctaUrl", "#"),
-                editorFieldKey: "ctaLabel",
-              },
-            },
           ],
         },
         {
-          type: "embed",
-          props: { value: text(instance, "embed", "Lorem ipsum embed placeholder.") },
+          type: "contact_form",
+          props: {
+            submitLabel: text(instance, "ctaLabel", "Submit"),
+          },
         },
       ],
     },

@@ -26,6 +26,17 @@ export const block: BlockCatalogEntry = {
           },
         },
         {
+          type: "text",
+          props: {
+            value: text(
+              instance,
+              "copyright",
+              "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
+            ),
+            editorFieldKey: "copyright",
+          },
+        },
+        {
           type: "cards",
           props: { columns: boundedCount(instance, "linkColumns", 4, 1, 6) },
           children: splitRows(
@@ -38,17 +49,6 @@ export const block: BlockCatalogEntry = {
               editorFieldKey: `@split:links:${index}:0`,
             },
           })),
-        },
-        {
-          type: "text",
-          props: {
-            value: text(
-              instance,
-              "copyright",
-              "Lorem ipsum dolor sit amet, consectetur adipiscing elit."
-            ),
-            editorFieldKey: "copyright",
-          },
         },
       ],
     },
