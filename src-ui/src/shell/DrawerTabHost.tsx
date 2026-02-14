@@ -99,6 +99,7 @@ export function DrawerTabHost({
             key={tab.id}
             type="button"
             role="tab"
+            data-tab-id={tab.id}
             aria-selected={tab.id === activeTab.id}
             className={`drawer-tab${iconTabs ? " icon" : ""}${tab.id === activeTab.id ? " active" : ""}`}
             onClick={() => setActiveTabId(tab.id)}

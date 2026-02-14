@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useCallback,
   useRef,
   useState,
   type DragEvent,
@@ -301,6 +302,28 @@ export function BuilderView() {
   const [newPageError, setNewPageError] = useState<string | null>(null);
   const previewPageRef = useRef<HTMLDivElement | null>(null);
   const previewThemeVars = theme.activeTheme ? themeToCssVars(theme.activeTheme.tokens) : undefined;
+  const canUndo = builder.canUndo || theme.canUndo;
+  const canRedo = builder.canRedo || theme.canRedo;
+  const isThemeTabActive = () =>
+    Boolean(
+      document.querySelector('.drawer-tab[aria-selected="true"][data-tab-id="theme_tokens"]')
+    );
+
+  const triggerUndo = useCallback(() => {
+    if (theme.canUndo && (!builder.canUndo || isThemeTabActive())) {
+      theme.undo();
+      return;
+    }
+    builder.undo();
+  }, [builder, theme]);
+
+  const triggerRedo = useCallback(() => {
+    if (theme.canRedo && (!builder.canRedo || isThemeTabActive())) {
+      theme.redo();
+      return;
+    }
+    builder.redo();
+  }, [builder, theme]);
   const [previewBreakpoint, setPreviewBreakpoint] = useState<BuilderViewport>("default");
   const pagePopoverRef = useRef<HTMLDivElement | null>(null);
   const devicePopoverRef = useRef<HTMLDivElement | null>(null);
@@ -374,9 +397,9 @@ export function BuilderView() {
       }
       event.preventDefault();
       if (isUndo) {
-        builder.undo();
+        triggerUndo();
       } else {
-        builder.redo();
+        triggerRedo();
       }
     };
 
@@ -386,7 +409,7 @@ export function BuilderView() {
       window.removeEventListener("mousedown", onWindowPointerDown);
       window.removeEventListener("keydown", onWindowKeyDown);
     };
-  }, [activePopover, builder]);
+  }, [activePopover, builder, triggerRedo, triggerUndo]);
 
   useEffect(() => {
     return () => {
@@ -1097,8 +1120,8 @@ export function BuilderView() {
           />
           <IconButton
             label="Undo"
-            onClick={() => builder.undo()}
-            disabled={!builder.canUndo}
+            onClick={triggerUndo}
+            disabled={!canUndo}
             icon={
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M9 7H4v5M4 12a8 8 0 1 0 2.4-5.7L4 7" />
@@ -1107,8 +1130,8 @@ export function BuilderView() {
           />
           <IconButton
             label="Redo"
-            onClick={() => builder.redo()}
-            disabled={!builder.canRedo}
+            onClick={triggerRedo}
+            disabled={!canRedo}
             icon={
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M15 7h5v5M20 12a8 8 0 1 1-2.4-5.7L20 7" />

@@ -395,8 +395,10 @@ AI must be able to:
 
 - [x] Treat theme-resolved fields as inherited-like in the Style tab.
 - [x] On local edit of theme-resolved fields, classify as `override` at edited scope.
-- [ ] Add jump-to-theme-source action from theme tooltip.
-- [ ] Ensure preview/export continue to use Style-tab explicit values as final authority.
+- [x] Add jump-to-theme-source action from theme tooltip.
+- [x] Ensure preview/export continue to use Style-tab explicit values as final authority.
+- [x] Ensure Theme-tab token edits update Style-tab resolved values and live preview immediately.
+- [x] Track Theme-tab token edits in undo/redo history.
 
 ---
 

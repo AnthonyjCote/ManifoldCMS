@@ -30,6 +30,7 @@ import {
 } from "../../../features/builder/viewport-menu";
 import { useActiveProjectSession } from "../../../features/project-launcher/session";
 import { useProjectSettings } from "../../../features/project-settings/useProjectSettings";
+import { requestThemeTokenJump } from "../../../features/theme/theme-jump-service";
 import { useProjectTheme } from "../../../features/theme/useProjectTheme";
 import { useBuilderInteractionModeStore } from "../../../state/useBuilderInteractionModeStore";
 import { useBuilderStylePreviewStateStore } from "../../../state/useBuilderStylePreviewStateStore";
@@ -41,6 +42,7 @@ import type {
   StyleStateKey,
 } from "../../../features/builder/types";
 import { useBuilderViewportStore } from "../../../state/useBuilderViewportStore";
+import { useColorPickerToggle } from "../../../features/ui/useColorPickerToggle";
 import type { ThemeTokens } from "../../../features/theme/types";
 
 type BaseSectionStyleKey =
@@ -422,6 +424,7 @@ function resolveFieldValueStatus(opts: {
   fieldKey: AllStyleKey;
   scope: BuilderViewport;
   themeTokens: ThemeTokens | null;
+  themeSourceToken?: keyof ThemeTokens | null;
 }): FieldValueStatus {
   if (opts.scope !== "default" && opts.hasExplicitCurrent && opts.hasExplicitDefault) {
     return "override";
@@ -431,6 +434,9 @@ function resolveFieldValueStatus(opts: {
   }
   if (opts.resolvedValue.trim().length > 0) {
     return "inherited";
+  }
+  if (opts.themeSourceToken) {
+    return "theme";
   }
   if (isThemeFieldResolved(opts.fieldKey, opts.computedValue, opts.themeTokens)) {
     return "theme";
@@ -483,68 +489,7 @@ function isThemeFieldResolved(
   computedValue: string,
   themeTokens: ThemeTokens | null
 ): boolean {
-  if (!themeTokens) {
-    return false;
-  }
-  if (!computedValue.trim() || computedValue === "Mixed values") {
-    return false;
-  }
-  switch (fieldKey) {
-    case "backgroundColor":
-      return matchesAnyComputedValue(
-        computedValue,
-        [
-          themeTokens.canvasBackground,
-          themeTokens.surfaceBackground,
-          themeTokens.mutedBackground,
-          themeTokens.cardBackground,
-          themeTokens.buttonBackground,
-          themeTokens.buttonAltBackground,
-          themeTokens.baseColor,
-          themeTokens.accentColor,
-          themeTokens.altColor,
-        ],
-        true
-      );
-    case "borderColor":
-      return matchesAnyComputedValue(
-        computedValue,
-        [themeTokens.cardBorder, themeTokens.accentColor, themeTokens.altColor],
-        true
-      );
-    case "textColor":
-      return matchesAnyComputedValue(
-        computedValue,
-        [
-          themeTokens.textPrimary,
-          themeTokens.textSecondary,
-          themeTokens.headingColor,
-          themeTokens.buttonText,
-          themeTokens.buttonAltText,
-          themeTokens.linkColor,
-        ],
-        true
-      );
-    case "fontSize":
-      return matchesAnyComputedValue(computedValue, [
-        themeTokens.fontSizeBody,
-        themeTokens.fontSizeH1,
-        themeTokens.fontSizeH2,
-        themeTokens.fontSizeH3,
-      ]);
-    case "fontWeight":
-      return matchesAnyComputedValue(computedValue, [
-        themeTokens.fontWeightBody,
-        themeTokens.fontWeightHeading,
-      ]);
-    case "lineHeight":
-      return matchesAnyComputedValue(computedValue, [
-        themeTokens.lineHeightBody,
-        themeTokens.lineHeightHeading,
-      ]);
-    default:
-      return false;
-  }
+  return resolveThemeTokenSource(fieldKey, computedValue, themeTokens) !== null;
 }
 
 function isBlockFieldResolved(fieldKey: AllStyleKey, computedValue: string): boolean {
@@ -577,20 +522,107 @@ function isBlockFieldResolved(fieldKey: AllStyleKey, computedValue: string): boo
   }
 }
 
-function resolveThemeSectionBackgroundValue(
-  blockType: BlockType,
-  themeTokens: ThemeTokens | null
-): string {
-  if (!themeTokens) {
-    return "";
+function resolveThemeSectionBackgroundToken(blockType: BlockType): keyof ThemeTokens {
+  if (blockType === "hero") {
+    return "canvasBackground";
   }
   if (blockType === "faq") {
-    return themeTokens.mutedBackground;
+    return "mutedBackground";
   }
   if (blockType === "footer") {
-    return themeTokens.baseColor;
+    return "baseColor";
   }
-  return themeTokens.surfaceBackground;
+  return "surfaceBackground";
+}
+
+function getThemeTokenCandidates(
+  fieldKey: AllStyleKey,
+  blockType?: BlockType,
+  primitiveType?: PrimitiveType
+): Array<keyof ThemeTokens> {
+  switch (fieldKey) {
+    case "backgroundColor": {
+      const ordered: Array<keyof ThemeTokens> = [];
+      if (primitiveType === "button") {
+        ordered.push("buttonBackground", "buttonAltBackground");
+      }
+      if (blockType) {
+        ordered.push(resolveThemeSectionBackgroundToken(blockType));
+      }
+      ordered.push(
+        "canvasBackground",
+        "surfaceBackground",
+        "mutedBackground",
+        "cardBackground",
+        "buttonBackground",
+        "buttonAltBackground",
+        "baseColor",
+        "accentColor",
+        "altColor"
+      );
+      return Array.from(new Set(ordered));
+    }
+    case "borderColor":
+      return ["cardBorder", "accentColor", "altColor"];
+    case "textColor":
+      if (primitiveType === "button") {
+        return [
+          "buttonText",
+          "buttonAltText",
+          "textPrimary",
+          "textSecondary",
+          "headingColor",
+          "linkColor",
+        ];
+      }
+      if (primitiveType === "heading") {
+        return [
+          "headingColor",
+          "textPrimary",
+          "textSecondary",
+          "linkColor",
+          "buttonText",
+          "buttonAltText",
+        ];
+      }
+      return [
+        "textPrimary",
+        "textSecondary",
+        "headingColor",
+        "buttonText",
+        "buttonAltText",
+        "linkColor",
+      ];
+    case "fontSize":
+      return ["fontSizeBody", "fontSizeH1", "fontSizeH2", "fontSizeH3"];
+    case "fontWeight":
+      return ["fontWeightBody", "fontWeightHeading"];
+    case "lineHeight":
+      return ["lineHeightBody", "lineHeightHeading"];
+    default:
+      return [];
+  }
+}
+
+function resolveThemeTokenSource(
+  fieldKey: AllStyleKey,
+  computedValue: string,
+  themeTokens: ThemeTokens | null,
+  blockType?: BlockType,
+  primitiveType?: PrimitiveType
+): keyof ThemeTokens | null {
+  if (!themeTokens || !computedValue.trim() || computedValue === "Mixed values") {
+    return null;
+  }
+  const candidates = getThemeTokenCandidates(fieldKey, blockType, primitiveType);
+  const isColorField =
+    fieldKey === "backgroundColor" || fieldKey === "borderColor" || fieldKey === "textColor";
+  for (const tokenKey of candidates) {
+    if (matchesAnyComputedValue(computedValue, [themeTokens[tokenKey]], isColorField)) {
+      return tokenKey;
+    }
+  }
+  return null;
 }
 
 function matchesFieldFilter(status: FieldValueStatus, filter: FieldFilterMode): boolean {
@@ -792,13 +824,13 @@ export function StyleTab() {
     readCollapsedGroupState()
   );
   const [fieldStates, setFieldStates] = useState<Record<string, StyleStateKey>>({});
-  const [openColorFieldId, setOpenColorFieldId] = useState<string | null>(null);
   const [pendingJump, setPendingJump] = useState<StyleJumpRequest | null>(null);
   const [pulsedStyleFieldId, setPulsedStyleFieldId] = useState<string | null>(null);
   const [jumpWarning, setJumpWarning] = useState<string | null>(null);
   const pulseTimeoutRef = useRef<number | null>(null);
   const scopePopoverRef = useRef<HTMLDivElement | null>(null);
   const fieldFilterPopoverRef = useRef<HTMLDivElement | null>(null);
+  const { openColorFieldId, onColorInputBlur, toggleColorField } = useColorPickerToggle();
   const editScope = editScopeFromViewport(viewport.viewport);
   const activeThemeTokens = theme.activeTheme?.tokens ?? null;
   const block = builder.selectedBlock;
@@ -1093,29 +1125,6 @@ export function StyleTab() {
     []
   );
 
-  const onColorInputBlur = (fieldId: string) => {
-    if (openColorFieldId === fieldId) {
-      setOpenColorFieldId(null);
-    }
-  };
-
-  const toggleColorField = (fieldId: string, input: HTMLInputElement | null) => {
-    if (!input) {
-      return;
-    }
-    if (openColorFieldId === fieldId) {
-      setOpenColorFieldId(null);
-      input.blur();
-      return;
-    }
-    setOpenColorFieldId(fieldId);
-    if ("showPicker" in input && typeof input.showPicker === "function") {
-      input.showPicker();
-    } else {
-      input.click();
-    }
-  };
-
   const scopeIndicatorText = `${interaction.mode === "edit" ? "Edit" : "Preview"}: ${VIEWPORT_SCOPE_LABELS[editScope]}`;
   const fieldScopeLabelPrefix = VIEWPORT_SCOPE_LABELS[editScope];
 
@@ -1379,6 +1388,13 @@ export function StyleTab() {
                     placeholderValues.every((entry) => entry === placeholderValues[0])
                       ? placeholderValues[0]
                       : "Mixed values";
+                  const themeSourceToken = resolveThemeTokenSource(
+                    field.key as AllStyleKey,
+                    placeholder,
+                    activeThemeTokens,
+                    undefined,
+                    selectedPrimitive?.type
+                  );
                   const status = resolveFieldValueStatus({
                     hasExplicitCurrent,
                     hasExplicitDefault,
@@ -1387,6 +1403,7 @@ export function StyleTab() {
                     fieldKey: field.key as AllStyleKey,
                     scope: editScope,
                     themeTokens: activeThemeTokens,
+                    themeSourceToken,
                   });
                   const inherited = status === "inherited";
                   if (!matchesFieldFilter(status, fieldFilter)) {
@@ -1394,9 +1411,11 @@ export function StyleTab() {
                   }
                   const displayValue =
                     (status === "theme" || status === "block") && value.trim().length === 0
-                      ? placeholder === "Mixed values"
-                        ? ""
-                        : placeholder
+                      ? status === "theme" && themeSourceToken && activeThemeTokens
+                        ? activeThemeTokens[themeSourceToken]
+                        : placeholder === "Mixed values"
+                          ? ""
+                          : placeholder
                       : value;
                   const targetIds = primitiveSelectionTargets.map((target) =>
                     encodePrimitiveTarget(target.blockId, target.primitivePath)
@@ -1457,6 +1476,18 @@ export function StyleTab() {
                               aria-label="Jump to inherited source"
                               title="Jump to inherited source"
                             />
+                          ) : status === "theme" && themeSourceToken ? (
+                            <button
+                              type="button"
+                              className={`style-field-status-dot ${status}`}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                requestThemeTokenJump({ tokenKey: themeSourceToken });
+                              }}
+                              aria-label="Jump to theme source"
+                              title="Jump to theme source"
+                            />
                           ) : (
                             <span
                               className={`style-field-status-dot ${status}`}
@@ -1479,6 +1510,19 @@ export function StyleTab() {
                                     : status === "block"
                                       ? "Resolved from block baseline styles"
                                       : `Uninitialized`}
+                            {status === "theme" && themeSourceToken ? (
+                              <button
+                                type="button"
+                                className="style-field-status-jump-btn"
+                                onClick={(event) => {
+                                  event.preventDefault();
+                                  event.stopPropagation();
+                                  requestThemeTokenJump({ tokenKey: themeSourceToken });
+                                }}
+                              >
+                                Jump to theme source
+                              </button>
+                            ) : null}
                           </span>
                         </span>
                         <span className="style-field-label-text">
@@ -1596,7 +1640,25 @@ export function StyleTab() {
                   placeholderValues.every((entry) => entry === placeholderValues[0])
                     ? placeholderValues[0]
                     : "Mixed values";
-                let status = resolveFieldValueStatus({
+                const anchorBlockId = selectedSectionBlocks[0]?.id ?? block.id;
+                const originBlock =
+                  selectedSectionBlocks.find((entry) => entry.id === anchorBlockId) ?? block;
+                let themeSourceToken = resolveThemeTokenSource(
+                  field.key as AllStyleKey,
+                  placeholder,
+                  activeThemeTokens,
+                  originBlock.type
+                );
+                if (
+                  sectionField === "backgroundColor" &&
+                  !hasExplicitCurrent &&
+                  value.trim().length === 0 &&
+                  !themeSourceToken &&
+                  activeThemeTokens
+                ) {
+                  themeSourceToken = resolveThemeSectionBackgroundToken(originBlock.type);
+                }
+                const status = resolveFieldValueStatus({
                   hasExplicitCurrent,
                   hasExplicitDefault,
                   resolvedValue: value,
@@ -1604,25 +1666,16 @@ export function StyleTab() {
                   fieldKey: field.key as AllStyleKey,
                   scope: editScope,
                   themeTokens: activeThemeTokens,
+                  themeSourceToken,
                 });
-                const anchorBlockId = selectedSectionBlocks[0]?.id ?? block.id;
-                const originBlock =
-                  selectedSectionBlocks.find((entry) => entry.id === anchorBlockId) ?? block;
-                if (
-                  status === "uninitialized" &&
-                  sectionField === "backgroundColor" &&
-                  activeThemeTokens
-                ) {
-                  status = "theme";
-                }
                 const inherited = status === "inherited";
                 if (!matchesFieldFilter(status, fieldFilter)) {
                   return null;
                 }
                 const displayValue =
                   (status === "theme" || status === "block") && value.trim().length === 0
-                    ? sectionField === "backgroundColor"
-                      ? resolveThemeSectionBackgroundValue(originBlock.type, activeThemeTokens)
+                    ? status === "theme" && themeSourceToken && activeThemeTokens
+                      ? activeThemeTokens[themeSourceToken]
                       : placeholder === "Mixed values"
                         ? ""
                         : placeholder
@@ -1677,6 +1730,18 @@ export function StyleTab() {
                             aria-label="Jump to inherited source"
                             title="Jump to inherited source"
                           />
+                        ) : status === "theme" && themeSourceToken ? (
+                          <button
+                            type="button"
+                            className={`style-field-status-dot ${status}`}
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              requestThemeTokenJump({ tokenKey: themeSourceToken });
+                            }}
+                            aria-label="Jump to theme source"
+                            title="Jump to theme source"
+                          />
                         ) : (
                           <span className={`style-field-status-dot ${status}`} aria-hidden="true" />
                         )}
@@ -1696,6 +1761,19 @@ export function StyleTab() {
                                   : status === "block"
                                     ? "Resolved from block baseline styles"
                                     : `Uninitialized`}
+                          {status === "theme" && themeSourceToken ? (
+                            <button
+                              type="button"
+                              className="style-field-status-jump-btn"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                requestThemeTokenJump({ tokenKey: themeSourceToken });
+                              }}
+                            >
+                              Jump to theme source
+                            </button>
+                          ) : null}
                         </span>
                       </span>
                       <span className="style-field-label-text">

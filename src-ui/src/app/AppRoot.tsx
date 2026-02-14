@@ -4,6 +4,7 @@ import { BuilderProvider } from "../features/builder/builder-store";
 import { FOCUS_INSPECTOR_EVENT } from "../features/builder/events";
 import { BUILDER_STYLE_JUMP_EVENT } from "../features/builder/style-jump-service";
 import { useActiveProjectSession } from "../features/project-launcher/session";
+import { BUILDER_THEME_TOKEN_JUMP_EVENT } from "../features/theme/theme-jump-service";
 import { ShellFrame } from "../shell/ShellFrame";
 import { useLayoutStateStore } from "../state/useLayoutStateStore";
 import { useViewModeStore } from "../state/useViewModeStore";
@@ -137,6 +138,19 @@ export function AppRoot() {
     };
     window.addEventListener(BUILDER_STYLE_JUMP_EVENT, onStyleJump);
     return () => window.removeEventListener(BUILDER_STYLE_JUMP_EVENT, onStyleJump);
+  }, [layoutState, viewMode]);
+
+  useEffect(() => {
+    const onThemeTokenJump = () => {
+      if (viewMode !== "builder") {
+        return;
+      }
+      layoutState.setRightOpen(true);
+      layoutState.setRightPinned(true);
+      layoutState.setActiveRightTabId("theme_tokens");
+    };
+    window.addEventListener(BUILDER_THEME_TOKEN_JUMP_EVENT, onThemeTokenJump);
+    return () => window.removeEventListener(BUILDER_THEME_TOKEN_JUMP_EVENT, onThemeTokenJump);
   }, [layoutState, viewMode]);
 
   return (

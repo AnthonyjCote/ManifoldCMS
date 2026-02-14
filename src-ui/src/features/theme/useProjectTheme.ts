@@ -1,9 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { BUNDLED_THEMES } from "./library";
 import { normalizeThemeTokens, type ThemeRecord, type ThemeState, type ThemeTokens } from "./types";
 
 const THEME_STATE_KEY = "manifold.project-theme.v1";
+const THEME_STATE_SYNC_EVENT = "manifold:project-theme-sync";
+
+type ThemeStateSyncDetail = {
+  projectPath: string;
+  state: ThemeState;
+  sourceId: string;
+  history?: ThemeState[];
+  future?: ThemeState[];
+};
 
 function themeStateKey(projectPath: string): string {
   return `${THEME_STATE_KEY}:${projectPath}`;
@@ -95,37 +104,110 @@ export function useProjectTheme(projectPath: string | undefined): {
   hasProject: boolean;
   state: ThemeState;
   activeTheme: ThemeRecord | null;
+  canUndo: boolean;
+  canRedo: boolean;
   setActiveTheme: (themeId: string) => void;
   applyTheme: (themeId: string, mode: ThemeApplyMode) => void;
   restoreLastSnapshot: () => void;
   updateActiveThemeTokens: (updater: (prev: ThemeTokens) => ThemeTokens) => void;
   duplicateTheme: (themeId: string) => void;
+  undo: () => void;
+  redo: () => void;
 } {
   const [state, setState] = useState<ThemeState>(() => readThemeState(projectPath));
+  const [history, setHistory] = useState<ThemeState[]>([]);
+  const [future, setFuture] = useState<ThemeState[]>([]);
   const stateRef = useRef<ThemeState>(state);
+  const historyRef = useRef<ThemeState[]>(history);
+  const futureRef = useRef<ThemeState[]>(future);
+  const hookId = useId();
+  const sourceIdRef = useRef(`theme-hook-${hookId}`);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
   useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
+
+  useEffect(() => {
+    futureRef.current = future;
+  }, [future]);
+
+  useEffect(() => {
     const next = readThemeState(projectPath);
     stateRef.current = next;
+    historyRef.current = [];
+    futureRef.current = [];
     queueMicrotask(() => {
       setState(next);
+      setHistory([]);
+      setFuture([]);
     });
+  }, [projectPath]);
+
+  useEffect(() => {
+    if (!projectPath) {
+      return;
+    }
+    const onSync = (event: Event) => {
+      const detail = (event as CustomEvent<ThemeStateSyncDetail>).detail;
+      if (!detail) {
+        return;
+      }
+      if (detail.projectPath !== projectPath) {
+        return;
+      }
+      if (detail.sourceId === sourceIdRef.current) {
+        return;
+      }
+      stateRef.current = detail.state;
+      historyRef.current = detail.history ?? [];
+      futureRef.current = detail.future ?? [];
+      setState(detail.state);
+      setHistory(detail.history ?? []);
+      setFuture(detail.future ?? []);
+    };
+    window.addEventListener(THEME_STATE_SYNC_EVENT, onSync);
+    return () => window.removeEventListener(THEME_STATE_SYNC_EVENT, onSync);
   }, [projectPath]);
 
   const hasProject = Boolean(projectPath);
 
-  const updateState = (updater: (prev: ThemeState) => ThemeState) => {
-    const base = stateRef.current;
-    const next = coerceState(updater(base));
-    stateRef.current = next;
+  const publishState = (next: ThemeState, nextHistory: ThemeState[], nextFuture: ThemeState[]) => {
     if (projectPath) {
       writeThemeState(projectPath, next);
+      window.dispatchEvent(
+        new CustomEvent<ThemeStateSyncDetail>(THEME_STATE_SYNC_EVENT, {
+          detail: {
+            projectPath,
+            state: next,
+            sourceId: sourceIdRef.current,
+            history: nextHistory,
+            future: nextFuture,
+          },
+        })
+      );
     }
     setState(next);
+    setHistory(nextHistory);
+    setFuture(nextFuture);
+  };
+
+  const updateState = (
+    updater: (prev: ThemeState) => ThemeState,
+    options?: { recordHistory?: boolean }
+  ) => {
+    const base = stateRef.current;
+    const next = coerceState(updater(base));
+    const shouldRecordHistory = options?.recordHistory !== false;
+    const nextHistory = shouldRecordHistory ? [...historyRef.current, base] : historyRef.current;
+    const nextFuture = shouldRecordHistory ? [] : futureRef.current;
+    stateRef.current = next;
+    historyRef.current = nextHistory;
+    futureRef.current = nextFuture;
+    publishState(next, nextHistory, nextFuture);
   };
 
   const activeTheme = useMemo(
@@ -233,10 +315,37 @@ export function useProjectTheme(projectPath: string | undefined): {
     hasProject,
     state,
     activeTheme,
+    canUndo: history.length > 0,
+    canRedo: future.length > 0,
     setActiveTheme,
     applyTheme,
     restoreLastSnapshot,
     updateActiveThemeTokens,
     duplicateTheme,
+    undo: () => {
+      const historyItems = historyRef.current;
+      if (historyItems.length === 0) {
+        return;
+      }
+      const previous = historyItems[historyItems.length - 1];
+      const nextHistory = historyItems.slice(0, -1);
+      const nextFuture = [stateRef.current, ...futureRef.current];
+      stateRef.current = previous;
+      historyRef.current = nextHistory;
+      futureRef.current = nextFuture;
+      publishState(previous, nextHistory, nextFuture);
+    },
+    redo: () => {
+      const futureItems = futureRef.current;
+      if (futureItems.length === 0) {
+        return;
+      }
+      const [next, ...rest] = futureItems;
+      const nextHistory = [...historyRef.current, stateRef.current];
+      stateRef.current = next;
+      historyRef.current = nextHistory;
+      futureRef.current = rest;
+      publishState(next, nextHistory, rest);
+    },
   };
 }

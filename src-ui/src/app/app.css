@@ -654,6 +654,8 @@ button.style-field-status-dot {
 }
 
 .style-field-status-tooltip {
+  display: grid;
+  gap: 0;
   position: absolute;
   left: 0;
   bottom: calc(100% + 8px);
@@ -683,6 +685,25 @@ button.style-field-status-dot {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);
+  pointer-events: auto;
+}
+
+.style-field-status-jump-btn {
+  margin-top: 6px;
+  border: 1px solid rgba(181, 122, 255, 0.42);
+  background: rgba(69, 36, 104, 0.38);
+  color: #d8c1ff;
+  border-radius: 999px;
+  padding: 3px 8px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+}
+
+.style-field-status-jump-btn:hover {
+  filter: brightness(1.1);
 }
 
 .style-field-status-dot.edited {
@@ -865,6 +886,50 @@ button.style-field-status-dot {
       inset 0 0 0 0 rgba(121, 255, 178, 0);
     background: transparent;
     border-color: rgba(79, 184, 128, 0.4);
+  }
+}
+
+.theme-token-pulse {
+  animation: theme-token-pulse 1s ease-in-out;
+}
+
+@keyframes theme-token-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 rgba(73, 255, 152, 0),
+      inset 0 0 0 0 rgba(121, 255, 178, 0);
+    border-color: rgba(79, 184, 128, 0.4);
+    background: rgba(12, 48, 28, 0);
+  }
+  25% {
+    box-shadow:
+      0 0 0 3px rgba(73, 255, 152, 0.42),
+      0 0 18px rgba(73, 255, 152, 0.4),
+      inset 0 0 0 2px rgba(131, 255, 184, 0.72);
+    border-color: rgba(131, 255, 184, 0.84);
+    background: rgba(18, 66, 40, 0.52);
+  }
+  50% {
+    box-shadow:
+      0 0 0 0 rgba(73, 255, 152, 0),
+      inset 0 0 0 0 rgba(121, 255, 178, 0);
+    border-color: rgba(79, 184, 128, 0.4);
+    background: rgba(12, 48, 28, 0.08);
+  }
+  75% {
+    box-shadow:
+      0 0 0 2px rgba(73, 255, 152, 0.3),
+      0 0 12px rgba(73, 255, 152, 0.3),
+      inset 0 0 0 1px rgba(131, 255, 184, 0.58);
+    border-color: rgba(131, 255, 184, 0.72);
+    background: rgba(18, 66, 40, 0.34);
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 rgba(73, 255, 152, 0),
+      inset 0 0 0 0 rgba(121, 255, 178, 0);
+    border-color: rgba(79, 184, 128, 0.4);
+    background: transparent;
   }
 }
 

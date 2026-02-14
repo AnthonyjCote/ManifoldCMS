@@ -43,7 +43,7 @@ Definition of done:
 - [x] Add Section Style Audit/Inspect Modal (read-only) as a P0.2 extension for style debugging/navigation.
 - [x] Add `override` source classifier (red) for viewport/state explicit values that override explicit default values.
 - [x] Add `Override` option to style field filters (Style tab now, inspect modal later).
-- [ ] Define source taxonomy contract for classifier system: `override`, `edited`, `inherited`, `theme`, `block`, `uninitialized`.
+- [x] Define source taxonomy contract for classifier system: `override`, `edited`, `inherited`, `theme`, `block`, `uninitialized`.
 - [x] Add reusable `StyleJumpService` for jump-to-field navigation (shared infra, not modal-specific).
 - [x] Add inherited-origin resolution + jump support (`findValueOrigin`) for future UI reuse.
 - [x] Add stable `styleFieldId` field anchors for robust jump mapping (avoid DOM-order mapping).
@@ -153,8 +153,11 @@ Definition of done:
 - [x] Add bundled theme packs shipped with app as template modules (auto-discovered from `/features/theme/templates`).
 - [ ] Add save/export/import theme workflow.
 - [x] Add manual theme creation and editing page/view.
-- [ ] Add theme provenance metadata so fields resolved from theme are classified as `theme` source.
+- [x] Add theme provenance metadata so fields resolved from theme are classified as `theme` source.
 - [x] Surface `theme` source classifier (purple) in Style tab (inspect modal still pending).
+- [x] Add jump-to-theme-source from Style-tab theme classifier tooltip.
+- [x] Ensure Theme-tab token edits sync live into Style-tab resolved values and preview.
+- [x] Track Theme-tab token edits in undo/redo history.
 
 Definition of done:
 
