@@ -73,10 +73,18 @@ function ThemePreviewCard({
 export function ThemeView() {
   const projectSession = useActiveProjectSession();
   const { setViewMode } = useViewModeStore();
-  const { hasProject, state, activeTheme, applyTheme, duplicateTheme, restoreLastSnapshot } =
-    useProjectTheme(projectSession?.project.path);
+  const {
+    hasProject,
+    state,
+    activeTheme,
+    applyTheme,
+    duplicateTheme,
+    restoreLastSnapshot,
+    setActiveTheme,
+  } = useProjectTheme(projectSession?.project.path);
   const [pendingThemeId, setPendingThemeId] = useState<string | null>(null);
   const [replaceConfirm, setReplaceConfirm] = useState(false);
+  const [clearThemeConfirmOpen, setClearThemeConfirmOpen] = useState(false);
 
   const pendingTheme = useMemo(
     () => state.themes.find((theme) => theme.id === pendingThemeId) ?? null,
@@ -115,6 +123,13 @@ export function ThemeView() {
       <div className="card-row">
         <button className="secondary-btn" onClick={restoreLastSnapshot}>
           Restore Last Backup
+        </button>
+        <button
+          className="ghost-btn"
+          onClick={() => setClearThemeConfirmOpen(true)}
+          disabled={!activeTheme}
+        >
+          Remove Current Theme
         </button>
       </div>
 
@@ -171,6 +186,32 @@ export function ThemeView() {
                 </div>
               </div>
             ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {clearThemeConfirmOpen ? (
+        <div className="modal-backdrop" onClick={() => setClearThemeConfirmOpen(false)}>
+          <div className="modal-card" onClick={(event) => event.stopPropagation()}>
+            <h2>Remove Current Theme?</h2>
+            <p>
+              This clears the active theme so no theme values are applied until a theme is selected
+              again.
+            </p>
+            <div className="card-row">
+              <button
+                className="danger-btn"
+                onClick={() => {
+                  setActiveTheme("");
+                  setClearThemeConfirmOpen(false);
+                }}
+              >
+                Remove Theme
+              </button>
+              <button className="ghost-btn" onClick={() => setClearThemeConfirmOpen(false)}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

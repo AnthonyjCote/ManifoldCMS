@@ -63,12 +63,8 @@ function coerceState(raw: unknown): ThemeState {
     merged.push({ ...typed, tokens: normalizeThemeTokens(typed.tokens) });
   });
 
-  const defaultActive = merged[0]?.id ?? "";
-  const requestedActive =
-    typeof input.activeThemeId === "string" ? input.activeThemeId : defaultActive;
-  const activeThemeId = merged.some((theme) => theme.id === requestedActive)
-    ? requestedActive
-    : defaultActive;
+  const requestedActive = typeof input.activeThemeId === "string" ? input.activeThemeId : "";
+  const activeThemeId = merged.some((theme) => theme.id === requestedActive) ? requestedActive : "";
 
   return {
     schemaVersion: 1,

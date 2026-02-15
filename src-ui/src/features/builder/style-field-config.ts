@@ -56,8 +56,8 @@ export const PRIMITIVE_STYLE_KEYS: PrimitiveStyleKey[] = [
 ];
 
 export const PRIMITIVE_EXCLUDED_STYLE_KEYS: Record<PrimitiveType, PrimitiveStyleKey[]> = {
-  heading: ["width", "height", "backgroundColor", "borderWidth", "borderStyle", "borderColor"],
-  text: ["width", "height", "backgroundColor", "borderWidth", "borderStyle", "borderColor"],
+  heading: ["width", "height", "borderWidth", "borderStyle", "borderColor"],
+  text: ["width", "height", "borderWidth", "borderStyle", "borderColor"],
   button: ["lineHeight", "textAlign", "width", "height"],
   image: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
   video: ["textColor", "fontSize", "fontWeight", "lineHeight", "textAlign", "backgroundColor"],
