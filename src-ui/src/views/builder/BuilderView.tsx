@@ -24,6 +24,7 @@ import {
   decodePrimitiveTarget,
   encodePrimitiveTarget,
 } from "../../features/builder/primitive-target";
+import { FOCUS_BLOCKS_TAB_EVENT } from "../../features/builder/events";
 import {
   editScopeFromViewport,
   getSectionStyleValue,
@@ -352,10 +353,21 @@ export function BuilderView() {
   );
   const [jumpPulseBlockId, setJumpPulseBlockId] = useState<string | null>(null);
   const [jumpPulsePrimitiveTarget, setJumpPulsePrimitiveTarget] = useState<string | null>(null);
+  const [onboardingHint, setOnboardingHint] = useState<string | null>(null);
+  const onboardingHintTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     endStyleDragSessionRef.current = builder.endStyleDragSession;
   }, [builder.endStyleDragSession]);
+
+  useEffect(
+    () => () => {
+      if (onboardingHintTimeoutRef.current !== null) {
+        window.clearTimeout(onboardingHintTimeoutRef.current);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     const onWindowPointerDown = (event: MouseEvent) => {
@@ -574,6 +586,11 @@ export function BuilderView() {
       : null;
   const isPointerDragActive = Boolean(activePointerDrag && draggedGhostMeta);
   const isPointerDragOverPreview = isPointerDragActive && dropIndex !== null;
+  const showOnboardingDropHint =
+    interactionMode === "edit" &&
+    !isPointerDragActive &&
+    builder.selectedPage.blocks.length === 0 &&
+    Boolean(onboardingHint);
 
   const readSectionSpacing = (key: SectionStyleKey, shell: HTMLElement): number => {
     const section = shell.querySelector<HTMLElement>(".site-block");
@@ -1226,19 +1243,21 @@ export function BuilderView() {
                 }}
                 onDropCapture={interactionMode === "edit" ? handlePreviewDrop : undefined}
               >
-                {interactionMode === "edit" && isPointerDragActive ? (
+                {interactionMode === "edit" && (isPointerDragActive || showOnboardingDropHint) ? (
                   <div className="site-preview-drop-hint-layer">
                     <div
                       className={`site-preview-drop-hint${isPointerDragOverPreview ? " active" : ""}`}
                     >
                       <span className="dot" />
-                      {isPointerDragOverPreview
-                        ? activePointerDrag?.payload.kind === "canvas"
-                          ? `Release to move ${draggedGhostMeta?.label ?? "section"}`
-                          : `Release to add ${draggedGhostMeta?.label ?? "block"}`
-                        : activePointerDrag?.payload.kind === "canvas"
-                          ? `Drag ${draggedGhostMeta?.label ?? "section"} to reorder`
-                          : `Drag ${draggedGhostMeta?.label ?? "block"} into the canvas`}
+                      {isPointerDragActive
+                        ? isPointerDragOverPreview
+                          ? activePointerDrag?.payload.kind === "canvas"
+                            ? `Release to move ${draggedGhostMeta?.label ?? "section"}`
+                            : `Release to add ${draggedGhostMeta?.label ?? "block"}`
+                          : activePointerDrag?.payload.kind === "canvas"
+                            ? `Drag ${draggedGhostMeta?.label ?? "section"} to reorder`
+                            : `Drag ${draggedGhostMeta?.label ?? "block"} into the canvas`
+                        : (onboardingHint ?? "Drag a block into the canvas")}
                     </div>
                   </div>
                 ) : null}
@@ -1492,6 +1511,32 @@ export function BuilderView() {
                     <div className="site-preview-empty-copy">
                       Drag a block card from the Blocks drawer and drop it anywhere in this canvas.
                     </div>
+                    <div className="site-preview-empty-copy subtle">
+                      Try dragging a hero header section into the canvas as your first block.
+                    </div>
+                    <button
+                      type="button"
+                      className="site-preview-empty-plus-btn"
+                      onClick={() => {
+                        window.dispatchEvent(
+                          new CustomEvent(FOCUS_BLOCKS_TAB_EVENT, {
+                            detail: { blockType: "hero" },
+                          })
+                        );
+                        setOnboardingHint("Drag the Hero block into this canvas to get started.");
+                        if (onboardingHintTimeoutRef.current !== null) {
+                          window.clearTimeout(onboardingHintTimeoutRef.current);
+                        }
+                        onboardingHintTimeoutRef.current = window.setTimeout(() => {
+                          setOnboardingHint(null);
+                          onboardingHintTimeoutRef.current = null;
+                        }, 5200);
+                      }}
+                      aria-label="Show me where to start"
+                      title="Show me where to start"
+                    >
+                      +
+                    </button>
                   </div>
                 ) : null}
               </div>

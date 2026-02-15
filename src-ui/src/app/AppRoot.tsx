@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 import { BuilderProvider } from "../features/builder/builder-store";
-import { FOCUS_INSPECTOR_EVENT } from "../features/builder/events";
+import { FOCUS_BLOCKS_TAB_EVENT, FOCUS_INSPECTOR_EVENT } from "../features/builder/events";
 import { BUILDER_STYLE_JUMP_EVENT } from "../features/builder/style-jump-service";
 import { useActiveProjectSession } from "../features/project-launcher/session";
 import { BUILDER_THEME_TOKEN_JUMP_EVENT } from "../features/theme/theme-jump-service";
@@ -125,6 +125,19 @@ export function AppRoot() {
     };
     window.addEventListener(FOCUS_INSPECTOR_EVENT, onFocusInspector);
     return () => window.removeEventListener(FOCUS_INSPECTOR_EVENT, onFocusInspector);
+  }, [layoutState, viewMode]);
+
+  useEffect(() => {
+    const onFocusBlocksTab = () => {
+      if (viewMode !== "builder") {
+        return;
+      }
+      layoutState.setRightOpen(true);
+      layoutState.setRightPinned(true);
+      layoutState.setActiveRightTabId("blocks");
+    };
+    window.addEventListener(FOCUS_BLOCKS_TAB_EVENT, onFocusBlocksTab);
+    return () => window.removeEventListener(FOCUS_BLOCKS_TAB_EVENT, onFocusBlocksTab);
   }, [layoutState, viewMode]);
 
   useEffect(() => {

@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { groupedBlockCatalog } from "../../../features/builder/catalog";
 import { useBuilderStore } from "../../../features/builder/builder-store";
+import {
+  FOCUS_BLOCKS_TAB_EVENT,
+  type FocusBlocksTabRequest,
+} from "../../../features/builder/events";
 import {
   BUILDER_POINTER_DRAG_END_EVENT,
   BUILDER_POINTER_DRAG_MOVE_EVENT,
@@ -30,6 +34,8 @@ export function BlocksTab() {
   const scrollRootRef = useDrawerTabScrollPersistence("manifold.builder.drawer-scroll.blocks");
   const [query, setQuery] = useState("");
   const [draggingBlockType, setDraggingBlockType] = useState<string | null>(null);
+  const [guidedBlockType, setGuidedBlockType] = useState<string | null>(null);
+  const blockCardRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const groups = groupedBlockCatalog();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() =>
     readBlocksTabGroupState()
@@ -78,6 +84,45 @@ export function BlocksTab() {
     window.localStorage.setItem(BLOCKS_TAB_GROUPS_KEY, JSON.stringify(openGroups));
   }, [openGroups]);
 
+  useEffect(() => {
+    if (!guidedBlockType) {
+      return;
+    }
+    const card = blockCardRefs.current[guidedBlockType];
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [guidedBlockType]);
+
+  useEffect(() => {
+    let timeoutId: number | null = null;
+    const onFocusBlocksTab = (event: Event) => {
+      const detail = (event as CustomEvent<FocusBlocksTabRequest>).detail;
+      const blockType = detail?.blockType ?? "hero";
+      setQuery("");
+      const containingGroup = groups.find((group) =>
+        group.blocks.some((block) => block.id === blockType)
+      );
+      if (containingGroup) {
+        setOpenGroups((prev) => ({ ...prev, [containingGroup.category]: true }));
+      }
+      setGuidedBlockType(blockType);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      timeoutId = window.setTimeout(() => {
+        setGuidedBlockType((prev) => (prev === blockType ? null : prev));
+      }, 3200);
+    };
+    window.addEventListener(FOCUS_BLOCKS_TAB_EVENT, onFocusBlocksTab);
+    return () => {
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+      window.removeEventListener(FOCUS_BLOCKS_TAB_EVENT, onFocusBlocksTab);
+    };
+  }, [groups]);
+
   return (
     <div ref={scrollRootRef} className="drawer-stack block-tab-root">
       <section className="inspector-card-item style-tab-topbar block-tab-topbar">
@@ -116,13 +161,21 @@ export function BlocksTab() {
                     {group.blocks.map((block) => (
                       <div
                         key={block.id}
-                        className={`block-catalog-card${draggingBlockType === block.id ? " dragging" : ""}`}
+                        ref={(node) => {
+                          blockCardRefs.current[block.id] = node;
+                        }}
+                        className={`block-catalog-card${draggingBlockType === block.id ? " dragging" : ""}${
+                          guidedBlockType === block.id ? " guided" : ""
+                        }`}
                         role="button"
                         tabIndex={0}
                         onPointerDown={(event) => {
                           event.preventDefault();
                           builder.selectPrimitivePath(null);
                           builder.selectBlock(null);
+                          if (guidedBlockType === block.id) {
+                            setGuidedBlockType(null);
+                          }
                           beginPointerCatalogDrag(block.id, {
                             clientX: event.clientX,
                             clientY: event.clientY,

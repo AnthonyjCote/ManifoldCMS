@@ -13,6 +13,26 @@ export type ThemeTokenField = {
 
 const FONT_FAMILY_OPTIONS = [
   {
+    label: "Plus Jakarta Sans",
+    value: '"Plus Jakarta Sans", "Inter", "Segoe UI", sans-serif',
+  },
+  {
+    label: "DM Sans",
+    value: '"DM Sans", "Inter", "Segoe UI", sans-serif',
+  },
+  {
+    label: "Outfit",
+    value: '"Outfit", "Inter", "Segoe UI", sans-serif',
+  },
+  {
+    label: "Instrument Sans",
+    value: '"Instrument Sans", "Inter", "Segoe UI", sans-serif',
+  },
+  {
+    label: "Urbanist",
+    value: '"Urbanist", "Inter", "Segoe UI", sans-serif',
+  },
+  {
     label: "Manrope",
     value: '"Manrope", "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif',
   },
@@ -35,6 +55,26 @@ const FONT_FAMILY_OPTIONS = [
   {
     label: "Fraunces",
     value: '"Fraunces", "Source Serif 4", "Georgia", serif',
+  },
+  {
+    label: "DM Serif Display",
+    value: '"DM Serif Display", "Georgia", serif',
+  },
+  {
+    label: "Playfair Display",
+    value: '"Playfair Display", "Georgia", serif',
+  },
+  {
+    label: "Cormorant Garamond",
+    value: '"Cormorant Garamond", "Georgia", serif',
+  },
+  {
+    label: "Merriweather",
+    value: '"Merriweather", "Georgia", serif',
+  },
+  {
+    label: "Libre Baskerville",
+    value: '"Libre Baskerville", "Georgia", serif',
   },
   {
     label: "IBM Plex Sans",

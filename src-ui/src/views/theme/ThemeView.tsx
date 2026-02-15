@@ -27,9 +27,31 @@ function ThemePreviewCard({
           <p className="theme-library-eyebrow">Theme Preview</p>
           <h3>Build polished pages faster</h3>
           <p className="theme-library-body">Pick a theme, drag blocks, edit content, and ship.</p>
-          <a href="#" className="theme-library-cta" onClick={(event) => event.preventDefault()}>
-            Explore theme
-          </a>
+          <div className="theme-library-cta-row">
+            <a href="#" className="theme-library-cta" onClick={(event) => event.preventDefault()}>
+              Primary
+            </a>
+            <a
+              href="#"
+              className="theme-library-cta alt"
+              onClick={(event) => event.preventDefault()}
+            >
+              Secondary
+            </a>
+          </div>
+        </section>
+        <section className="theme-library-preview-meta">
+          <span className="theme-library-meta-chip">Headline</span>
+          <span className="theme-library-meta-chip">Body</span>
+          <span className="theme-library-meta-chip">Card</span>
+          <span className="theme-library-palette-row" aria-label="Theme palette preview">
+            <span className="theme-library-palette-dot base" title="Base" />
+            <span className="theme-library-palette-dot accent" title="Accent" />
+            <span className="theme-library-palette-dot alt" title="Alt" />
+            <span className="theme-library-palette-dot canvas" title="Canvas" />
+            <span className="theme-library-palette-dot surface" title="Surface" />
+            <span className="theme-library-palette-dot card" title="Card" />
+          </span>
         </section>
       </div>
       <header>
