@@ -1,5 +1,6 @@
 import { core } from "@tauri-apps/api";
 
+import { fetchRemoteContext, remotePost, shouldUseRemoteHttpTransport } from "../remote/client";
 import type { ProjectRecord } from "./types";
 
 type RawProjectRecord = {
@@ -21,6 +22,17 @@ function normalizeProject(raw: RawProjectRecord): ProjectRecord {
 }
 
 export async function listProjects(workspaceRoot: string): Promise<ProjectRecord[]> {
+  if (shouldUseRemoteHttpTransport()) {
+    let resolvedWorkspaceRoot = workspaceRoot.trim();
+    if (!resolvedWorkspaceRoot) {
+      const context = await fetchRemoteContext();
+      resolvedWorkspaceRoot = context.workspaceRoot.trim();
+    }
+    const rows = await remotePost<RawProjectRecord[]>("/api/list-projects", {
+      workspaceRoot: resolvedWorkspaceRoot,
+    });
+    return rows.map(normalizeProject);
+  }
   const rows = await core.invoke<RawProjectRecord[]>("list_projects", {
     workspaceRoot,
   });
@@ -33,6 +45,18 @@ export async function createProject(input: {
   slug: string;
   siteUrl: string;
 }): Promise<ProjectRecord> {
+  if (shouldUseRemoteHttpTransport()) {
+    let resolvedWorkspaceRoot = input.workspaceRoot.trim();
+    if (!resolvedWorkspaceRoot) {
+      const context = await fetchRemoteContext();
+      resolvedWorkspaceRoot = context.workspaceRoot.trim();
+    }
+    const row = await remotePost<RawProjectRecord>("/api/create-project", {
+      ...input,
+      workspaceRoot: resolvedWorkspaceRoot,
+    });
+    return normalizeProject(row);
+  }
   const row = await core.invoke<RawProjectRecord>("create_project", input);
   return normalizeProject(row);
 }
@@ -41,6 +65,10 @@ export async function updateProjectSiteUrl(input: {
   projectPath: string;
   siteUrl: string;
 }): Promise<ProjectRecord> {
+  if (shouldUseRemoteHttpTransport()) {
+    const row = await remotePost<RawProjectRecord>("/api/update-project-site-url", input);
+    return normalizeProject(row);
+  }
   const row = await core.invoke<RawProjectRecord>("update_project_site_url", input);
   return normalizeProject(row);
 }

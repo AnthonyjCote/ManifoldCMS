@@ -1,14 +1,55 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::collections::{HashMap, HashSet};
+use std::sync::Mutex;
 
+use axum::body::{Body, Bytes};
+use axum::extract::{OriginalUri, State};
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::Response;
+use axum::routing::{any, get, post};
+use axum::{Json, Router};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
+use tower_http::cors::CorsLayer;
 
 const PROJECT_META_FILE: &str = "project.json";
 const SITE_FILE: &str = "site.json";
 const SITEMAP_FILE: &str = "sitemap.json";
 const PAGES_DIR: &str = "pages";
+
+#[derive(Default)]
+struct RemoteServerState {
+  handle: Mutex<Option<RemoteServerHandle>>,
+}
+
+struct RemoteServerHandle {
+  host: String,
+  port: u16,
+  server_url: String,
+  shutdown: Option<tokio::sync::oneshot::Sender<()>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RemoteServerStatus {
+  running: bool,
+  host: String,
+  port: u16,
+  server_url: String,
+}
+
+#[derive(Clone)]
+struct RemoteApiState {
+  token: String,
+  workspace_root: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RemoteContextDoc {
+  workspace_root: String,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -99,6 +140,217 @@ struct BuilderProjectDoc {
   sitemap: SitemapDoc,
   pages: Vec<PageDoc>,
   selected_page_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceRootInput {
+  workspace_root: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CreateProjectInput {
+  workspace_root: String,
+  name: String,
+  slug: String,
+  site_url: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ProjectPathInput {
+  project_path: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UpdateSiteUrlInput {
+  project_path: String,
+  site_url: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SaveBuilderProjectInput {
+  project_path: String,
+  document: BuilderProjectDoc,
+}
+
+fn require_remote_token(headers: &HeaderMap, expected: &str) -> Result<(), (StatusCode, String)> {
+  let provided = headers
+    .get("x-manifold-token")
+    .and_then(|value| value.to_str().ok())
+    .unwrap_or("");
+  if provided == expected {
+    Ok(())
+  } else {
+    Err((StatusCode::UNAUTHORIZED, "Unauthorized remote token.".to_string()))
+  }
+}
+
+async fn remote_health(
+  State(api): State<RemoteApiState>,
+  headers: HeaderMap,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+  require_remote_token(&headers, &api.token)?;
+  Ok(Json(serde_json::json!({
+    "status": "ok"
+  })))
+}
+
+async fn remote_list_projects(
+  State(api): State<RemoteApiState>,
+  headers: HeaderMap,
+  Json(input): Json<WorkspaceRootInput>,
+) -> Result<Json<Vec<ProjectRecord>>, (StatusCode, String)> {
+  require_remote_token(&headers, &api.token)?;
+  let workspace_root = if input.workspace_root.trim().is_empty() {
+    api.workspace_root.clone()
+  } else {
+    input.workspace_root
+  };
+  list_projects(workspace_root)
+    .map(Json)
+    .map_err(|err| (StatusCode::BAD_REQUEST, err))
+}
+
+async fn remote_create_project(
+  State(api): State<RemoteApiState>,
+  headers: HeaderMap,
+  Json(input): Json<CreateProjectInput>,
+) -> Result<Json<ProjectRecord>, (StatusCode, String)> {
+  require_remote_token(&headers, &api.token)?;
+  let workspace_root = if input.workspace_root.trim().is_empty() {
+    api.workspace_root.clone()
+  } else {
+    input.workspace_root
+  };
+  create_project(workspace_root, input.name, input.slug, input.site_url)
+    .map(Json)
+    .map_err(|err| (StatusCode::BAD_REQUEST, err))
+}
+
+async fn remote_update_project_site_url(
+  State(api): State<RemoteApiState>,
+  headers: HeaderMap,
+  Json(input): Json<UpdateSiteUrlInput>,
+) -> Result<Json<ProjectRecord>, (StatusCode, String)> {
+  require_remote_token(&headers, &api.token)?;
+  update_project_site_url(input.project_path, input.site_url)
+    .map(Json)
+    .map_err(|err| (StatusCode::BAD_REQUEST, err))
+}
+
+async fn remote_load_builder_project(
+  State(api): State<RemoteApiState>,
+  headers: HeaderMap,
+  Json(input): Json<ProjectPathInput>,
+) -> Result<Json<BuilderProjectDoc>, (StatusCode, String)> {
+  require_remote_token(&headers, &api.token)?;
+  load_builder_project(input.project_path)
+    .map(Json)
+    .map_err(|err| (StatusCode::BAD_REQUEST, err))
+}
+
+async fn remote_save_builder_project(
+  State(api): State<RemoteApiState>,
+  headers: HeaderMap,
+  Json(input): Json<SaveBuilderProjectInput>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+  require_remote_token(&headers, &api.token)?;
+  save_builder_project(input.project_path, input.document)
+    .map(|_| Json(serde_json::json!({ "ok": true })))
+    .map_err(|err| (StatusCode::BAD_REQUEST, err))
+}
+
+async fn remote_context(
+  State(api): State<RemoteApiState>,
+  headers: HeaderMap,
+) -> Result<Json<RemoteContextDoc>, (StatusCode, String)> {
+  require_remote_token(&headers, &api.token)?;
+  Ok(Json(RemoteContextDoc {
+    workspace_root: api.workspace_root.clone(),
+  }))
+}
+
+async fn remote_frontend_proxy(
+  State(_api): State<RemoteApiState>,
+  _method: axum::http::Method,
+  original_uri: OriginalUri,
+  _headers: HeaderMap,
+  _body: Bytes,
+) -> Result<Response, (StatusCode, String)> {
+  // Serve static frontend files directly from dist for deterministic remote behavior.
+  let dist_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../src-ui/dist");
+  if !dist_root.exists() {
+    let msg = "Frontend dist missing. Run `npm --prefix src-ui run build` before starting remote server.";
+    return Response::builder()
+      .status(StatusCode::SERVICE_UNAVAILABLE)
+      .header("content-type", "text/plain; charset=utf-8")
+      .body(Body::from(msg.as_bytes().to_vec()))
+      .map_err(|err| {
+        (
+          StatusCode::INTERNAL_SERVER_ERROR,
+          format!("Static response build failed: {}", err),
+        )
+      });
+  }
+  let uri_path = original_uri.0.path();
+  let normalized_path = if uri_path == "/" {
+    "index.html".to_string()
+  } else {
+    uri_path.trim_start_matches('/').to_string()
+  };
+  let requested = dist_root.join(&normalized_path);
+  let fallback = dist_root.join("index.html");
+  let file_path = if requested.is_file() { requested } else { fallback };
+  let bytes = fs::read(&file_path).map_err(|err| {
+    (
+      StatusCode::BAD_GATEWAY,
+      format!("Frontend static file read failed: {}", err),
+    )
+  })?;
+
+  let content_type = if let Some(ext) = file_path.extension().and_then(|e| e.to_str()) {
+    match ext {
+      "html" => "text/html; charset=utf-8",
+      "js" => "application/javascript; charset=utf-8",
+      "css" => "text/css; charset=utf-8",
+      "json" => "application/json; charset=utf-8",
+      "svg" => "image/svg+xml",
+      "png" => "image/png",
+      "jpg" | "jpeg" => "image/jpeg",
+      "webp" => "image/webp",
+      _ => "application/octet-stream",
+    }
+  } else {
+    "application/octet-stream"
+  };
+
+  Response::builder()
+    .status(StatusCode::OK)
+    .header("content-type", content_type)
+    .body(Body::from(bytes))
+    .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, format!("Static response build failed: {}", err)))
+}
+
+fn stopped_remote_status() -> RemoteServerStatus {
+  RemoteServerStatus {
+    running: false,
+    host: "".to_string(),
+    port: 0,
+    server_url: "".to_string(),
+  }
+}
+
+fn advertised_remote_url(bind_host: &str, addr: std::net::SocketAddr) -> String {
+  if bind_host == "0.0.0.0" {
+    if let Ok(ip) = local_ip_address::local_ip() {
+      return format!("http://{}:{}", ip, addr.port());
+    }
+  }
+  format!("http://{}:{}", addr.ip(), addr.port())
 }
 
 fn now_iso() -> String {
@@ -415,6 +667,9 @@ fn load_builder_doc(project_dir: &Path) -> Result<BuilderProjectDoc, String> {
 
 #[tauri::command]
 fn list_projects(workspace_root: String) -> Result<Vec<ProjectRecord>, String> {
+  if workspace_root.trim().is_empty() {
+    return Err("Workspace root is required.".to_string());
+  }
   let workspace = PathBuf::from(workspace_root);
   if !workspace.exists() {
     return Ok(Vec::new());
@@ -534,17 +789,151 @@ fn save_builder_project(project_path: String, document: BuilderProjectDoc) -> Re
   persist_builder_doc(&project_dir, &document)
 }
 
+#[tauri::command]
+async fn start_remote_server(
+  state: tauri::State<'_, RemoteServerState>,
+  host: String,
+  port: u16,
+  token: String,
+  workspace_root: String,
+) -> Result<RemoteServerStatus, String> {
+  if token.trim().is_empty() {
+    return Err("Remote server token is required.".to_string());
+  }
+  if workspace_root.trim().is_empty() {
+    return Err("Workspace root is required before starting remote server.".to_string());
+  }
+  let workspace = PathBuf::from(workspace_root.trim());
+  if !workspace.exists() {
+    return Err(format!(
+      "Workspace root does not exist: {}",
+      workspace.display()
+    ));
+  }
+  if !workspace.is_dir() {
+    return Err("Workspace root must be a directory before starting remote server.".to_string());
+  }
+
+  {
+    let guard = state
+      .handle
+      .lock()
+      .map_err(|_| "Remote server state lock failed.".to_string())?;
+    if let Some(active) = guard.as_ref() {
+      return Ok(RemoteServerStatus {
+        running: true,
+        host: active.host.clone(),
+        port: active.port,
+        server_url: active.server_url.clone(),
+      });
+    }
+  }
+
+  let bind_host = if host.trim().is_empty() {
+    "0.0.0.0".to_string()
+  } else {
+    host.trim().to_string()
+  };
+
+  let listener = tokio::net::TcpListener::bind((bind_host.as_str(), port))
+    .await
+    .map_err(|err| format!("Failed binding remote server: {}", err))?;
+  let addr = listener
+    .local_addr()
+    .map_err(|err| format!("Failed reading server address: {}", err))?;
+
+  let api_state = RemoteApiState {
+    token,
+    workspace_root: workspace_root.trim().to_string(),
+  };
+  let app = Router::new()
+    .route("/health", get(remote_health))
+    .route("/api/remote-context", post(remote_context))
+    .route("/api/list-projects", post(remote_list_projects))
+    .route("/api/create-project", post(remote_create_project))
+    .route("/api/update-project-site-url", post(remote_update_project_site_url))
+    .route("/api/load-builder-project", post(remote_load_builder_project))
+    .route("/api/save-builder-project", post(remote_save_builder_project))
+    .fallback(any(remote_frontend_proxy))
+    .layer(CorsLayer::very_permissive())
+    .with_state(api_state);
+
+  let (shutdown_tx, shutdown_rx) = tokio::sync::oneshot::channel::<()>();
+  tauri::async_runtime::spawn(async move {
+    let server = axum::serve(listener, app).with_graceful_shutdown(async move {
+      let _ = shutdown_rx.await;
+    });
+    if let Err(err) = server.await {
+      log::error!("remote server terminated: {}", err);
+    }
+  });
+
+  let status = RemoteServerStatus {
+    running: true,
+    host: bind_host.clone(),
+    port: addr.port(),
+    server_url: advertised_remote_url(&bind_host, addr),
+  };
+  let mut guard = state
+    .handle
+    .lock()
+    .map_err(|_| "Remote server state lock failed.".to_string())?;
+  *guard = Some(RemoteServerHandle {
+    host: bind_host,
+    port: addr.port(),
+    server_url: status.server_url.clone(),
+    shutdown: Some(shutdown_tx),
+  });
+  Ok(status)
+}
+
+#[tauri::command]
+fn stop_remote_server(state: tauri::State<'_, RemoteServerState>) -> Result<RemoteServerStatus, String> {
+  let mut guard = state
+    .handle
+    .lock()
+    .map_err(|_| "Remote server state lock failed.".to_string())?;
+  let mut taken = guard.take();
+  if let Some(handle) = taken.as_mut() {
+    if let Some(shutdown) = handle.shutdown.take() {
+      let _ = shutdown.send(());
+    }
+  }
+  Ok(stopped_remote_status())
+}
+
+#[tauri::command]
+fn get_remote_server_status(state: tauri::State<'_, RemoteServerState>) -> Result<RemoteServerStatus, String> {
+  let guard = state
+    .handle
+    .lock()
+    .map_err(|_| "Remote server state lock failed.".to_string())?;
+  if let Some(active) = guard.as_ref() {
+    return Ok(RemoteServerStatus {
+      running: true,
+      host: active.host.clone(),
+      port: active.port,
+      server_url: active.server_url.clone(),
+    });
+  }
+  Ok(stopped_remote_status())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_log::Builder::default().build())
+    .manage(RemoteServerState::default())
     .invoke_handler(tauri::generate_handler![
       list_projects,
       create_project,
       update_project_site_url,
       pick_workspace_directory,
       load_builder_project,
-      save_builder_project
+      save_builder_project,
+      start_remote_server,
+      stop_remote_server,
+      get_remote_server_status
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

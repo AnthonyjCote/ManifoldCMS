@@ -231,6 +231,10 @@ body,
   padding: 0;
 }
 
+.view-region-settings {
+  padding: 0;
+}
+
 .view-router {
   min-height: 0;
   height: 100%;
@@ -242,6 +246,11 @@ body,
 }
 
 .view-project_settings {
+  height: 100%;
+  width: 100%;
+}
+
+.view-settings {
   height: 100%;
   width: 100%;
 }
@@ -4044,6 +4053,64 @@ textarea:focus-visible {
 
 .project-settings-empty {
   margin: 14px;
+}
+
+.settings-shell,
+.settings-layout,
+.settings-sidebar,
+.settings-main,
+.settings-card {
+  min-width: 0;
+}
+
+.settings-remote-status {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.settings-share-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-copy-chip {
+  white-space: nowrap;
+  min-width: 72px;
+}
+
+.remote-gate-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(94, 122, 179, 0.16) 0%, transparent 42%),
+    linear-gradient(180deg, #0d121a 0%, #0a0f16 100%);
+}
+
+.remote-gate-card {
+  width: min(520px, 100%);
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #2e394d;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #151d28 0%, #111824 100%);
+  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.42);
+}
+
+.remote-gate-card h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 640;
+}
+
+.remote-gate-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 @media (max-width: 1100px) {

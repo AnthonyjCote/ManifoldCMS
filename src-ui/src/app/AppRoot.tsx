@@ -1,5 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
+import {
+  isTauriRuntime,
+  resolveRemoteTransportSettings,
+} from "../features/app-settings/useAppSettings";
 import { BuilderProvider } from "../features/builder/builder-store";
 import { FOCUS_BLOCKS_TAB_EVENT, FOCUS_INSPECTOR_EVENT } from "../features/builder/events";
 import { BUILDER_STYLE_JUMP_EVENT } from "../features/builder/style-jump-service";
@@ -10,6 +14,7 @@ import { useLayoutStateStore } from "../state/useLayoutStateStore";
 import { useViewModeStore } from "../state/useViewModeStore";
 import type { ViewMode } from "../types/ui";
 import { VIEW_DEFINITIONS, VIEW_ORDER } from "../views/registry";
+import { RemoteAccessGate } from "./RemoteAccessGate";
 import "./app.css";
 
 function rotateView(current: ViewMode, direction: "next" | "previous"): ViewMode {
@@ -43,6 +48,18 @@ export function AppRoot() {
   const projectSession = useActiveProjectSession();
   const { viewMode, setViewMode } = useViewModeStore();
   const definition = VIEW_DEFINITIONS[viewMode];
+  const [remoteReady, setRemoteReady] = useState(() => {
+    if (isTauriRuntime()) {
+      return true;
+    }
+    return resolveRemoteTransportSettings().mode === "remote_http";
+  });
+  const remoteParams = new URLSearchParams(window.location.search);
+  const remoteUrlFromQuery = remoteParams.get("remote");
+  const remoteGateDefaultServerUrl =
+    remoteUrlFromQuery && remoteUrlFromQuery.trim().length > 0
+      ? remoteUrlFromQuery
+      : window.location.origin;
 
   const layoutState = useLayoutStateStore({
     viewMode,
@@ -165,6 +182,15 @@ export function AppRoot() {
     window.addEventListener(BUILDER_THEME_TOKEN_JUMP_EVENT, onThemeTokenJump);
     return () => window.removeEventListener(BUILDER_THEME_TOKEN_JUMP_EVENT, onThemeTokenJump);
   }, [layoutState, viewMode]);
+
+  if (!remoteReady) {
+    return (
+      <RemoteAccessGate
+        defaultServerUrl={remoteGateDefaultServerUrl}
+        onConnected={() => setRemoteReady(true)}
+      />
+    );
+  }
 
   return (
     <BuilderProvider

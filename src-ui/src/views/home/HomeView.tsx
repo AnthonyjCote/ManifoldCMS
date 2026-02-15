@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { core } from "@tauri-apps/api";
 
+import { isTauriRuntime } from "../../features/app-settings/useAppSettings";
 import { setActiveProjectSession } from "../../features/project-launcher/session";
 import { useProjectLauncher } from "../../features/project-launcher/useProjectLauncher";
 import { useViewModeStore } from "../../state/useViewModeStore";
@@ -21,6 +22,7 @@ export function HomeView() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [siteUrlDraftByPath, setSiteUrlDraftByPath] = useState<Record<string, string>>({});
   const [selectedProjectPathRaw, setSelectedProjectPathRaw] = useState<string | null>(null);
+  const canPickWorkspace = isTauriRuntime();
 
   const projectRows = useMemo(() => {
     return launcher.projects.map((project) => ({
@@ -56,6 +58,9 @@ export function HomeView() {
   };
 
   const pickWorkspaceDirectory = async () => {
+    if (!canPickWorkspace) {
+      return;
+    }
     const selected = await core.invoke<string | null>("pick_workspace_directory");
     if (typeof selected !== "string") {
       return;
@@ -73,7 +78,12 @@ export function HomeView() {
           <p>Manage projects, workspace settings, and site URLs for Builder preview.</p>
         </div>
         <div className="home-topbar-actions">
-          <button className="secondary-btn" onClick={() => void pickWorkspaceDirectory()}>
+          <button
+            className="secondary-btn"
+            onClick={() => void pickWorkspaceDirectory()}
+            disabled={!canPickWorkspace}
+            title={!canPickWorkspace ? "Folder picker is desktop-only." : undefined}
+          >
             Select Folder
           </button>
           <button className="secondary-btn" onClick={() => void launcher.rescan()}>
@@ -127,7 +137,12 @@ export function HomeView() {
             {!launcher.workspaceConfigured ? (
               <div className="home-sidebar-empty">
                 <p>Pick a workspace folder to load projects.</p>
-                <button className="primary-btn" onClick={() => void pickWorkspaceDirectory()}>
+                <button
+                  className="primary-btn"
+                  onClick={() => void pickWorkspaceDirectory()}
+                  disabled={!canPickWorkspace}
+                  title={!canPickWorkspace ? "Folder picker is desktop-only." : undefined}
+                >
                   Select Workspace Folder
                 </button>
               </div>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { createProject, listProjects, updateProjectSiteUrl } from "./api";
+import { fetchRemoteContext, shouldUseRemoteHttpTransport } from "../remote/client";
 import type { ProjectRecord } from "./types";
 
 const WORKSPACE_ROOT_KEY = "manifold.workspace.root.v1";
@@ -26,8 +27,38 @@ export function useProjectLauncher(): {
   const [hasScanError, setHasScanError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const remoteMode = shouldUseRemoteHttpTransport();
 
-  const workspaceConfigured = useMemo(() => workspaceRoot.trim().length > 0, [workspaceRoot]);
+  const workspaceConfigured = useMemo(
+    () => remoteMode || workspaceRoot.trim().length > 0,
+    [remoteMode, workspaceRoot]
+  );
+
+  useEffect(() => {
+    if (!remoteMode) {
+      return;
+    }
+    if (workspaceRoot.trim().length > 0) {
+      return;
+    }
+    let disposed = false;
+    void (async () => {
+      try {
+        const context = await fetchRemoteContext();
+        const next = context.workspaceRoot?.trim() ?? "";
+        if (disposed || next.length === 0) {
+          return;
+        }
+        window.localStorage.setItem(WORKSPACE_ROOT_KEY, next);
+        setWorkspaceRootState(next);
+      } catch {
+        // no-op; user can still set workspace manually
+      }
+    })();
+    return () => {
+      disposed = true;
+    };
+  }, [remoteMode, workspaceRoot]);
 
   const scan = useCallback(async () => {
     if (!workspaceConfigured) {
@@ -69,7 +100,7 @@ export function useProjectLauncher(): {
       await scan();
     },
     createProject: async (input) => {
-      if (!workspaceConfigured) {
+      if (!workspaceConfigured && !remoteMode) {
         throw new Error("Workspace root is not configured.");
       }
       const created = await createProject({
